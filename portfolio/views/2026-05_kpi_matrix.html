@@ -1,0 +1,774 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AIインフラ銘柄 portfolio横断KPIマトリクス</title>
+<style>
+
+:root {
+  color-scheme: light;
+  --bg: #f6f7f9;
+  --panel: #ffffff;
+  --text: #202833;
+  --muted: #657386;
+  --line: #d8dee8;
+  --accent: #125c8f;
+  --ok: #1d724b;
+  --warn: #9b5a00;
+  --danger: #a72735;
+  --unknown: #5b6678;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  line-height: 1.62;
+  overflow-wrap: anywhere;
+}
+.skipLink {
+  position: absolute;
+  left: 12px;
+  top: -48px;
+  z-index: 10;
+  background: #fff;
+  border: 2px solid var(--accent);
+  border-radius: 8px;
+  color: var(--accent);
+  padding: 8px 10px;
+}
+.skipLink:focus { top: 12px; }
+.topbar {
+  display: flex;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 26px clamp(16px, 4vw, 48px);
+  background: var(--panel);
+  border-bottom: 1px solid var(--line);
+}
+h1 {
+  margin: 0;
+  font-size: 2rem;
+  line-height: 1.18;
+  letter-spacing: 0;
+}
+.eyebrow, .meta {
+  color: var(--muted);
+  margin: 0 0 6px;
+}
+.statusStack {
+  align-items: flex-end;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.badge {
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  display: inline-flex;
+  font-weight: 800;
+  padding: 6px 10px;
+}
+.green { color: var(--ok); border-color: #8fc7a8; }
+.light_green { color: #557b1f; border-color: #b9d689; }
+.yellow { color: #7b6800; border-color: #d8c65a; }
+.orange, .partially_verified, .draft { color: var(--warn); border-color: #d59b50; }
+.red, .needs_review { color: var(--danger); border-color: #d9848f; }
+.unrated, .unknown { color: var(--unknown); border-color: #a5afbd; }
+main {
+  margin: 0 auto;
+  max-width: 1200px;
+  padding: 22px clamp(14px, 3vw, 32px) 56px;
+}
+.firstView {
+  display: grid;
+  gap: 14px;
+  margin-bottom: 18px;
+}
+.decisionStrip {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: 1.4fr 1.4fr 0.8fr;
+}
+.decisionStrip article,
+.candidateCard,
+.comparisonGrid,
+.sourceDrawer,
+.toc,
+.actions,
+.copyFallback,
+.report {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  box-shadow: 0 1px 2px rgba(32, 40, 51, 0.04);
+}
+.decisionStrip article,
+.candidateCard {
+  padding: 14px;
+}
+.decisionStrip span,
+.candidateCard > span,
+.comparisonGrid > span,
+.sourceDrawer > summary span {
+  color: var(--muted);
+  display: block;
+  font-size: 13px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+.decisionStrip strong {
+  display: block;
+  font-size: 18px;
+  line-height: 1.35;
+}
+.candidateBoard {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+.candidateCard {
+  border-left: 6px solid var(--unknown);
+}
+.candidateCard.diversify { border-left-color: var(--ok); }
+.candidateCard.exit { border-left-color: var(--danger); }
+.candidateCard.unknown { border-left-color: var(--warn); }
+.candidateCard h2 {
+  font-size: 20px;
+  line-height: 1.25;
+  margin: 2px 0 8px;
+}
+.candidateCard ul {
+  margin: 8px 0 0;
+  padding-left: 20px;
+}
+.candidateCard li { margin: 4px 0; }
+.empty {
+  color: var(--muted);
+  margin: 8px 0 0;
+}
+.comparisonGrid {
+  padding: 14px;
+}
+.comparisonGrid h2 {
+  font-size: 20px;
+  line-height: 1.25;
+  margin: 2px 0 10px;
+}
+.gridRows {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+.companyCard {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 12px;
+}
+.companyCard strong {
+  display: block;
+  font-size: 18px;
+  line-height: 1.3;
+  margin-bottom: 8px;
+}
+.field {
+  border-top: 1px solid #edf0f5;
+  display: grid;
+  gap: 4px;
+  grid-template-columns: 92px 1fr;
+  padding: 6px 0;
+}
+.field span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+.actions,
+.toc {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  margin-bottom: 16px;
+  padding: 12px;
+}
+.toc a {
+  color: var(--accent);
+  text-decoration: none;
+}
+button {
+  background: #fff;
+  border: 1px solid #b9c2cf;
+  border-radius: 8px;
+  color: var(--text);
+  cursor: pointer;
+  font: inherit;
+  min-height: 44px;
+  padding: 8px 10px;
+  touch-action: manipulation;
+}
+button:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+button:focus-visible,
+a:focus-visible,
+summary:focus-visible {
+  outline: 3px solid #5a8db8;
+  outline-offset: 3px;
+}
+.copyFallback {
+  margin: 0 0 16px;
+  padding: 12px;
+}
+.copyFallback summary,
+.sourceDrawer > summary {
+  cursor: pointer;
+  font-weight: 800;
+}
+.copyFallback p {
+  color: var(--muted);
+  margin: 4px 0 8px;
+}
+.copyFallback textarea {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  font: 13px/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  min-height: 160px;
+  padding: 10px;
+  resize: vertical;
+  width: 100%;
+}
+.sourceDrawer {
+  margin-bottom: 16px;
+  padding: 12px;
+}
+.sourceDrawer .sourceBody {
+  border-top: 1px solid var(--line);
+  margin-top: 10px;
+  padding-top: 10px;
+}
+.report {
+  padding: 4px 18px 18px;
+}
+.report h1 { font-size: 28px; margin: 18px 0 10px; }
+.report h2 {
+  border-top: 1px solid var(--line);
+  font-size: 21px;
+  margin: 24px 0 10px;
+  padding-top: 8px;
+}
+.report h3 { font-size: 17px; margin: 18px 0 8px; }
+.report table {
+  border-collapse: collapse;
+  display: block;
+  overflow-x: auto;
+  width: 100%;
+}
+.report th,
+.report td {
+  border: 1px solid var(--line);
+  padding: 8px;
+  text-align: left;
+  vertical-align: top;
+}
+.report code {
+  background: #eef1f5;
+  border-radius: 4px;
+  padding: 2px 4px;
+}
+.report pre {
+  background: #111827;
+  border-radius: 8px;
+  color: #f7f8fa;
+  overflow-x: auto;
+  padding: 12px;
+}
+@media (max-width: 720px) {
+  .topbar,
+  .decisionStrip,
+  .candidateBoard {
+    grid-template-columns: 1fr;
+  }
+  .topbar {
+    display: grid;
+  }
+  .statusStack {
+    align-items: flex-start;
+  }
+}
+@media (max-width: 420px) {
+  main {
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+  h1 { font-size: 1.55rem; }
+  .field {
+    grid-template-columns: 1fr;
+  }
+  .actions button {
+    width: 100%;
+  }
+}
+
+</style>
+
+<style>
+.pagesPublicNotice {
+  margin: 0;
+  padding: 10px 14px;
+  border-bottom: 1px solid #d7dee8;
+  background: #f6f8fb;
+  color: #243040;
+  font: 13px/1.55 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+.pagesPublicNotice strong {
+  display: inline-block;
+  margin-right: 8px;
+}
+.pagesPublicNotice small {
+  display: block;
+  margin-top: 2px;
+  color: #5b677a;
+  overflow-wrap: anywhere;
+}
+@media (max-width: 480px) {
+  .pagesPublicNotice {
+    padding: 9px 10px;
+  }
+  .pagesPublicNotice strong {
+    display: block;
+    margin: 0 0 2px;
+  }
+}
+</style>
+</head>
+<body>
+<aside class="pagesPublicNotice" role="note">
+  <strong>GitHub Pages public view</strong>
+  <span>このHTMLはGitHub Pagesでpublic配信される前提の閲覧用生成物です。個人情報・非公開メモ・認証情報を含めないでください。</span>
+  <small>source: portfolio/views/2026-05_kpi_matrix.html / staged: 2026-05-13T22:05:31.239Z</small>
+</aside>
+
+<a class="skipLink" href="#main">本文へ移動</a>
+<header class="topbar">
+  <div>
+    <p class="eyebrow">Portfolio View</p>
+    <h1>AIインフラ銘柄 portfolio横断KPIマトリクス</h1>
+    <p class="meta">period: 2026-05 / date: 2026-05-11</p>
+  </div>
+  <div class="statusStack">
+    <span class="badge unrated">UNRATED</span>
+    <span class="badge source partially_verified">partially_verified</span>
+  </div>
+</header>
+
+<main id="main">
+  <section class="firstView" aria-label="portfolio判断ダッシュボード">
+    <section class="decisionStrip" aria-label="結論とアクション">
+      <article>
+        <span>Conclusion</span>
+        <strong>KPIマトリクスは作成できたが、27点採点とMicron相対魅力の確定にはまだ進めない。</strong>
+      </article>
+      <article>
+        <span>Action</span>
+        <strong>valuation、顧客集中、CapEx/FCF、HBM採用、backlog/RPO/ARRを追加取得してから採点する。</strong>
+      </article>
+      <article>
+        <span>Source Status</span>
+        <strong>partially_verified</strong>
+      </article>
+    </section>
+
+    <section class="candidateBoard" aria-label="分散候補、撤退候補、未確認">
+<article class="candidateCard diversify">
+  <span>分散候補</span>
+  <h2>分散候補</h2>
+  <ul><li>TSMC: 財務・cash flow・HPC mixが比較的そろう。customer concentrationはRP-202605-P0-0019、valuation readinessはRP-202605-P0-0020でreview済みopen。次回はadvanced packaging、annual report / 20-Fの顧客集中注記、share count、ADR/普通株換算、株価日時、EV、倍率定義を確認する。</li><li>Broadcom: AI revenueとFCFが強い可能性がある一方、Q1 FY2026の顧客集中とvaluation snapshotは高い弱気材料である。RP-202605-P0-0010でscore readinessをreviewし、RPO、contract liabilities、inventory、working capital、debt maturity through year fourを部分確認したが、次回はAI revenue内訳、software renewal quality、inventory quality、year five以降のdebt maturity、peer同一基準比較を確認する。</li><li>Arista / Astera Labs: AI networking / connectivity候補だが、Aristaは顧客集中とvaluation入力snapshot、Asteraは顧客集中とvaluation入力snapshotを確認済み。AristaはRP-202605-P0-0007とRP-202605-P0-0026、AsteraはRP-202605-P0-0009とRP-202605-P0-0027でnot_scoreable維持。AI売上内訳、company-defined FCF/CapEx、Asteraのproduct mix、AR / inventory quality、end customer mappingが先。</li><li>ASML / Synopsys / Cadence: 寡占分散候補。ASMLはvaluation入力snapshotを確認済みだが、backlog/RPO/ARR、規制、company-defined FCF、peer同一基準比較の確認前に相対魅力を上げない。Synopsysのcustomer concentrationとvaluation readinessはreview済みだが、顧客集中注記本文、株価、株式数、market cap、EV、倍率定義が不足するため採点に使わない。Cadenceのcustomer concentrationとvaluation readinessはreview済みだが、顧客集中注記本文、share count、market price、debt、EV、倍率定義が不足するため採点に使わない。</li></ul>
+</article>
+<article class="candidateCard exit">
+  <span>撤退候補</span>
+  <h2>撤退候補</h2>
+  <ul><li>現時点では撤退候補を指定しない。</li><li>Micron全力解除検討は、DRAM/HBM価格下落、CSP CapEx下方修正、粗利率低下、在庫増加、HBM採用劣後、CapEx増加、FCF悪化が同時に出るかで判断する。</li></ul>
+</article>
+<article class="candidateCard unknown">
+  <span>未確認</span>
+  <h2>未確認</h2>
+  <p class="empty">未記入</p>
+</article>
+    </section>
+
+<section class="comparisonGrid" aria-label="比較グリッド">
+  <span>Watchlist Comparison Grid</span>
+  <h2>監視銘柄比較</h2>
+  <div class="gridRows">
+<article class="companyCard">
+  <strong>`portfolio/data/2026-05_kpi_memory.csv`</strong>
+<div class="field"><span>KPI件数</span><div>101</div></div><div class="field"><span>主な対象</span><div>MU / SKHYNIX / SAMSUNG / SANDISK</div></div><div class="field"><span>検証状態</span><div><code>portfolio_kpi_verify</code>: OK</div></div>
+</article><article class="companyCard">
+  <strong>`portfolio/data/2026-05_kpi_networking.csv`</strong>
+<div class="field"><span>KPI件数</span><div>64</div></div><div class="field"><span>主な対象</span><div>BROADCOM / ARISTA / ASTERA</div></div><div class="field"><span>検証状態</span><div><code>portfolio_kpi_verify</code>: OK</div></div>
+</article><article class="companyCard">
+  <strong>`portfolio/data/2026-05_kpi_upstream_eda.csv`</strong>
+<div class="field"><span>KPI件数</span><div>77</div></div><div class="field"><span>主な対象</span><div>ASML / TSMC / SYNOPSYS / CADENCE</div></div><div class="field"><span>検証状態</span><div><code>portfolio_kpi_verify</code>: OK</div></div>
+</article><article class="companyCard">
+  <strong>`portfolio/data/2026-05_kpi_matrix.csv`</strong>
+<div class="field"><span>KPI件数</span><div>242</div></div><div class="field"><span>主な対象</span><div>上記すべて</div></div><div class="field"><span>検証状態</span><div><code>portfolio_kpi_verify</code>: OK</div></div>
+</article>
+  </div>
+</section>
+  </section>
+
+  <section class="actions" aria-label="コピー操作">
+    <button type="button" data-copy-label="next prompt" data-copy="# Next portfolio prompt
+
+対象: AIインフラ銘柄 portfolio横断KPIマトリクス
+期間: 2026-05
+作成日: 2026-05-11
+
+## 次回確認
+- 未記入
+
+## 前回アクション
+- valuation、顧客集中、CapEx/FCF、HBM採用、backlog/RPO/ARRを追加取得してから採点する。">Copy next prompt</button>
+    <button type="button" data-copy-label="action summary" data-copy="# AIインフラ銘柄 portfolio横断KPIマトリクス
+
+- period: 2026-05
+- date: 2026-05-11
+- portfolio_judgement: UNRATED
+- source_status: partially_verified
+- conclusion: KPIマトリクスは作成できたが、27点採点とMicron相対魅力の確定にはまだ進めない。
+- action: valuation、顧客集中、CapEx/FCF、HBM採用、backlog/RPO/ARRを追加取得してから採点する。
+
+## 分散候補
+- TSMC: 財務・cash flow・HPC mixが比較的そろう。customer concentrationはRP-202605-P0-0019、valuation readinessはRP-202605-P0-0020でreview済みopen。次回はadvanced packaging、annual report / 20-Fの顧客集中注記、share count、ADR/普通株換算、株価日時、EV、倍率定義を確認する。
+- Broadcom: AI revenueとFCFが強い可能性がある一方、Q1 FY2026の顧客集中とvaluation snapshotは高い弱気材料である。RP-202605-P0-0010でscore readinessをreviewし、RPO、contract liabilities、inventory、working capital、debt maturity through year fourを部分確認したが、次回はAI revenue内訳、software renewal quality、inventory quality、year five以降のdebt maturity、peer同一基準比較を確認する。
+- Arista / Astera Labs: AI networking / connectivity候補だが、Aristaは顧客集中とvaluation入力snapshot、Asteraは顧客集中とvaluation入力snapshotを確認済み。AristaはRP-202605-P0-0007とRP-202605-P0-0026、AsteraはRP-202605-P0-0009とRP-202605-P0-0027でnot_scoreable維持。AI売上内訳、company-defined FCF/CapEx、Asteraのproduct mix、AR / inventory quality、end customer mappingが先。
+- ASML / Synopsys / Cadence: 寡占分散候補。ASMLはvaluation入力snapshotを確認済みだが、backlog/RPO/ARR、規制、company-defined FCF、peer同一基準比較の確認前に相対魅力を上げない。Synopsysのcustomer concentrationとvaluation readinessはreview済みだが、顧客集中注記本文、株価、株式数、market cap、EV、倍率定義が不足するため採点に使わない。Cadenceのcustomer concentrationとvaluation readinessはreview済みだが、顧客集中注記本文、share count、market price、debt、EV、倍率定義が不足するため採点に使わない。
+
+## 撤退候補
+- 現時点では撤退候補を指定しない。
+- Micron全力解除検討は、DRAM/HBM価格下落、CSP CapEx下方修正、粗利率低下、在庫増加、HBM採用劣後、CapEx増加、FCF悪化が同時に出るかで判断する。
+
+## 未確認
+- 未記入">Copy action summary</button>
+    <button type="button" data-copy-label="source checklist" data-copy="# Source checklist
+
+このレポートは以下のローカル原本を入力にした。外部検索・Webブラウズは実施していない。
+
+| 種別 | パス | 発表日 | 確認日 |
+|---|---|---|---|
+| KPI CSV | `portfolio/data/2026-05_kpi_memory.csv` | 2026-05-11 | 2026-05-11 |
+| KPI CSV | `portfolio/data/2026-05_kpi_networking.csv` | 2026-05-11 | 2026-05-11 |
+| KPI CSV | `portfolio/data/2026-05_kpi_upstream_eda.csv` | 2026-05-11 | 2026-05-11 |
+| 統合CSV | `portfolio/data/2026-05_kpi_matrix.csv` | 2026-05-11 | 2026-05-11 |
+| source map | `targets/ARISTA/evidence/verified/RP-202605-P0-0007_micron_diversification_score_readiness_source_map.md` | 2026-05-11 | 2026-05-11 |
+| source map | `targets/ARISTA/evidence/verified/RP-202605-P0-0026_ai_networking_revenue_source_map.md` | 2026-05-11 | 2026-05-11 |
+| source map | `targets/ASTERA/evidence/verified/RP-202605-P0-0003_customer_concentration_source_map.md` | 2026-05-11 | 2026-05-11 |
+| source map | `targets/ASTERA/evidence/verified/RP-202605-P0-0004_valuation_source_map.md` | 2026-05-11 | 2026-05-11 |
+| source map | `targets/ASTERA/evidence/verified/RP-202605-P0-0009_micron_diversification_score_readiness_source_map.md` | 2026-05-11 | 2026-05-11 |
+| source map | `targets/ASTERA/evidence/verified/RP-202605-P0-0027_product_or_ai_connectivity_revenue_source_map.md` | 2026-05-11 | 2026-05-11 |
+| source map | `targets/BROADCOM/evidence/verified/RP-202605-P0-0006_valuation_source_map.md` | 2026-05-11 | 2026-05-11 |
+| source map | `targets/BROADCOM/evidence/verified/RP-202605-P0-0010_micron_diversification_score_readiness_source_map.md` | 2026-05-11 | 2026-05-11 |
+| source map | `targets/ASML/evidence/verified/RP-202605-P0-0008_valuation_source_map.md` | 2026-05-11 | 2026-05-11 |
+| source map | `targets/CADENCE/evidence/verified/RP-202605-P0-0011_customer_concentration_source_map.md` | 2026-05-11 | 2026-05-11 |
+| run log | `targets/CADENCE/runs/2026-05-11_rp_202605_p0_0011_customer_concentration_run.md` | 2026-05-11 | 2026-05-11 |
+| source map | `targets/CADENCE/evidence/verified/RP-202605-P0-0012_valuation_source_map.md` | 2026-05-11 | 2026-05-11 |
+| run log | `targets/CADENCE/runs/2026-05-11_rp_202605_p0_0012_valuation_run.md` | 2026-05-11 | 2026-05-11 |
+| source map | `targets/SAMSUNG/evidence/verified/RP-202605-P0-0014_valuation_source_map.md` | 2026-05-11 | 2026-05-11 |
+| run log | `targets/SAMSUNG/runs/2026-05-11_rp_202605_p0_0014_valuation_run.md` | 2026-05-11 | 2026-05-11 |
+| source map | `targets/SANDISK/evidence/verified/RP-202605-P0-0015_valuation_source_map.md` | 2026-05-11 | 2026-05-11 |
+| run log | `targets/SANDISK/runs/2026-05-11_rp_202605_p0_0015_valuation_run.md` | 2026-05-11 | 2026-05-11 |
+| source map | `targets/MU/evidence/verified/RP-202605-P0-0013_valuation_source_map.md` | 2026-05-11 | 2026-05-11 |
+| run log | `targets/MU/runs/2026-05-11_rp_202605_p0_0013_valuation_run.md` | 2026-05-11 | 2026-05-11 |
+| source map | `targets/MU/evidence/verified/RP-202605-P0-0021_hbm_customer_named_by_nvidia_source_map.md` | 2026-05-11 | 2026-05-11 |
+| run log | `targets/MU/runs/2026-05-11_rp_202605_p0_0021_hbm_customer_named_by_nvidia_run.md` | 2026-05-11 | 2026-05-11 |
+| source map | `targets/MU/evidence/verified/RP-202605-P0-0022_hbm_revenue_source_map.md` | 2026-05-11 | 2026-05-11 |
+| run log | `targets/MU/runs/2026-05-11_rp_202605_p0_0022_hbm_revenue_run.md` | 2026-05-11 | 2026-05-11 |
+| source map | `targets/SKHYNIX/evidence/verified/RP-202605-P0-0016_valuation_source_map.md` | 2026-05-11 | 2026-05-11 |
+| run log | `targets/SKHYNIX/runs/2026-05-11_rp_202605_p0_0016_valuation_run.md` | 2026-05-11 | 2026-05-11 |
+| source map | `targets/SKHYNIX/evidence/verified/RP-202605-P0-0023_hbm_outperformance_vs_mu_source_map.md` | 2026-05-11 | 2026-05-11 |
+| source map | `targets/SKHYNIX/evidence/verified/RP-202605-P0-0024_hbm4_hbm4e_adoption_source_map.md` | 2026-05-11 | 2026-05-11 |
+| source map | `targets/SKHYNIX/evidence/verified/RP-202605-P0-0025_supply_overbuild_risk_source_map.md` | 2026-05-11 | 2026-05-11 |
+| source map | `targets/SYNOPSYS/evidence/verified/RP-202605-P0-0017_customer_concentration_source_map.md` | 2026-05-11 | 2026-05-11 |
+| run log | `targets/SYNOPSYS/runs/2026-05-11_rp_202605_p0_0017_customer_concentration_run.md` | 2026-05-11 | 2026-05-11 |
+| source map | `targets/SYNOPSYS/evidence/verified/RP-202605-P0-0018_valuation_source_map.md` | 2026-05-11 | 2026-05-11 |
+| run log | `targets/SYNOPSYS/runs/2026-05-11_rp_202605_p0_0018_valuation_run.md` | 2026-05-11 | 2026-05-11 |
+| source map | `targets/TSMC/evidence/verified/RP-202605-P0-0019_customer_concentration_source_map.md` | 2026-05-11 | 2026-05-11 |
+| run log | `targets/TSMC/runs/2026-05-11_rp_202605_p0_0019_customer_concentration_run.md` | 2026-05-11 | 2026-05-11 |
+| source map | `targets/TSMC/evidence/verified/RP-202605-P0-0020_valuation_source_map.md` | 2026-05-11 | 2026-05-11 |
+| run log | `targets/TSMC/runs/2026-05-11_rp_202605_p0_0020_valuation_run.md` | 2026-05-11 | 2026-05-11 |
+| run log | `portfolio/runs/2026-05-11_memory_kpi_gap_review.md` | 2026-05-11 | 2026-05-11 |
+| run log | `portfolio/runs/2026-05-11_networking_kpi_gap_review.md` | 2026-05-11 | 2026-05-11 |
+| run log | `portfolio/runs/2026-05-11_upstream_eda_kpi_gap_review.md` | 2026-05-11 | 2026-05-11 |">Copy source checklist</button>
+    <button type="button" data-copy-label="portfolio markdown" data-copy="---
+view: portfolio
+report_type: portfolio_kpi_matrix
+title: AIインフラ銘柄 portfolio横断KPIマトリクス
+date: 2026-05-11
+period: 2026-05
+source_status: partially_verified
+judgement: UNRATED
+primary_target: MU
+generated_html: ../views/2026-05_kpi_matrix.html
+---
+
+# AIインフラ銘柄 portfolio横断KPIマトリクス
+
+対象期間: 2026-05
+作成日: 2026-05-11
+主対象: Micron Technology（MU）
+
+注記: これは投資助言ではなく、Micron集中投資とAIインフラ関連銘柄の相対魅力を比較するための観測データ整理である。初回は既存target baseline、既存runログ、portfolio KPI断片CSVだけを入力にしたが、現在はARISTAの顧客集中とvaluation入力snapshot、ASTERAの顧客集中とvaluation入力snapshot、BROADCOMの顧客集中とvaluation入力snapshot、ASMLのvaluation入力snapshotをsecurity-gate通過後の一次情報で更新済み。MUはRP-202605-P0-0013でvaluation入力snapshotを取得したが、peer共通basisが未固定のため27点Iには使わない。MUのHBM顧客側名指し採用はRP-202605-P0-0021で未確認、HBM売上金額はRP-202605-P0-0022で未開示と確認し、Micron側自己発表やCMBU売上から強気材料へ昇格しない。ARISTA、ASTERA、BROADCOMのscore readiness、CADENCE、SAMSUNG、SANDISK、SKHYNIX、SYNOPSYS、TSMCのP0、SKHYNIXのHBM/供給系3件、ARISTAのAI networking revenue、ASTERAのproduct / AI connectivity revenueもreview済みだが、採点可能な一次根拠が不足するためopenを維持する。
+
+## 1. 今回の結論
+
+- 一言結論: KPIマトリクスは作成できたが、27点採点とMicron相対魅力の確定にはまだ進めない。
+- judgement: `UNRATED`
+- source_status: `partially_verified`
+- score: 未採点。`score_0_27`は更新しない。
+- 推奨アクション: valuation、顧客集中、CapEx/FCF、HBM採用、backlog/RPO/ARRを追加取得してから採点する。
+- 最も重要な変化: 競合・隣接10社の初回baselineを、242件のKPI断片として横断確認できる状態にした。MUはvaluation入力snapshot、HBM顧客側名指し採用未確認、HBM売上金額未開示をP0 source mapへ分離した。ARISTAは顧客集中とvaluation入力snapshotがP0完了済みで、score readinessとAI networking revenueはreview済みだがopen維持。ASTERAも顧客集中とvaluation入力snapshotがP0完了済みで、score readinessとproduct / AI connectivity revenueはreview済みだがopen維持。BROADCOMは顧客集中とvaluation入力snapshotがP0完了済みで、score readinessはreview済みだがopen維持。ASMLはvaluation入力snapshotがP0完了済み。CADENCE、SAMSUNG、SANDISK、SKHYNIX、SYNOPSYS、TSMCのP0はreview済みだが、一次情報本文またはvaluation primary inputs不足でopen維持。
+
+## 2. 弱気材料を先に確認
+
+- 弱気材料1: MU、ARISTA、ASTERA、BROADCOM、ASMLはvaluation入力snapshotを取得済みだが、peer共通basisと27点Iは未採点である。MUは2026-05-08終値$746.81、common-basis EV $835.6921B、annualized Q2 EV/Sales 8.7562x、GAAP P/E 15.4683x、adjusted FCF yield 3.2766%のsnapshotとなり、市況上振れとAI/HBM期待を含む可能性がある。ASTERAはQ1 annualized EV/Sales 28.3830x、GAAP P/E 113.5170x、BROADCOMはQ1 annualized EV/Sales 27.8821x、GAAP P/E 71.6667x、ASMLはQ1 annualized EV/Sales 14.3501x、annualized Q1 P/E 46.1329xで、成長や寡占性が強くても割高ならMicron集中の代替にはならない。
+- 弱気材料2: MUのHBM顧客側採用とHBM売上はまだ強気材料へ昇格しない。RP-202605-P0-0021ではNVIDIA/CSP側一次情報にMicron HBM/HBM4/HBM4Eの名指し採用を確認できず、NVIDIA側ではSamsung HBM3E/HBM4協業が名指しされている。RP-202605-P0-0022ではMicronがHBM revenue new highと述べたことは確認したが、HBM単独金額、顧客別売上、出荷数量、契約額は未開示で、CMBU売上をHBM売上へ置き換えない。
+- 弱気材料3: SK hynix、Samsung、SanDiskはMicronの中核仮説を直接揺さぶる候補だが、同一基準のCapEx、FCF、在庫、HBM顧客別採用、valuationが不足している。SAMSUNGのvaluation_metricsはRP-202605-P0-0014で価格・株式数候補、SANDISKのvaluation_metricsはRP-202605-P0-0015でvaluation candidate、SKHYNIXのvaluation_metricsはRP-202605-P0-0016で財務・株式数候補を部分確認したが、EV、倍率、peer共通basisが不足するため採点に使わない。SKHYNIXのHBM outperformance、HBM4/HBM4E adoption、supply overbuild riskもRP-202605-P0-0023から0025でreview済みだが、顧客側名指し採用、契約、出荷量、歩留まり、利益率、同一期間のASP/CapEx/在庫/FCFが不足するため採点に使わない。
+- 弱気材料4: Broadcom、Arista、Astera LabsはAI networking / connectivityの分散候補だが、BroadcomはQ1 FY2026の1社distributor直接売上42%、distributor売上55%、上位5エンド顧客約50%とvaluation入力snapshotを確認済みで、RP-202605-P0-0010によりRPO、contract liabilities、inventory、working capital、debt maturity through year fourも部分確認したがscore readinessは `not_scoreable` 維持。AristaはFY2025の2大エンド顧客比率16%/26%とvaluation入力snapshotを確認済みで、RP-202605-P0-0007によりscore readinessは `not_scoreable` 維持し、RP-202605-P0-0026でAI networking revenueもreview済みだが、AI networking単独売上とAI/Cloud titan別売上は未開示。Asteraは2026年Q1の10%以上顧客5社合計売上90%、売掛金91%、valuation入力snapshotを確認済みで、RP-202605-P0-0009によりscore readinessは `not_scoreable` 維持し、RP-202605-P0-0027でQ1全社売上とQ2 guidanceを確認したが、製品別AI connectivity revenueとend customer mappingは未開示。company-defined FCF、software renewal quality、inventory quality、product mix、AR quality、end customer mappingなしで分散候補とは確定しない。
+- 弱気材料5: ASML、TSMC、Synopsys、Cadenceは寡占性が強い可能性がある一方、規制、China exposure、顧客集中、backlog/RPO/ARR、AI寄与の定量化が不足している。TSMCの顧客集中はRP-202605-P0-0019でローカル確認済みだが、annual report / 20-F / 四半期filingの顧客集中注記本文とaccounts receivable集中注記がなく、HPC 61%はplatform mixであり顧客集中ではないため採点に使わない。Synopsysの顧客集中はRP-202605-P0-0017でローカル確認済みだが、annual report / 10-K / 10-Qの顧客集中注記本文がなく、10%超顧客の有無、最大顧客比率、上位顧客比率、accounts receivable集中は不明。Synopsysのvaluation readinessはRP-202605-P0-0018でreview済みだが、株価日付、株価、株式数、market cap、EV、P/E、EV/Sales、FCF yieldまたはEV/FCFが不足し、NASDAQ JSONは価格値なしのAPIエラー、SEC JSONはmetadataのみだったため採点に使わない。Cadenceの顧客集中はRP-202605-P0-0011でローカル確認済みだが、annual report / 10-K / 10-Qの顧客集中注記本文がなく、10%超顧客の有無と比率は不明。Cadenceのvaluation readinessはRP-202605-P0-0012でローカル確認済みだが、Q1 revenue/EPS/OCF/PP&amp;E purchases/cashは部分入力に留まり、share count、market price、debt、market cap、EV、EV/Sales、P/E、FCF定義、倍率対象期間が不明である。
+- 弱気材料6: `value=needs_research` が52件あり、相対魅力を確定するには欠損が多い。
+- 投資仮説への影響: 現時点では、Micronを肯定する材料も、Micronから分散すべき材料も、まだ横断採点へ進める品質ではない。
+
+## 3. 強気材料
+
+- 強気材料1: MUは売上、粗利率、EPS、OCF、FCF、CapEx、在庫、DRAM/NAND、HBM4/SOCAMM2/Gen6 SSDなど、単体KPIの確認済み項目が最も多い。
+- 強気材料2: TSMCは財務、margin、cash flow、CapEx、HPC mix、technology mixが比較的そろっており、上流分散候補として次に深掘りする価値がある。
+- 強気材料3: Broadcom、Arista、Astera LabsはAI revenue、margin、cash flow、guidanceの一部がローカルbaselineで確認済みで、メモリサイクル外の比較軸を作れる。
+- 強気材料4: KPI検証器とportfolio検証器の両方で、KPI CSVを品質ゲートに通せるようになった。
+- 投資仮説を補強する理由: メモリ、networking、foundry、EDAの候補を同じportfolio層で読み、Micron集中の代替・補完・反証候補を分けられるようになった。
+
+## 4. KPIマトリクスの範囲
+
+| 入力CSV | KPI件数 | 主な対象 | 検証状態 |
+|---|---:|---|---|
+| `portfolio/data/2026-05_kpi_memory.csv` | 101 | MU / SKHYNIX / SAMSUNG / SANDISK | `portfolio_kpi_verify`: OK |
+| `portfolio/data/2026-05_kpi_networking.csv` | 64 | BROADCOM / ARISTA / ASTERA | `portfolio_kpi_verify`: OK |
+| `portfolio/data/2026-05_kpi_upstream_eda.csv` | 77 | ASML / TSMC / SYNOPSYS / CADENCE | `portfolio_kpi_verify`: OK |
+| `portfolio/data/2026-05_kpi_matrix.csv` | 242 | 上記すべて | `portfolio_kpi_verify`: OK |
+
+## 5. 候補別KPI件数
+
+| 候補 | KPI件数 | 現時点の扱い |
+|---|---:|---|
+| MU | 29 | 単体は部分採点可能。valuation snapshotは取得済みだがpeer basis未固定。HBM顧客側名指し採用とHBM売上金額は未確認のため相対評価は未完了 |
+| SKHYNIX | 20 | 採点不能に近い。RP-202605-P0-0016でFY2025 revenue、EPS、cash/investments、debt、OCF、CapEx、FCF candidate、2025-12-31 sharesを部分確認したが、KRX価格取得がempty/LOGOUTで株価、market cap、EV、P/E、EV/Sales、FCF yieldまたはEV/FCFが不足。RP-202605-P0-0023から0025でHBM outperformance、HBM4/HBM4E adoption、supply overbuild riskもreview済みだが、顧客側名指し採用、契約、出荷量、歩留まり、利益率、同一期間ASP/CapEx/在庫/FCFが不足 |
+| SAMSUNG | 23 | 部分採点。RP-202605-P0-0014で2026-05-11 common/preferred/GDR price candidatesと2025Q4 share countsを部分確認したが、debt、OCF/FCF/CapEx、EV、P/E、EV/Sales、FCF yieldまたはEV/FCF、common/preferred/GDR扱いが不足。CapEx/FCF/NAND詳細/HBM顧客別採用も不足 |
+| SANDISK | 29 | 部分採点。NAND/SSDは強いが在庫、enterprise SSD単独売上、契約品質が不足。RP-202605-P0-0015でvaluation candidateを確認したが、peer共通basis未固定とreview-required HTML不使用のため倍率採点には未採用 |
+| BROADCOM | 20 | 部分採点。AI revenueは強いが、確認済みの顧客集中と高いvaluation snapshotは大きな弱気材料。RP-202605-P0-0010でRPO、contract liabilities、inventory、working capital、debt maturity through year fourも部分確認したが、AI revenue customer/product mix、software renewal quality、inventory quality、year five以降のdebt maturity、peer同一基準比較が不足 |
+| ARISTA | 22 | 部分採点。顧客集中とvaluation入力snapshotは確認済み。OCFとPPE purchasesも確認済みだが、RP-202605-P0-0026でAI networking revenueは未開示と確認した。company-defined FCF、CapEx同一基準比較も不足するためscore readinessはnot_scoreable |
+| ASTERA | 22 | 部分採点。高marginだが顧客集中と高valuationは大きな弱気材料として確認済み。RP-202605-P0-0027でQ1全社売上とQ2 guidanceは確認したが、product / AI connectivity revenue、AR / inventory quality、end customer mappingが不足するためnot_scoreable |
+| ASML | 18 | 部分採点。valuation入力snapshot、operating margin、OCF、PPE purchases、long-term debtは確認済み。order intake/backlog/China exposure/company-defined FCF/peer同一基準比較が不足 |
+| TSMC | 20 | 部分採点が最も進む。customer concentrationはRP-202605-P0-0019、valuation readinessはRP-202605-P0-0020でreview済みだが、顧客集中注記本文、share count、market price、EV、倍率定義がなく採点不可。advanced packagingも不足 |
+| SYNOPSYS | 18 | 部分採点。customer concentrationはRP-202605-P0-0017、valuation readinessはRP-202605-P0-0018でreview済みだが、顧客集中注記本文、株価、株式数、market cap、EV、倍率定義が不足するためneeds_research/open維持。RPO/ARR/backlog/Ansys統合も不足 |
+| CADENCE | 21 | 部分採点。customer concentrationとvaluation readinessはreview済みだが一次情報本文またはshare count/market price/debt/EV/倍率定義不足でneeds_research。RPO/ARR/gross marginも不足 |
+
+## 6. source_statusと欠損
+
+| source_status | 件数 | 採点上の扱い |
+|---|---:|---|
+| `verified` | 28 | 採点候補。ただし相対比較では定義差を確認する |
+| `partially_verified` | 163 | 補助材料または部分採点候補。制約を残す |
+| `needs_review` | 51 | 採点に使わない。次回取得対象 |
+
+追加メモ:
+
+- `value=needs_research`: 52件
+- `source_status=needs_research`: 0件
+- KPI CSVでは未調査状態を`value=needs_research`へ隔離し、出典確認状態は`source_status`で管理する。
+
+## 7. 27点採点への移行可否
+
+| 評価軸 | 状態 | 理由 |
+|---|---|---|
+| A. AI需要・CSP CapEx | 部分採点 | 各社コメントはあるがCSP CapEx横断更新は未反映 |
+| B. DRAM / HBM市況 | 部分採点 | MUは確認が進むがSK hynix/SamsungのHBM採用・価格が不足 |
+| C. NAND / SSD市況 | 部分採点 | MU/SanDiskは材料あり。Samsung/SK hynixの詳細不足 |
+| D. 決算・ガイダンス | 部分採点 | MU、TSMC、Broadcomなどは進むが全社同一粒度ではない |
+| E. AI製品採用 | 部分採点 | HBM4/SOCAMM2/Gen6 SSD、AI networking、HPC mixの粒度が異なる |
+| F. CapExと供給規律 | 採点保留 | memory peersとASMLのCapEx/FCF/backlogが不足 |
+| G. 在庫・キャッシュフロー | 採点保留 | MU/TSMC以外で同一粒度が不足 |
+| H. 競争環境 | 採点保留 | Broadcom、Arista、Asteraの顧客集中は確認済み。TSMC、EDA候補の顧客集中、採用配分、規制影響が未確認 |
+| I. バリュエーション | 採点保留 | MU、ARISTA、ASTERA、BROADCOM、ASMLは入力snapshotを取得済みだが、他候補のvaluation readinessと同一基準比較が不足 |
+
+結論: `portfolio/data/2026-05_watchlist.csv` の `score_0_27`、`relative_attractiveness_vs_mu`、`diversification_value`、`exit_candidate_relevance` は、今回の成果だけでは確定更新しない。
+
+## 8. 分散候補と撤退候補
+
+### 分散候補
+
+- TSMC: 財務・cash flow・HPC mixが比較的そろう。customer concentrationはRP-202605-P0-0019、valuation readinessはRP-202605-P0-0020でreview済みopen。次回はadvanced packaging、annual report / 20-Fの顧客集中注記、share count、ADR/普通株換算、株価日時、EV、倍率定義を確認する。
+- Broadcom: AI revenueとFCFが強い可能性がある一方、Q1 FY2026の顧客集中とvaluation snapshotは高い弱気材料である。RP-202605-P0-0010でscore readinessをreviewし、RPO、contract liabilities、inventory、working capital、debt maturity through year fourを部分確認したが、次回はAI revenue内訳、software renewal quality、inventory quality、year five以降のdebt maturity、peer同一基準比較を確認する。
+- Arista / Astera Labs: AI networking / connectivity候補だが、Aristaは顧客集中とvaluation入力snapshot、Asteraは顧客集中とvaluation入力snapshotを確認済み。AristaはRP-202605-P0-0007とRP-202605-P0-0026、AsteraはRP-202605-P0-0009とRP-202605-P0-0027でnot_scoreable維持。AI売上内訳、company-defined FCF/CapEx、Asteraのproduct mix、AR / inventory quality、end customer mappingが先。
+- ASML / Synopsys / Cadence: 寡占分散候補。ASMLはvaluation入力snapshotを確認済みだが、backlog/RPO/ARR、規制、company-defined FCF、peer同一基準比較の確認前に相対魅力を上げない。Synopsysのcustomer concentrationとvaluation readinessはreview済みだが、顧客集中注記本文、株価、株式数、market cap、EV、倍率定義が不足するため採点に使わない。Cadenceのcustomer concentrationとvaluation readinessはreview済みだが、顧客集中注記本文、share count、market price、debt、EV、倍率定義が不足するため採点に使わない。
+
+### 撤退候補
+
+- 現時点では撤退候補を指定しない。
+- Micron全力解除検討は、DRAM/HBM価格下落、CSP CapEx下方修正、粗利率低下、在庫増加、HBM採用劣後、CapEx増加、FCF悪化が同時に出るかで判断する。
+
+## 9. 次アクション
+
+1. MU、ARISTA、ASTERA、BROADCOM、ASMLのvaluation snapshotを同一基準化し、その他候補のvaluation readinessを埋める。5社は入力snapshot済みだが、価格更新と同一基準比較は継続する。SKHYNIXはRP-202605-P0-0016をreview済みopenとして扱い、FY2025財務・株式数候補だけで倍率を作らない。
+2. SK hynixとSamsungのHBM4/HBM4E採用、CapEx、FCF、在庫、NAND/SSD詳細を確認する。
+3. SanDiskの在庫、enterprise SSD単独売上、長期契約の質、valuation peer basisを確認する。RP-202605-P0-0015はreview済みopenとして扱い、valuation candidateだけで倍率採点しない。
+4. Broadcom/Arista/Astera LabsのAI売上内訳、backlog/design wins、software renewal quality、inventory quality、peer同一基準比較を確認する。Asteraは顧客名とend customer対応、product mix、AR / inventory quality、Q2 revenue guidanceを追加確認する。
+5. ASML、TSMC、Synopsys、Cadenceのbacklog/RPO/ARR、China/export controls、顧客集中、AI寄与、valuationまたはpeer同一基準比較を確認する。
+6. 追加取得後に`portfolio/data/2026-05_watchlist.csv`を更新し、27点採点を別コミットで実施する。
+
+## 10. 品質ゲート
+
+- 弱気材料を先に確認したか: はい。
+- KPI断片CSVと統合CSVを検証したか: はい。
+- `source_status=needs_research`を使っていないか: はい。
+- 未確認値を`value=needs_research`へ隔離したか: はい。
+- portfolioが個別target原本を上書きしていないか: はい。
+- score / judgement / relative attractivenessを未確認のまま確定していないか: はい。
+
+## 11. 出典
+
+このレポートは以下のローカル原本を入力にした。外部検索・Webブラウズは実施していない。
+
+| 種別 | パス | 発表日 | 確認日 |
+|---|---|---|---|
+| KPI CSV | `portfolio/data/2026-05_kpi_memory.csv` | 2026-05-11 | 2026-05-11 |
+| KPI CSV | `portfolio/data/2026-05_kpi_networking.csv` | 2026-05-11 | 2026-05-11 |
+| KPI CSV | `portfolio/data/2026-05_kpi_upstream_eda.csv` | 2026-05-11 | 2026-05-11 |
+| 統合CSV | `portfolio/data/2026-05_kpi_matrix.csv` | 2026-05-11 | 2026-05-11 |
+| source map | `targets/ARISTA/evidence/verified/RP-202605-P0-0007_micron_diversification_score_readiness_source_map.md` | 2026-05-11 | 2026-05-11 |
+| source map | `targets/ARISTA/evidence/verified/RP-202605-P0-0026_ai_networking_revenue_source_map.md` | 2026-05-11 | 2026-05-11 |
+| source map | `targets/ASTERA/evidence/verified/RP-202605-P0-0003_customer_concentration_source_map.md` | 2026-05-11 | 2026-05-11 |
+| source map | `targets/ASTERA/evidence/verified/RP-202605-P0-0004_valuation_source_map.md` | 2026-05-11 | 2026-05-11 |
+| source map | `targets/ASTERA/evidence/verified/RP-202605-P0-0009_micron_diversification_score_readiness_source_map.md` | 2026-05-11 | 2026-05-11 |
+| source map | `targets/ASTERA/evidence/verified/RP-202605-P0-0027_product_or_ai_connectivity_revenue_source_map.md` | 2026-05-11 | 2026-05-11 |
+| source map | `targets/BROADCOM/evidence/verified/RP-202605-P0-0006_valuation_source_map.md` | 2026-05-11 | 2026-05-11 |
+| source map | `targets/BROADCOM/evidence/verified/RP-202605-P0-0010_micron_diversification_score_readiness_source_map.md` | 2026-05-11 | 2026-05-11 |
+| source map | `targets/ASML/evidence/verified/RP-202605-P0-0008_valuation_source_map.md` | 2026-05-11 | 2026-05-11 |
+| source map | `targets/CADENCE/evidence/verified/RP-202605-P0-0011_customer_concentration_source_map.md` | 2026-05-11 | 2026-05-11 |
+| run log | `targets/CADENCE/runs/2026-05-11_rp_202605_p0_0011_customer_concentration_run.md` | 2026-05-11 | 2026-05-11 |
+| source map | `targets/CADENCE/evidence/verified/RP-202605-P0-0012_valuation_source_map.md` | 2026-05-11 | 2026-05-11 |
+| run log | `targets/CADENCE/runs/2026-05-11_rp_202605_p0_0012_valuation_run.md` | 2026-05-11 | 2026-05-11 |
+| source map | `targets/SAMSUNG/evidence/verified/RP-202605-P0-0014_valuation_source_map.md` | 2026-05-11 | 2026-05-11 |
+| run log | `targets/SAMSUNG/runs/2026-05-11_rp_202605_p0_0014_valuation_run.md` | 2026-05-11 | 2026-05-11 |
+| source map | `targets/SANDISK/evidence/verified/RP-202605-P0-0015_valuation_source_map.md` | 2026-05-11 | 2026-05-11 |
+| run log | `targets/SANDISK/runs/2026-05-11_rp_202605_p0_0015_valuation_run.md` | 2026-05-11 | 2026-05-11 |
+| source map | `targets/MU/evidence/verified/RP-202605-P0-0013_valuation_source_map.md` | 2026-05-11 | 2026-05-11 |
+| run log | `targets/MU/runs/2026-05-11_rp_202605_p0_0013_valuation_run.md` | 2026-05-11 | 2026-05-11 |
+| source map | `targets/MU/evidence/verified/RP-202605-P0-0021_hbm_customer_named_by_nvidia_source_map.md` | 2026-05-11 | 2026-05-11 |
+| run log | `targets/MU/runs/2026-05-11_rp_202605_p0_0021_hbm_customer_named_by_nvidia_run.md` | 2026-05-11 | 2026-05-11 |
+| source map | `targets/MU/evidence/verified/RP-202605-P0-0022_hbm_revenue_source_map.md` | 2026-05-11 | 2026-05-11 |
+| run log | `targets/MU/runs/2026-05-11_rp_202605_p0_0022_hbm_revenue_run.md` | 2026-05-11 | 2026-05-11 |
+| source map | `targets/SKHYNIX/evidence/verified/RP-202605-P0-0016_valuation_source_map.md` | 2026-05-11 | 2026-05-11 |
+| run log | `targets/SKHYNIX/runs/2026-05-11_rp_202605_p0_0016_valuation_run.md` | 2026-05-11 | 2026-05-11 |
+| source map | `targets/SKHYNIX/evidence/verified/RP-202605-P0-0023_hbm_outperformance_vs_mu_source_map.md` | 2026-05-11 | 2026-05-11 |
+| source map | `targets/SKHYNIX/evidence/verified/RP-202605-P0-0024_hbm4_hbm4e_adoption_source_map.md` | 2026-05-11 | 2026-05-11 |
+| source map | `targets/SKHYNIX/evidence/verified/RP-202605-P0-0025_supply_overbuild_risk_source_map.md` | 2026-05-11 | 2026-05-11 |
+| source map | `targets/SYNOPSYS/evidence/verified/RP-202605-P0-0017_customer_concentration_source_map.md` | 2026-05-11 | 2026-05-11 |
+| run log | `targets/SYNOPSYS/runs/2026-05-11_rp_202605_p0_0017_customer_concentration_run.md` | 2026-05-11 | 2026-05-11 |
+| source map | `targets/SYNOPSYS/evidence/verified/RP-202605-P0-0018_valuation_source_map.md` | 2026-05-11 | 2026-05-11 |
+| run log | `targets/SYNOPSYS/runs/2026-05-11_rp_202605_p0_0018_valuation_run.md` | 2026-05-11 | 2026-05-11 |
+| source map | `targets/TSMC/evidence/verified/RP-202605-P0-0019_customer_concentration_source_map.md` | 2026-05-11 | 2026-05-11 |
+| run log | `targets/TSMC/runs/2026-05-11_rp_202605_p0_0019_customer_concentration_run.md` | 2026-05-11 | 2026-05-11 |
+| source map | `targets/TSMC/evidence/verified/RP-202605-P0-0020_valuation_source_map.md` | 2026-05-11 | 2026-05-11 |
+| run log | `targets/TSMC/runs/2026-05-11_rp_202605_p0_0020_valuation_run.md` | 2026-05-11 | 2026-05-11 |
+| run log | `portfolio/runs/2026-05-11_memory_kpi_gap_review.md` | 2026-05-11 | 2026-05-11 |
+| run log | `portfolio/runs/2026-05-11_networking_kpi_gap_review.md` | 2026-05-11 | 2026-05-11 |
+| run log | `portfolio/runs/2026-05-11_upstream_eda_kpi_gap_review.md` | 2026-05-11 | 2026-05-11 |
+">Copy portfolio markdown</button>
+  </section>
+  <details class="copyFallback" data-copy-fallback>
+    <summary>Copy fallback</summary>
+    <p>クリップボードAPIが使えない場合は、下のMarkdownを選択して使用します。</p>
+    <textarea readonly aria-label="コピー対象Markdown"></textarea>
+  </details>
+
+<details class="sourceDrawer">
+  <summary><span>Source Drawer</span>出典一覧</summary>
+  <div class="sourceBody">
+<p>このレポートは以下のローカル原本を入力にした。外部検索・Webブラウズは実施していない。</p>
+<table><thead><tr><th>種別</th><th>パス</th><th>発表日</th><th>確認日</th></tr></thead><tbody><tr><td>KPI CSV</td><td><code>portfolio/data/2026-05_kpi_memory.csv</code></td><td>2026-05-11</td><td>2026-05-11</td></tr><tr><td>KPI CSV</td><td><code>portfolio/data/2026-05_kpi_networking.csv</code></td><td>2026-05-11</td><td>2026-05-11</td></tr><tr><td>KPI CSV</td><td><code>portfolio/data/2026-05_kpi_upstream_eda.csv</code></td><td>2026-05-11</td><td>2026-05-11</td></tr><tr><td>統合CSV</td><td><code>portfolio/data/2026-05_kpi_matrix.csv</code></td><td>2026-05-11</td><td>2026-05-11</td></tr><tr><td>source map</td><td><code>targets/ARISTA/evidence/verified/RP-202605-P0-0007_micron_diversification_score_readiness_source_map.md</code></td><td>2026-05-11</td><td>2026-05-11</td></tr><tr><td>source map</td><td><code>targets/ARISTA/evidence/verified/RP-202605-P0-0026_ai_networking_revenue_source_map.md</code></td><td>2026-05-11</td><td>2026-05-11</td></tr><tr><td>source map</td><td><code>targets/ASTERA/evidence/verified/RP-202605-P0-0003_customer_concentration_source_map.md</code></td><td>2026-05-11</td><td>2026-05-11</td></tr><tr><td>source map</td><td><code>targets/ASTERA/evidence/verified/RP-202605-P0-0004_valuation_source_map.md</code></td><td>2026-05-11</td><td>2026-05-11</td></tr><tr><td>source map</td><td><code>targets/ASTERA/evidence/verified/RP-202605-P0-0009_micron_diversification_score_readiness_source_map.md</code></td><td>2026-05-11</td><td>2026-05-11</td></tr><tr><td>source map</td><td><code>targets/ASTERA/evidence/verified/RP-202605-P0-0027_product_or_ai_connectivity_revenue_source_map.md</code></td><td>2026-05-11</td><td>2026-05-11</td></tr><tr><td>source map</td><td><code>targets/BROADCOM/evidence/verified/RP-202605-P0-0006_valuation_source_map.md</code></td><td>2026-05-11</td><td>2026-05-11</td></tr><tr><td>source map</td><td><code>targets/BROADCOM/evidence/verified/RP-202605-P0-0010_micron_diversification_score_readiness_source_map.md</code></td><td>2026-05-11</td><td>2026-05-11</td></tr><tr><td>source map</td><td><code>targets/ASML/evidence/verified/RP-202605-P0-0008_valuation_source_map.md</code></td><td>2026-05-11</td><td>2026-05-11</td></tr><tr><td>source map</td><td><code>targets/CADENCE/evidence/verified/RP-202605-P0-0011_customer_concentration_source_map.md</code></td><td>2026-05-11</td><td>2026-05-11</td></tr><tr><td>run log</td><td><code>targets/CADENCE/runs/2026-05-11_rp_202605_p0_0011_customer_concentration_run.md</code></td><td>2026-05-11</td><td>2026-05-11</td></tr><tr><td>source map</td><td><code>targets/CADENCE/evidence/verified/RP-202605-P0-0012_valuation_source_map.md</code></td><td>2026-05-11</td><td>2026-05-11</td></tr><tr><td>run log</td><td><code>targets/CADENCE/runs/2026-05-11_rp_202605_p0_0012_valuation_run.md</code></td><td>2026-05-11</td><td>2026-05-11</td></tr><tr><td>source map</td><td><code>targets/SAMSUNG/evidence/verified/RP-202605-P0-0014_valuation_source_map.md</code></td><td>2026-05-11</td><td>2026-05-11</td></tr><tr><td>run log</td><td><code>targets/SAMSUNG/runs/2026-05-11_rp_202605_p0_0014_valuation_run.md</code></td><td>2026-05-11</td><td>2026-05-11</td></tr><tr><td>source map</td><td><code>targets/SANDISK/evidence/verified/RP-202605-P0-0015_valuation_source_map.md</code></td><td>2026-05-11</td><td>2026-05-11</td></tr><tr><td>run log</td><td><code>targets/SANDISK/runs/2026-05-11_rp_202605_p0_0015_valuation_run.md</code></td><td>2026-05-11</td><td>2026-05-11</td></tr><tr><td>source map</td><td><code>targets/MU/evidence/verified/RP-202605-P0-0013_valuation_source_map.md</code></td><td>2026-05-11</td><td>2026-05-11</td></tr><tr><td>run log</td><td><code>targets/MU/runs/2026-05-11_rp_202605_p0_0013_valuation_run.md</code></td><td>2026-05-11</td><td>2026-05-11</td></tr><tr><td>source map</td><td><code>targets/MU/evidence/verified/RP-202605-P0-0021_hbm_customer_named_by_nvidia_source_map.md</code></td><td>2026-05-11</td><td>2026-05-11</td></tr><tr><td>run log</td><td><code>targets/MU/runs/2026-05-11_rp_202605_p0_0021_hbm_customer_named_by_nvidia_run.md</code></td><td>2026-05-11</td><td>2026-05-11</td></tr><tr><td>source map</td><td><code>targets/MU/evidence/verified/RP-202605-P0-0022_hbm_revenue_source_map.md</code></td><td>2026-05-11</td><td>2026-05-11</td></tr><tr><td>run log</td><td><code>targets/MU/runs/2026-05-11_rp_202605_p0_0022_hbm_revenue_run.md</code></td><td>2026-05-11</td><td>2026-05-11</td></tr><tr><td>source map</td><td><code>targets/SKHYNIX/evidence/verified/RP-202605-P0-0016_valuation_source_map.md</code></td><td>2026-05-11</td><td>2026-05-11</td></tr><tr><td>run log</td><td><code>targets/SKHYNIX/runs/2026-05-11_rp_202605_p0_0016_valuation_run.md</code></td><td>2026-05-11</td><td>2026-05-11</td></tr><tr><td>source map</td><td><code>targets/SKHYNIX/evidence/verified/RP-202605-P0-0023_hbm_outperformance_vs_mu_source_map.md</code></td><td>2026-05-11</td><td>2026-05-11</td></tr><tr><td>source map</td><td><code>targets/SKHYNIX/evidence/verified/RP-202605-P0-0024_hbm4_hbm4e_adoption_source_map.md</code></td><td>2026-05-11</td><td>2026-05-11</td></tr><tr><td>source map</td><td><code>targets/SKHYNIX/evidence/verified/RP-202605-P0-0025_supply_overbuild_risk_source_map.md</code></td><td>2026-05-11</td><td>2026-05-11</td></tr><tr><td>source map</td><td><code>targets/SYNOPSYS/evidence/verified/RP-202605-P0-0017_customer_concentration_source_map.md</code></td><td>2026-05-11</td><td>2026-05-11</td></tr><tr><td>run log</td><td><code>targets/SYNOPSYS/runs/2026-05-11_rp_202605_p0_0017_customer_concentration_run.md</code></td><td>2026-05-11</td><td>2026-05-11</td></tr><tr><td>source map</td><td><code>targets/SYNOPSYS/evidence/verified/RP-202605-P0-0018_valuation_source_map.md</code></td><td>2026-05-11</td><td>2026-05-11</td></tr><tr><td>run log</td><td><code>targets/SYNOPSYS/runs/2026-05-11_rp_202605_p0_0018_valuation_run.md</code></td><td>2026-05-11</td><td>2026-05-11</td></tr><tr><td>source map</td><td><code>targets/TSMC/evidence/verified/RP-202605-P0-0019_customer_concentration_source_map.md</code></td><td>2026-05-11</td><td>2026-05-11</td></tr><tr><td>run log</td><td><code>targets/TSMC/runs/2026-05-11_rp_202605_p0_0019_customer_concentration_run.md</code></td><td>2026-05-11</td><td>2026-05-11</td></tr><tr><td>source map</td><td><code>targets/TSMC/evidence/verified/RP-202605-P0-0020_valuation_source_map.md</code></td><td>2026-05-11</td><td>2026-05-11</td></tr><tr><td>run log</td><td><code>targets/TSMC/runs/2026-05-11_rp_202605_p0_0020_valuation_run.md</code></td><td>2026-05-11</td><td>2026-05-11</td></tr><tr><td>run log</td><td><code>portfolio/runs/2026-05-11_memory_kpi_gap_review.md</code></td><td>2026-05-11</td><td>2026-05-11</td></tr><tr><td>run log</td><td><code>portfolio/runs/2026-05-11_networking_kpi_gap_review.md</code></td><td>2026-05-11</td><td>2026-05-11</td></tr><tr><td>run log</td><td><code>portfolio/runs/2026-05-11_upstream_eda_kpi_gap_review.md</code></td><td>2026-05-11</td><td>2026-05-11</td></tr></tbody></table>
+  </div>
+</details>
+
+  <nav class="toc" aria-label="目次">
+    <strong>目次</strong>
+    <a href="#今回の結論">今回の結論</a><a href="#弱気材料を先に確認">弱気材料を先に確認</a><a href="#強気材料">強気材料</a><a href="#kpiマトリクスの範囲">KPIマトリクスの範囲</a><a href="#候補別kpi件数">候補別KPI件数</a><a href="#sourcestatusと欠損">source_statusと欠損</a><a href="#27点採点への移行可否">27点採点への移行可否</a><a href="#分散候補と撤退候補">分散候補と撤退候補</a><a href="#次アクション">次アクション</a><a href="#品質ゲート">品質ゲート</a><a href="#出典">出典</a>
+  </nav>
+
+  <article class="report" data-report-path="portfolio/reports/2026-05_kpi_matrix.md">
+<h1 id="aiインフラ銘柄-portfolio横断kpiマトリクス">AIインフラ銘柄 portfolio横断KPIマトリクス</h1>
+<p>対象期間: 2026-05 作成日: 2026-05-11 主対象: Micron Technology（MU）</p>
+<p>注記: これは投資助言ではなく、Micron集中投資とAIインフラ関連銘柄の相対魅力を比較するための観測データ整理である。初回は既存target baseline、既存runログ、portfolio KPI断片CSVだけを入力にしたが、現在はARISTAの顧客集中とvaluation入力snapshot、ASTERAの顧客集中とvaluation入力snapshot、BROADCOMの顧客集中とvaluation入力snapshot、ASMLのvaluation入力snapshotをsecurity-gate通過後の一次情報で更新済み。MUはRP-202605-P0-0013でvaluation入力snapshotを取得したが、peer共通basisが未固定のため27点Iには使わない。MUのHBM顧客側名指し採用はRP-202605-P0-0021で未確認、HBM売上金額はRP-202605-P0-0022で未開示と確認し、Micron側自己発表やCMBU売上から強気材料へ昇格しない。ARISTA、ASTERA、BROADCOMのscore readiness、CADENCE、SAMSUNG、SANDISK、SKHYNIX、SYNOPSYS、TSMCのP0、SKHYNIXのHBM/供給系3件、ARISTAのAI networking revenue、ASTERAのproduct / AI connectivity revenueもreview済みだが、採点可能な一次根拠が不足するためopenを維持する。</p>
+<h2 id="今回の結論">1. 今回の結論</h2>
+<ul><li>一言結論: KPIマトリクスは作成できたが、27点採点とMicron相対魅力の確定にはまだ進めない。</li><li>judgement: <code>UNRATED</code></li><li>source_status: <code>partially_verified</code></li><li>score: 未採点。<code>score_0_27</code>は更新しない。</li><li>推奨アクション: valuation、顧客集中、CapEx/FCF、HBM採用、backlog/RPO/ARRを追加取得してから採点する。</li><li>最も重要な変化: 競合・隣接10社の初回baselineを、242件のKPI断片として横断確認できる状態にした。MUはvaluation入力snapshot、HBM顧客側名指し採用未確認、HBM売上金額未開示をP0 source mapへ分離した。ARISTAは顧客集中とvaluation入力snapshotがP0完了済みで、score readinessとAI networking revenueはreview済みだがopen維持。ASTERAも顧客集中とvaluation入力snapshotがP0完了済みで、score readinessとproduct / AI connectivity revenueはreview済みだがopen維持。BROADCOMは顧客集中とvaluation入力snapshotがP0完了済みで、score readinessはreview済みだがopen維持。ASMLはvaluation入力snapshotがP0完了済み。CADENCE、SAMSUNG、SANDISK、SKHYNIX、SYNOPSYS、TSMCのP0はreview済みだが、一次情報本文またはvaluation primary inputs不足でopen維持。</li></ul>
+<h2 id="弱気材料を先に確認">2. 弱気材料を先に確認</h2>
+<ul><li>弱気材料1: MU、ARISTA、ASTERA、BROADCOM、ASMLはvaluation入力snapshotを取得済みだが、peer共通basisと27点Iは未採点である。MUは2026-05-08終値$746.81、common-basis EV $835.6921B、annualized Q2 EV/Sales 8.7562x、GAAP P/E 15.4683x、adjusted FCF yield 3.2766%のsnapshotとなり、市況上振れとAI/HBM期待を含む可能性がある。ASTERAはQ1 annualized EV/Sales 28.3830x、GAAP P/E 113.5170x、BROADCOMはQ1 annualized EV/Sales 27.8821x、GAAP P/E 71.6667x、ASMLはQ1 annualized EV/Sales 14.3501x、annualized Q1 P/E 46.1329xで、成長や寡占性が強くても割高ならMicron集中の代替にはならない。</li><li>弱気材料2: MUのHBM顧客側採用とHBM売上はまだ強気材料へ昇格しない。RP-202605-P0-0021ではNVIDIA/CSP側一次情報にMicron HBM/HBM4/HBM4Eの名指し採用を確認できず、NVIDIA側ではSamsung HBM3E/HBM4協業が名指しされている。RP-202605-P0-0022ではMicronがHBM revenue new highと述べたことは確認したが、HBM単独金額、顧客別売上、出荷数量、契約額は未開示で、CMBU売上をHBM売上へ置き換えない。</li><li>弱気材料3: SK hynix、Samsung、SanDiskはMicronの中核仮説を直接揺さぶる候補だが、同一基準のCapEx、FCF、在庫、HBM顧客別採用、valuationが不足している。SAMSUNGのvaluation_metricsはRP-202605-P0-0014で価格・株式数候補、SANDISKのvaluation_metricsはRP-202605-P0-0015でvaluation candidate、SKHYNIXのvaluation_metricsはRP-202605-P0-0016で財務・株式数候補を部分確認したが、EV、倍率、peer共通basisが不足するため採点に使わない。SKHYNIXのHBM outperformance、HBM4/HBM4E adoption、supply overbuild riskもRP-202605-P0-0023から0025でreview済みだが、顧客側名指し採用、契約、出荷量、歩留まり、利益率、同一期間のASP/CapEx/在庫/FCFが不足するため採点に使わない。</li><li>弱気材料4: Broadcom、Arista、Astera LabsはAI networking / connectivityの分散候補だが、BroadcomはQ1 FY2026の1社distributor直接売上42%、distributor売上55%、上位5エンド顧客約50%とvaluation入力snapshotを確認済みで、RP-202605-P0-0010によりRPO、contract liabilities、inventory、working capital、debt maturity through year fourも部分確認したがscore readinessは <code>not_scoreable</code> 維持。AristaはFY2025の2大エンド顧客比率16%/26%とvaluation入力snapshotを確認済みで、RP-202605-P0-0007によりscore readinessは <code>not_scoreable</code> 維持し、RP-202605-P0-0026でAI networking revenueもreview済みだが、AI networking単独売上とAI/Cloud titan別売上は未開示。Asteraは2026年Q1の10%以上顧客5社合計売上90%、売掛金91%、valuation入力snapshotを確認済みで、RP-202605-P0-0009によりscore readinessは <code>not_scoreable</code> 維持し、RP-202605-P0-0027でQ1全社売上とQ2 guidanceを確認したが、製品別AI connectivity revenueとend customer mappingは未開示。company-defined FCF、software renewal quality、inventory quality、product mix、AR quality、end customer mappingなしで分散候補とは確定しない。</li><li>弱気材料5: ASML、TSMC、Synopsys、Cadenceは寡占性が強い可能性がある一方、規制、China exposure、顧客集中、backlog/RPO/ARR、AI寄与の定量化が不足している。TSMCの顧客集中はRP-202605-P0-0019でローカル確認済みだが、annual report / 20-F / 四半期filingの顧客集中注記本文とaccounts receivable集中注記がなく、HPC 61%はplatform mixであり顧客集中ではないため採点に使わない。Synopsysの顧客集中はRP-202605-P0-0017でローカル確認済みだが、annual report / 10-K / 10-Qの顧客集中注記本文がなく、10%超顧客の有無、最大顧客比率、上位顧客比率、accounts receivable集中は不明。Synopsysのvaluation readinessはRP-202605-P0-0018でreview済みだが、株価日付、株価、株式数、market cap、EV、P/E、EV/Sales、FCF yieldまたはEV/FCFが不足し、NASDAQ JSONは価格値なしのAPIエラー、SEC JSONはmetadataのみだったため採点に使わない。Cadenceの顧客集中はRP-202605-P0-0011でローカル確認済みだが、annual report / 10-K / 10-Qの顧客集中注記本文がなく、10%超顧客の有無と比率は不明。Cadenceのvaluation readinessはRP-202605-P0-0012でローカル確認済みだが、Q1 revenue/EPS/OCF/PP&amp;E purchases/cashは部分入力に留まり、share count、market price、debt、market cap、EV、EV/Sales、P/E、FCF定義、倍率対象期間が不明である。</li><li>弱気材料6: <code>value=needs_research</code> が52件あり、相対魅力を確定するには欠損が多い。</li><li>投資仮説への影響: 現時点では、Micronを肯定する材料も、Micronから分散すべき材料も、まだ横断採点へ進める品質ではない。</li></ul>
+<h2 id="強気材料">3. 強気材料</h2>
+<ul><li>強気材料1: MUは売上、粗利率、EPS、OCF、FCF、CapEx、在庫、DRAM/NAND、HBM4/SOCAMM2/Gen6 SSDなど、単体KPIの確認済み項目が最も多い。</li><li>強気材料2: TSMCは財務、margin、cash flow、CapEx、HPC mix、technology mixが比較的そろっており、上流分散候補として次に深掘りする価値がある。</li><li>強気材料3: Broadcom、Arista、Astera LabsはAI revenue、margin、cash flow、guidanceの一部がローカルbaselineで確認済みで、メモリサイクル外の比較軸を作れる。</li><li>強気材料4: KPI検証器とportfolio検証器の両方で、KPI CSVを品質ゲートに通せるようになった。</li><li>投資仮説を補強する理由: メモリ、networking、foundry、EDAの候補を同じportfolio層で読み、Micron集中の代替・補完・反証候補を分けられるようになった。</li></ul>
+<h2 id="kpiマトリクスの範囲">4. KPIマトリクスの範囲</h2>
+<table><thead><tr><th>入力CSV</th><th>KPI件数</th><th>主な対象</th><th>検証状態</th></tr></thead><tbody><tr><td><code>portfolio/data/2026-05_kpi_memory.csv</code></td><td>101</td><td>MU / SKHYNIX / SAMSUNG / SANDISK</td><td><code>portfolio_kpi_verify</code>: OK</td></tr><tr><td><code>portfolio/data/2026-05_kpi_networking.csv</code></td><td>64</td><td>BROADCOM / ARISTA / ASTERA</td><td><code>portfolio_kpi_verify</code>: OK</td></tr><tr><td><code>portfolio/data/2026-05_kpi_upstream_eda.csv</code></td><td>77</td><td>ASML / TSMC / SYNOPSYS / CADENCE</td><td><code>portfolio_kpi_verify</code>: OK</td></tr><tr><td><code>portfolio/data/2026-05_kpi_matrix.csv</code></td><td>242</td><td>上記すべて</td><td><code>portfolio_kpi_verify</code>: OK</td></tr></tbody></table>
+<h2 id="候補別kpi件数">5. 候補別KPI件数</h2>
+<table><thead><tr><th>候補</th><th>KPI件数</th><th>現時点の扱い</th></tr></thead><tbody><tr><td>MU</td><td>29</td><td>単体は部分採点可能。valuation snapshotは取得済みだがpeer basis未固定。HBM顧客側名指し採用とHBM売上金額は未確認のため相対評価は未完了</td></tr><tr><td>SKHYNIX</td><td>20</td><td>採点不能に近い。RP-202605-P0-0016でFY2025 revenue、EPS、cash/investments、debt、OCF、CapEx、FCF candidate、2025-12-31 sharesを部分確認したが、KRX価格取得がempty/LOGOUTで株価、market cap、EV、P/E、EV/Sales、FCF yieldまたはEV/FCFが不足。RP-202605-P0-0023から0025でHBM outperformance、HBM4/HBM4E adoption、supply overbuild riskもreview済みだが、顧客側名指し採用、契約、出荷量、歩留まり、利益率、同一期間ASP/CapEx/在庫/FCFが不足</td></tr><tr><td>SAMSUNG</td><td>23</td><td>部分採点。RP-202605-P0-0014で2026-05-11 common/preferred/GDR price candidatesと2025Q4 share countsを部分確認したが、debt、OCF/FCF/CapEx、EV、P/E、EV/Sales、FCF yieldまたはEV/FCF、common/preferred/GDR扱いが不足。CapEx/FCF/NAND詳細/HBM顧客別採用も不足</td></tr><tr><td>SANDISK</td><td>29</td><td>部分採点。NAND/SSDは強いが在庫、enterprise SSD単独売上、契約品質が不足。RP-202605-P0-0015でvaluation candidateを確認したが、peer共通basis未固定とreview-required HTML不使用のため倍率採点には未採用</td></tr><tr><td>BROADCOM</td><td>20</td><td>部分採点。AI revenueは強いが、確認済みの顧客集中と高いvaluation snapshotは大きな弱気材料。RP-202605-P0-0010でRPO、contract liabilities、inventory、working capital、debt maturity through year fourも部分確認したが、AI revenue customer/product mix、software renewal quality、inventory quality、year five以降のdebt maturity、peer同一基準比較が不足</td></tr><tr><td>ARISTA</td><td>22</td><td>部分採点。顧客集中とvaluation入力snapshotは確認済み。OCFとPPE purchasesも確認済みだが、RP-202605-P0-0026でAI networking revenueは未開示と確認した。company-defined FCF、CapEx同一基準比較も不足するためscore readinessはnot_scoreable</td></tr><tr><td>ASTERA</td><td>22</td><td>部分採点。高marginだが顧客集中と高valuationは大きな弱気材料として確認済み。RP-202605-P0-0027でQ1全社売上とQ2 guidanceは確認したが、product / AI connectivity revenue、AR / inventory quality、end customer mappingが不足するためnot_scoreable</td></tr><tr><td>ASML</td><td>18</td><td>部分採点。valuation入力snapshot、operating margin、OCF、PPE purchases、long-term debtは確認済み。order intake/backlog/China exposure/company-defined FCF/peer同一基準比較が不足</td></tr><tr><td>TSMC</td><td>20</td><td>部分採点が最も進む。customer concentrationはRP-202605-P0-0019、valuation readinessはRP-202605-P0-0020でreview済みだが、顧客集中注記本文、share count、market price、EV、倍率定義がなく採点不可。advanced packagingも不足</td></tr><tr><td>SYNOPSYS</td><td>18</td><td>部分採点。customer concentrationはRP-202605-P0-0017、valuation readinessはRP-202605-P0-0018でreview済みだが、顧客集中注記本文、株価、株式数、market cap、EV、倍率定義が不足するためneeds_research/open維持。RPO/ARR/backlog/Ansys統合も不足</td></tr><tr><td>CADENCE</td><td>21</td><td>部分採点。customer concentrationとvaluation readinessはreview済みだが一次情報本文またはshare count/market price/debt/EV/倍率定義不足でneeds_research。RPO/ARR/gross marginも不足</td></tr></tbody></table>
+<h2 id="sourcestatusと欠損">6. source_statusと欠損</h2>
+<table><thead><tr><th>source_status</th><th>件数</th><th>採点上の扱い</th></tr></thead><tbody><tr><td><code>verified</code></td><td>28</td><td>採点候補。ただし相対比較では定義差を確認する</td></tr><tr><td><code>partially_verified</code></td><td>163</td><td>補助材料または部分採点候補。制約を残す</td></tr><tr><td><code>needs_review</code></td><td>51</td><td>採点に使わない。次回取得対象</td></tr></tbody></table>
+<p>追加メモ:</p>
+<ul><li><code>value=needs_research</code>: 52件</li><li><code>source_status=needs_research</code>: 0件</li><li>KPI CSVでは未調査状態を<code>value=needs_research</code>へ隔離し、出典確認状態は<code>source_status</code>で管理する。</li></ul>
+<h2 id="27点採点への移行可否">7. 27点採点への移行可否</h2>
+<table><thead><tr><th>評価軸</th><th>状態</th><th>理由</th></tr></thead><tbody><tr><td>A. AI需要・CSP CapEx</td><td>部分採点</td><td>各社コメントはあるがCSP CapEx横断更新は未反映</td></tr><tr><td>B. DRAM / HBM市況</td><td>部分採点</td><td>MUは確認が進むがSK hynix/SamsungのHBM採用・価格が不足</td></tr><tr><td>C. NAND / SSD市況</td><td>部分採点</td><td>MU/SanDiskは材料あり。Samsung/SK hynixの詳細不足</td></tr><tr><td>D. 決算・ガイダンス</td><td>部分採点</td><td>MU、TSMC、Broadcomなどは進むが全社同一粒度ではない</td></tr><tr><td>E. AI製品採用</td><td>部分採点</td><td>HBM4/SOCAMM2/Gen6 SSD、AI networking、HPC mixの粒度が異なる</td></tr><tr><td>F. CapExと供給規律</td><td>採点保留</td><td>memory peersとASMLのCapEx/FCF/backlogが不足</td></tr><tr><td>G. 在庫・キャッシュフロー</td><td>採点保留</td><td>MU/TSMC以外で同一粒度が不足</td></tr><tr><td>H. 競争環境</td><td>採点保留</td><td>Broadcom、Arista、Asteraの顧客集中は確認済み。TSMC、EDA候補の顧客集中、採用配分、規制影響が未確認</td></tr><tr><td>I. バリュエーション</td><td>採点保留</td><td>MU、ARISTA、ASTERA、BROADCOM、ASMLは入力snapshotを取得済みだが、他候補のvaluation readinessと同一基準比較が不足</td></tr></tbody></table>
+<p>結論: <code>portfolio/data/2026-05_watchlist.csv</code> の <code>score_0_27</code>、<code>relative_attractiveness_vs_mu</code>、<code>diversification_value</code>、<code>exit_candidate_relevance</code> は、今回の成果だけでは確定更新しない。</p>
+<h2 id="分散候補と撤退候補">8. 分散候補と撤退候補</h2>
+<h3 id="分散候補">分散候補</h3>
+<ul><li>TSMC: 財務・cash flow・HPC mixが比較的そろう。customer concentrationはRP-202605-P0-0019、valuation readinessはRP-202605-P0-0020でreview済みopen。次回はadvanced packaging、annual report / 20-Fの顧客集中注記、share count、ADR/普通株換算、株価日時、EV、倍率定義を確認する。</li><li>Broadcom: AI revenueとFCFが強い可能性がある一方、Q1 FY2026の顧客集中とvaluation snapshotは高い弱気材料である。RP-202605-P0-0010でscore readinessをreviewし、RPO、contract liabilities、inventory、working capital、debt maturity through year fourを部分確認したが、次回はAI revenue内訳、software renewal quality、inventory quality、year five以降のdebt maturity、peer同一基準比較を確認する。</li><li>Arista / Astera Labs: AI networking / connectivity候補だが、Aristaは顧客集中とvaluation入力snapshot、Asteraは顧客集中とvaluation入力snapshotを確認済み。AristaはRP-202605-P0-0007とRP-202605-P0-0026、AsteraはRP-202605-P0-0009とRP-202605-P0-0027でnot_scoreable維持。AI売上内訳、company-defined FCF/CapEx、Asteraのproduct mix、AR / inventory quality、end customer mappingが先。</li><li>ASML / Synopsys / Cadence: 寡占分散候補。ASMLはvaluation入力snapshotを確認済みだが、backlog/RPO/ARR、規制、company-defined FCF、peer同一基準比較の確認前に相対魅力を上げない。Synopsysのcustomer concentrationとvaluation readinessはreview済みだが、顧客集中注記本文、株価、株式数、market cap、EV、倍率定義が不足するため採点に使わない。Cadenceのcustomer concentrationとvaluation readinessはreview済みだが、顧客集中注記本文、share count、market price、debt、EV、倍率定義が不足するため採点に使わない。</li></ul>
+<h3 id="撤退候補">撤退候補</h3>
+<ul><li>現時点では撤退候補を指定しない。</li><li>Micron全力解除検討は、DRAM/HBM価格下落、CSP CapEx下方修正、粗利率低下、在庫増加、HBM採用劣後、CapEx増加、FCF悪化が同時に出るかで判断する。</li></ul>
+<h2 id="次アクション">9. 次アクション</h2>
+<p>1. MU、ARISTA、ASTERA、BROADCOM、ASMLのvaluation snapshotを同一基準化し、その他候補のvaluation readinessを埋める。5社は入力snapshot済みだが、価格更新と同一基準比較は継続する。SKHYNIXはRP-202605-P0-0016をreview済みopenとして扱い、FY2025財務・株式数候補だけで倍率を作らない。 2. SK hynixとSamsungのHBM4/HBM4E採用、CapEx、FCF、在庫、NAND/SSD詳細を確認する。 3. SanDiskの在庫、enterprise SSD単独売上、長期契約の質、valuation peer basisを確認する。RP-202605-P0-0015はreview済みopenとして扱い、valuation candidateだけで倍率採点しない。 4. Broadcom/Arista/Astera LabsのAI売上内訳、backlog/design wins、software renewal quality、inventory quality、peer同一基準比較を確認する。Asteraは顧客名とend customer対応、product mix、AR / inventory quality、Q2 revenue guidanceを追加確認する。 5. ASML、TSMC、Synopsys、Cadenceのbacklog/RPO/ARR、China/export controls、顧客集中、AI寄与、valuationまたはpeer同一基準比較を確認する。 6. 追加取得後に<code>portfolio/data/2026-05_watchlist.csv</code>を更新し、27点採点を別コミットで実施する。</p>
+<h2 id="品質ゲート">10. 品質ゲート</h2>
+<ul><li>弱気材料を先に確認したか: はい。</li><li>KPI断片CSVと統合CSVを検証したか: はい。</li><li><code>source_status=needs_research</code>を使っていないか: はい。</li><li>未確認値を<code>value=needs_research</code>へ隔離したか: はい。</li><li>portfolioが個別target原本を上書きしていないか: はい。</li><li>score / judgement / relative attractivenessを未確認のまま確定していないか: はい。</li></ul>
+<h2 id="出典">11. 出典</h2>
+<p>このレポートは以下のローカル原本を入力にした。外部検索・Webブラウズは実施していない。</p>
+<table><thead><tr><th>種別</th><th>パス</th><th>発表日</th><th>確認日</th></tr></thead><tbody><tr><td>KPI CSV</td><td><code>portfolio/data/2026-05_kpi_memory.csv</code></td><td>2026-05-11</td><td>2026-05-11</td></tr><tr><td>KPI CSV</td><td><code>portfolio/data/2026-05_kpi_networking.csv</code></td><td>2026-05-11</td><td>2026-05-11</td></tr><tr><td>KPI CSV</td><td><code>portfolio/data/2026-05_kpi_upstream_eda.csv</code></td><td>2026-05-11</td><td>2026-05-11</td></tr><tr><td>統合CSV</td><td><code>portfolio/data/2026-05_kpi_matrix.csv</code></td><td>2026-05-11</td><td>2026-05-11</td></tr><tr><td>source map</td><td><code>targets/ARISTA/evidence/verified/RP-202605-P0-0007_micron_diversification_score_readiness_source_map.md</code></td><td>2026-05-11</td><td>2026-05-11</td></tr><tr><td>source map</td><td><code>targets/ARISTA/evidence/verified/RP-202605-P0-0026_ai_networking_revenue_source_map.md</code></td><td>2026-05-11</td><td>2026-05-11</td></tr><tr><td>source map</td><td><code>targets/ASTERA/evidence/verified/RP-202605-P0-0003_customer_concentration_source_map.md</code></td><td>2026-05-11</td><td>2026-05-11</td></tr><tr><td>source map</td><td><code>targets/ASTERA/evidence/verified/RP-202605-P0-0004_valuation_source_map.md</code></td><td>2026-05-11</td><td>2026-05-11</td></tr><tr><td>source map</td><td><code>targets/ASTERA/evidence/verified/RP-202605-P0-0009_micron_diversification_score_readiness_source_map.md</code></td><td>2026-05-11</td><td>2026-05-11</td></tr><tr><td>source map</td><td><code>targets/ASTERA/evidence/verified/RP-202605-P0-0027_product_or_ai_connectivity_revenue_source_map.md</code></td><td>2026-05-11</td><td>2026-05-11</td></tr><tr><td>source map</td><td><code>targets/BROADCOM/evidence/verified/RP-202605-P0-0006_valuation_source_map.md</code></td><td>2026-05-11</td><td>2026-05-11</td></tr><tr><td>source map</td><td><code>targets/BROADCOM/evidence/verified/RP-202605-P0-0010_micron_diversification_score_readiness_source_map.md</code></td><td>2026-05-11</td><td>2026-05-11</td></tr><tr><td>source map</td><td><code>targets/ASML/evidence/verified/RP-202605-P0-0008_valuation_source_map.md</code></td><td>2026-05-11</td><td>2026-05-11</td></tr><tr><td>source map</td><td><code>targets/CADENCE/evidence/verified/RP-202605-P0-0011_customer_concentration_source_map.md</code></td><td>2026-05-11</td><td>2026-05-11</td></tr><tr><td>run log</td><td><code>targets/CADENCE/runs/2026-05-11_rp_202605_p0_0011_customer_concentration_run.md</code></td><td>2026-05-11</td><td>2026-05-11</td></tr><tr><td>source map</td><td><code>targets/CADENCE/evidence/verified/RP-202605-P0-0012_valuation_source_map.md</code></td><td>2026-05-11</td><td>2026-05-11</td></tr><tr><td>run log</td><td><code>targets/CADENCE/runs/2026-05-11_rp_202605_p0_0012_valuation_run.md</code></td><td>2026-05-11</td><td>2026-05-11</td></tr><tr><td>source map</td><td><code>targets/SAMSUNG/evidence/verified/RP-202605-P0-0014_valuation_source_map.md</code></td><td>2026-05-11</td><td>2026-05-11</td></tr><tr><td>run log</td><td><code>targets/SAMSUNG/runs/2026-05-11_rp_202605_p0_0014_valuation_run.md</code></td><td>2026-05-11</td><td>2026-05-11</td></tr><tr><td>source map</td><td><code>targets/SANDISK/evidence/verified/RP-202605-P0-0015_valuation_source_map.md</code></td><td>2026-05-11</td><td>2026-05-11</td></tr><tr><td>run log</td><td><code>targets/SANDISK/runs/2026-05-11_rp_202605_p0_0015_valuation_run.md</code></td><td>2026-05-11</td><td>2026-05-11</td></tr><tr><td>source map</td><td><code>targets/MU/evidence/verified/RP-202605-P0-0013_valuation_source_map.md</code></td><td>2026-05-11</td><td>2026-05-11</td></tr><tr><td>run log</td><td><code>targets/MU/runs/2026-05-11_rp_202605_p0_0013_valuation_run.md</code></td><td>2026-05-11</td><td>2026-05-11</td></tr><tr><td>source map</td><td><code>targets/MU/evidence/verified/RP-202605-P0-0021_hbm_customer_named_by_nvidia_source_map.md</code></td><td>2026-05-11</td><td>2026-05-11</td></tr><tr><td>run log</td><td><code>targets/MU/runs/2026-05-11_rp_202605_p0_0021_hbm_customer_named_by_nvidia_run.md</code></td><td>2026-05-11</td><td>2026-05-11</td></tr><tr><td>source map</td><td><code>targets/MU/evidence/verified/RP-202605-P0-0022_hbm_revenue_source_map.md</code></td><td>2026-05-11</td><td>2026-05-11</td></tr><tr><td>run log</td><td><code>targets/MU/runs/2026-05-11_rp_202605_p0_0022_hbm_revenue_run.md</code></td><td>2026-05-11</td><td>2026-05-11</td></tr><tr><td>source map</td><td><code>targets/SKHYNIX/evidence/verified/RP-202605-P0-0016_valuation_source_map.md</code></td><td>2026-05-11</td><td>2026-05-11</td></tr><tr><td>run log</td><td><code>targets/SKHYNIX/runs/2026-05-11_rp_202605_p0_0016_valuation_run.md</code></td><td>2026-05-11</td><td>2026-05-11</td></tr><tr><td>source map</td><td><code>targets/SKHYNIX/evidence/verified/RP-202605-P0-0023_hbm_outperformance_vs_mu_source_map.md</code></td><td>2026-05-11</td><td>2026-05-11</td></tr><tr><td>source map</td><td><code>targets/SKHYNIX/evidence/verified/RP-202605-P0-0024_hbm4_hbm4e_adoption_source_map.md</code></td><td>2026-05-11</td><td>2026-05-11</td></tr><tr><td>source map</td><td><code>targets/SKHYNIX/evidence/verified/RP-202605-P0-0025_supply_overbuild_risk_source_map.md</code></td><td>2026-05-11</td><td>2026-05-11</td></tr><tr><td>source map</td><td><code>targets/SYNOPSYS/evidence/verified/RP-202605-P0-0017_customer_concentration_source_map.md</code></td><td>2026-05-11</td><td>2026-05-11</td></tr><tr><td>run log</td><td><code>targets/SYNOPSYS/runs/2026-05-11_rp_202605_p0_0017_customer_concentration_run.md</code></td><td>2026-05-11</td><td>2026-05-11</td></tr><tr><td>source map</td><td><code>targets/SYNOPSYS/evidence/verified/RP-202605-P0-0018_valuation_source_map.md</code></td><td>2026-05-11</td><td>2026-05-11</td></tr><tr><td>run log</td><td><code>targets/SYNOPSYS/runs/2026-05-11_rp_202605_p0_0018_valuation_run.md</code></td><td>2026-05-11</td><td>2026-05-11</td></tr><tr><td>source map</td><td><code>targets/TSMC/evidence/verified/RP-202605-P0-0019_customer_concentration_source_map.md</code></td><td>2026-05-11</td><td>2026-05-11</td></tr><tr><td>run log</td><td><code>targets/TSMC/runs/2026-05-11_rp_202605_p0_0019_customer_concentration_run.md</code></td><td>2026-05-11</td><td>2026-05-11</td></tr><tr><td>source map</td><td><code>targets/TSMC/evidence/verified/RP-202605-P0-0020_valuation_source_map.md</code></td><td>2026-05-11</td><td>2026-05-11</td></tr><tr><td>run log</td><td><code>targets/TSMC/runs/2026-05-11_rp_202605_p0_0020_valuation_run.md</code></td><td>2026-05-11</td><td>2026-05-11</td></tr><tr><td>run log</td><td><code>portfolio/runs/2026-05-11_memory_kpi_gap_review.md</code></td><td>2026-05-11</td><td>2026-05-11</td></tr><tr><td>run log</td><td><code>portfolio/runs/2026-05-11_networking_kpi_gap_review.md</code></td><td>2026-05-11</td><td>2026-05-11</td></tr><tr><td>run log</td><td><code>portfolio/runs/2026-05-11_upstream_eda_kpi_gap_review.md</code></td><td>2026-05-11</td><td>2026-05-11</td></tr></tbody></table>
+  </article>
+</main>
+
+<script>
+document.querySelectorAll("[data-copy]").forEach((button) => {
+  button.addEventListener("click", async () => {
+    const label = button.getAttribute("data-copy-label") || "text";
+    const text = button.getAttribute("data-copy") || "";
+    try {
+      await navigator.clipboard.writeText(text);
+      const original = button.textContent;
+      button.textContent = "コピー完了: " + label;
+      setTimeout(() => { button.textContent = original; }, 1200);
+    } catch (error) {
+      const fallback = document.querySelector("[data-copy-fallback]");
+      if (fallback) {
+        const textarea = fallback.querySelector("textarea");
+        fallback.open = true;
+        if (textarea) {
+          textarea.value = text;
+          textarea.focus();
+          textarea.select();
+        }
+      }
+      button.textContent = "コピー失敗";
+    }
+  });
+});
+</script>
+</body>
+</html>

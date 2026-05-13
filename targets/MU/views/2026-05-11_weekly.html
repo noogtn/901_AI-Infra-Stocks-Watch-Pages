@@ -1,0 +1,863 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Micron集中投資 週次ニュース監視</title>
+<style>
+
+:root {
+  color-scheme: light;
+  --bg: #f7f8fa;
+  --panel: #ffffff;
+  --text: #1f2933;
+  --muted: #627080;
+  --line: #d9dee6;
+  --accent: #145c9e;
+  --warn: #a85400;
+  --danger: #a51d2d;
+  --ok: #1f7a4d;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  line-height: 1.65;
+  overflow-wrap: anywhere;
+}
+.skipLink {
+  position: absolute;
+  left: 12px;
+  top: -48px;
+  z-index: 10;
+  background: #fff;
+  border: 2px solid var(--accent);
+  border-radius: 8px;
+  color: var(--accent);
+  padding: 8px 10px;
+}
+.skipLink:focus { top: 12px; }
+.topbar {
+  display: flex;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 28px clamp(16px, 4vw, 48px);
+  background: #ffffff;
+  border-bottom: 1px solid var(--line);
+}
+.eyebrow, .meta { color: var(--muted); margin: 0 0 6px; }
+h1 { margin: 0; font-size: 2rem; line-height: 1.18; letter-spacing: 0; }
+main { max-width: 1180px; margin: 0 auto; padding: 24px clamp(14px, 3vw, 32px) 56px; }
+.statusStack { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; }
+.badge {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 6px 10px;
+  font-weight: 700;
+  background: #fff;
+}
+.judgement.green { color: var(--ok); border-color: #8cc7a8; }
+.judgement.light_green { color: #4d7a1f; border-color: #b6d986; }
+.judgement.yellow { color: #7c6500; border-color: #d8c65a; }
+.judgement.orange { color: var(--warn); border-color: #d79a4a; }
+.judgement.red { color: var(--danger); border-color: #d8818d; }
+.judgement.unrated { color: #475569; border-color: #94a3b8; background: #f8fafc; }
+.source.needs_review { color: var(--danger); border-color: #d8818d; }
+.source.partially_verified, .source.draft { color: var(--warn); border-color: #d79a4a; }
+.source.verified { color: var(--ok); border-color: #8cc7a8; }
+.source.unknown, .source.unrated { color: #475569; border-color: #94a3b8; background: #f8fafc; }
+.statusCards, .summaryCards {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 18px;
+}
+.statusCard, .summaryCard {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-left: 6px solid var(--accent);
+  border-radius: 8px;
+  padding: 14px;
+}
+.statusCard > span, .summaryCard > span {
+  display: block;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 700;
+  margin-bottom: 4px;
+  text-transform: uppercase;
+}
+.statusCard strong, .summaryCard strong {
+  display: block;
+  font-size: 22px;
+  line-height: 1.25;
+}
+.statusCard p, .summaryCard p {
+  color: var(--muted);
+  margin: 8px 0 0;
+}
+.statusCard.green, .summaryCard.ok { border-left-color: var(--ok); }
+.statusCard.light_green { border-left-color: #6f9b2e; }
+.statusCard.yellow { border-left-color: #b69700; }
+.statusCard.orange, .statusCard.draft, .statusCard.partially_verified, .summaryCard.warn { border-left-color: var(--warn); }
+.statusCard.red, .statusCard.needs_review, .summaryCard.danger { border-left-color: var(--danger); }
+.statusCard.warn { border-left-color: var(--warn); }
+.statusCard.unrated, .statusCard.unknown { border-left-color: #64748b; }
+.summaryCard ul {
+  margin: 10px 0 0;
+  padding-left: 20px;
+}
+.summaryCard li { margin: 4px 0; }
+.decisionGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 18px;
+}
+.decisionGrid article {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 14px;
+}
+.decisionGrid span {
+  display: block;
+  color: var(--muted);
+  font-size: 13px;
+  margin-bottom: 4px;
+}
+.decisionGrid strong { font-size: 18px; line-height: 1.35; }
+.toc, .actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  align-items: center;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 12px;
+  margin-bottom: 16px;
+}
+.toc a { color: var(--accent); text-decoration: none; }
+button {
+  border: 1px solid #b9c2cf;
+  border-radius: 8px;
+  background: #fff;
+  color: var(--text);
+  padding: 8px 10px;
+  font: inherit;
+  cursor: pointer;
+  min-height: 44px;
+  touch-action: manipulation;
+}
+button:hover { border-color: var(--accent); color: var(--accent); }
+button:focus-visible,
+a:focus-visible,
+summary:focus-visible {
+  outline: 3px solid #5a8db8;
+  outline-offset: 3px;
+}
+.copyFallback {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  margin: 0 0 18px;
+  padding: 12px;
+}
+.copyFallback summary {
+  cursor: pointer;
+  font-weight: 700;
+}
+.copyFallback p {
+  color: var(--muted);
+  margin: 4px 0 8px;
+}
+.copyFallback textarea {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  font: 13px/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  min-height: 160px;
+  padding: 10px;
+  resize: vertical;
+  width: 100%;
+}
+.report {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 4px 18px 18px;
+}
+.report h1 { font-size: 28px; margin: 18px 0 10px; }
+.report h2 { font-size: 21px; margin: 24px 0 10px; padding-top: 8px; border-top: 1px solid var(--line); }
+.report h3 { font-size: 17px; margin: 18px 0 8px; }
+.report table { border-collapse: collapse; width: 100%; overflow-x: auto; display: block; }
+.report th, .report td { border: 1px solid var(--line); padding: 8px; text-align: left; vertical-align: top; }
+.report code { background: #eef1f5; padding: 2px 4px; border-radius: 4px; }
+.report pre { background: #111827; color: #f7f8fa; padding: 12px; border-radius: 8px; overflow-x: auto; }
+.sectionDetails {
+  border-top: 1px solid var(--line);
+  padding: 6px 0;
+}
+.sectionDetails > summary {
+  cursor: pointer;
+  font-size: 21px;
+  font-weight: 700;
+  padding: 10px 0;
+}
+.sectionDetails.sectionMarket {
+  border: 1px solid var(--line);
+  border-left: 6px solid var(--accent);
+  border-radius: 8px;
+  padding: 8px 12px 12px;
+  background: #fbfdff;
+}
+.sectionDetails.sectionMarket > summary {
+  margin: 0 0 4px;
+}
+.dir {
+  display: inline-block;
+  padding: 1px 6px;
+  border-radius: 999px;
+  font-size: 1em;
+  border: 1px solid transparent;
+}
+.dir.up {
+  color: var(--ok);
+  border-color: #8cc7a8;
+  background: #f0fbf5;
+}
+.dir.down {
+  color: var(--danger);
+  border-color: #d8818d;
+  background: #fff5f6;
+}
+.dir.flat {
+  color: #475569;
+  border-color: #94a3b8;
+  background: #f8fafc;
+}
+.dir.unknown {
+  color: var(--warn);
+  border-color: #d79a4a;
+  background: #fff9f1;
+  font-weight: 600;
+}
+.firstView {
+  display: grid;
+  gap: 14px;
+  margin-bottom: 18px;
+}
+.statusCards {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+.statusCard,
+.summaryCard,
+.decisionGrid article,
+.toc,
+.actions,
+.report,
+.sourceDrawer,
+.riskHighlight,
+.scoreboard {
+  box-shadow: 0 1px 2px rgba(31, 41, 51, 0.04);
+}
+.statusCard strong,
+.decisionGrid strong,
+.summaryCard strong {
+  overflow-wrap: anywhere;
+}
+.statusCard .miniList,
+.sourceDrawer .miniList {
+  margin: 10px 0 0;
+  padding-left: 18px;
+  color: var(--muted);
+  font-size: 14px;
+}
+.forcedCard.ok { border-left-color: var(--ok); }
+.forcedCard.warn { border-left-color: var(--warn); }
+.forcedCard.danger { border-left-color: var(--danger); }
+.sourceMetrics {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+}
+.metricPill {
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: #f8fafc;
+  color: #334155;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 2px 8px;
+}
+.riskHighlight {
+  background: #fffdf8;
+  border: 1px solid #e6d7b4;
+  border-left: 6px solid var(--warn);
+  border-radius: 8px;
+  padding: 14px;
+}
+.riskHighlight > span,
+.scoreboard > span,
+.sourceDrawer > summary span {
+  color: var(--muted);
+  display: block;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+.riskHighlight h2,
+.scoreboard h2 {
+  font-size: 18px;
+  line-height: 1.3;
+  margin: 2px 0 8px;
+}
+.riskHighlight ul {
+  display: grid;
+  gap: 6px;
+  margin: 10px 0 0;
+  padding-left: 20px;
+}
+.riskHighlight li::marker {
+  content: "Risk ";
+  color: var(--warn);
+  font-weight: 800;
+}
+.scoreboard {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 14px;
+}
+.scoreGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 12px;
+}
+.scoreItem {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fbfcfd;
+  min-width: 0;
+  padding: 12px;
+}
+.scoreItem header {
+  align-items: flex-start;
+  display: flex;
+  gap: 8px;
+  justify-content: space-between;
+}
+.scoreItem h3 {
+  font-size: 15px;
+  line-height: 1.35;
+  margin: 0;
+}
+.scoreValue {
+  border: 1px solid #c8d1dc;
+  border-radius: 999px;
+  color: #1f2933;
+  flex: 0 0 auto;
+  font-variant-numeric: tabular-nums;
+  font-weight: 800;
+  padding: 1px 8px;
+}
+.scoreItem p {
+  color: var(--muted);
+  font-size: 14px;
+  margin: 8px 0 0;
+}
+.scoreItem .scoreMeta {
+  color: var(--muted);
+  font-size: 12px;
+  margin-top: 8px;
+}
+.scoreItem.unrated .scoreValue,
+.scoreItem.unknown .scoreValue {
+  background: #fff9f1;
+  border-color: #d79a4a;
+  color: var(--warn);
+}
+.sourceDrawer {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  margin-bottom: 16px;
+  padding: 0;
+}
+.sourceDrawer > summary {
+  cursor: pointer;
+  font-weight: 800;
+  list-style-position: inside;
+  padding: 12px 14px;
+}
+.sourceDrawerBody {
+  border-top: 1px solid var(--line);
+  padding: 12px 14px 14px;
+}
+.sourceList {
+  display: grid;
+  gap: 8px;
+  margin-top: 12px;
+}
+.sourceItem {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 10px;
+}
+.sourceItem.primary {
+  border-left: 5px solid var(--ok);
+}
+.sourceItem.market_data {
+  border-left: 5px solid var(--accent);
+}
+.sourceType {
+  color: var(--muted);
+  display: block;
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+.sourceTitle {
+  display: block;
+  font-weight: 800;
+  line-height: 1.35;
+  margin-top: 2px;
+}
+.sourceMeta {
+  color: var(--muted);
+  font-size: 13px;
+  margin: 4px 0 0;
+}
+.sourceItem a {
+  color: var(--accent);
+}
+.report a {
+  color: var(--accent);
+  overflow-wrap: anywhere;
+}
+.tableScroll {
+  max-width: 100%;
+  overflow-x: auto;
+  overscroll-behavior-inline: contain;
+}
+.tableScroll table {
+  display: table;
+  min-width: 680px;
+  width: 100%;
+}
+@media (max-width: 720px) {
+  .topbar { flex-direction: column; }
+  .statusStack { align-items: flex-start; flex-direction: row; flex-wrap: wrap; }
+  .statusCards, .summaryCards { grid-template-columns: 1fr; }
+  .decisionGrid { grid-template-columns: 1fr; }
+  .scoreGrid { grid-template-columns: 1fr; }
+  .report { padding: 2px 12px 14px; }
+}
+@media (max-width: 420px) {
+  h1 { font-size: 1.45rem; }
+  main { padding-left: 10px; padding-right: 10px; }
+  .topbar { padding: 18px 12px; }
+  .badge,
+  button {
+    width: 100%;
+    justify-content: center;
+  }
+  .actions { align-items: stretch; flex-direction: column; }
+  .decisionGrid strong { font-size: 16px; }
+}
+@media print {
+  @page { margin: 14mm; }
+  body {
+    background: #fff;
+    color: #111;
+    font-size: 11pt;
+  }
+  main {
+    max-width: none;
+    padding: 0;
+  }
+  .topbar {
+    padding: 0 0 12px;
+    border-bottom-color: #999;
+  }
+  .toc, .report, .decisionGrid article, .statusCard, .summaryCard {
+    border-color: #999;
+    box-shadow: none;
+  }
+  .report table {
+    display: table;
+    table-layout: auto;
+    width: 100%;
+    font-size: 9pt;
+  }
+  .report thead {
+    display: table-header-group;
+  }
+  .report tr {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+  .report th, .report td {
+    overflow-wrap: anywhere;
+    word-break: break-word;
+    white-space: normal;
+  }
+  .toc, .statusCards, .summaryCards, .decisionGrid {
+    break-inside: avoid-page;
+  }
+  .report, .sectionDetails {
+    break-inside: auto;
+  }
+  a {
+    color: #111;
+    text-decoration: underline;
+  }
+}
+
+</style>
+
+<style>
+.pagesPublicNotice {
+  margin: 0;
+  padding: 10px 14px;
+  border-bottom: 1px solid #d7dee8;
+  background: #f6f8fb;
+  color: #243040;
+  font: 13px/1.55 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+.pagesPublicNotice strong {
+  display: inline-block;
+  margin-right: 8px;
+}
+.pagesPublicNotice small {
+  display: block;
+  margin-top: 2px;
+  color: #5b677a;
+  overflow-wrap: anywhere;
+}
+@media (max-width: 480px) {
+  .pagesPublicNotice {
+    padding: 9px 10px;
+  }
+  .pagesPublicNotice strong {
+    display: block;
+    margin: 0 0 2px;
+  }
+}
+</style>
+</head>
+<body>
+<aside class="pagesPublicNotice" role="note">
+  <strong>GitHub Pages public view</strong>
+  <span>このHTMLはGitHub Pagesでpublic配信される前提の閲覧用生成物です。個人情報・非公開メモ・認証情報を含めないでください。</span>
+  <small>source: targets/MU/views/2026-05-11_weekly.html / staged: 2026-05-13T22:05:31.239Z</small>
+</aside>
+
+<a class="skipLink" href="#main">本文へ移動</a>
+<header class="topbar">
+  <div>
+    <p class="eyebrow">MU Micron Technology</p>
+    <h1>Micron集中投資 週次ニュース監視</h1>
+    <p class="meta">view: weekly / date: 2026-05-11 / period: 2026-05-10_to_2026-05-11</p>
+  </div>
+  <div class="statusStack">
+    <span class="badge judgement unrated" aria-label="判定 UNRATED">UNRATED</span>
+    <span class="badge source partially_verified" aria-label="出典確認状況 partially_verified">partially_verified</span>
+  </div>
+</header>
+
+<main id="main">
+  <section class="firstView" aria-label="判断用ダッシュボード">
+  <section class="statusCards" aria-label="判定、出典品質、強制警戒条件">
+    <article class="statusCard judgementCard unrated">
+      <span>Judgement</span>
+      <strong>UNRATED</strong>
+      <p>現在の観測判定。色だけでなくラベルと本文で確認します。</p>
+    </article>
+    <article class="statusCard sourceCard partially_verified">
+      <span>Source status</span>
+      <strong>partially_verified</strong>
+      <p>一部は検証済み、未確認項目があります。 出典5件、一次情報3件。</p>
+      <div class="sourceMetrics" aria-label="出典内訳">
+        <span class="metricPill">primary 3</span>
+        <span class="metricPill">other 2</span>
+        <span class="metricPill">unknown 0</span>
+      </div>
+      <ul class="miniList"><li>Micronの2026-05-20イベントで、HBM4/SOCAMM2/9650/6600 IONの顧客名、顧客配分、受注進捗が開示されるか。</li><li>6600 IONのDell Tech World展示後に、設計採用数、売上寄与、data center SSD shareへの示唆が出るか。</li><li>CoWoS / 3nm制約がMicronのHBM/SSD売上認識タイミングへどこまで影響するか。</li></ul>
+    </article>
+    <article class="statusCard forcedCard ok">
+      <span>Forced alert</span>
+      <strong>該当なし / 監視継続</strong>
+      <p>本文中の撤退条件・強制警戒条件コメントから抽出しました。</p>
+      <ul><li>強制警戒条件に触れる兆候を確認したか：はい。CSP CapEx下方修正やDRAM/HBM価格下落は確認していないが、顧客裏付け不足とシステム側制約は継続監視にした。</li></ul>
+    </article>
+    <article class="statusCard previousChangeCard _">
+      <span>Previous change</span>
+      <strong>本文を確認</strong>
+      <p>前回レポートからの判定変化と主要な差分です。</p>
+      <ul class="miniList"><li>最も重要な変化: 2026-05-11時点で、Micronの最新IR更新は2026-05-05の245TB 6600 ION SSD shipping発表と、2026-05-20のJ.P. Morganカンファレンス予定のままだった。需要面ではTrendForceが2026-05-06に上位9社CSPの2026年CapEx見通しを約8,300億ドルへ引き上げた一方、Microsoftは部材価格上昇だけで約250億ドルの負担を見込んでいる。</li><li>previous_report: ../weekly/2026-05-10_weekly.md</li></ul>
+    </article>
+    <article class="statusCard unconfirmedCard warn">
+      <span>Unconfirmed</span>
+      <strong>3項目を確認</strong>
+      <p>強気材料として扱わず、次回確認へ回す項目です。</p>
+      <ul class="miniList"><li>Micronの2026-05-20イベントで、HBM4/SOCAMM2/9650/6600 IONの顧客名、顧客配分、受注進捗が開示されるか。</li><li>6600 IONのDell Tech World展示後に、設計採用数、売上寄与、data center SSD shareへの示唆が出るか。</li><li>CoWoS / 3nm制約がMicronのHBM/SSD売上認識タイミングへどこまで影響するか。</li></ul>
+    </article>
+  </section>
+
+  <section class="decisionGrid">
+    <article>
+      <span>Score</span>
+      <strong>N/A / 27</strong>
+    </article>
+    <article>
+      <span>Conclusion</span>
+      <strong>最も重要な変化：2026-05-11時点で、Micronの最新IR更新は2026-05-05の245TB 6600 ION SSD shipping発表と、2026-05-20のJ.P. Morganカンファレンス予定のままだった。需要面ではTrendForceが2026-05-06に上位9社CSPの2026年CapEx見通しを約8,300億ドルへ引き上げた一方、Microsoftは部材価格上昇だけで約250億ドルの負担を見込んでいる。</strong>
+    </article>
+    <article>
+      <span>Action</span>
+      <strong>Micron 2026-05-20イベントでHBM4、SOCAMM2、9650、6600 IONの追加コメントが出るか。</strong>
+    </article>
+  </section>
+
+<section class="riskHighlight" aria-label="弱気材料ファースト">
+    <span>Risk first</span>
+    <h2>弱気材料を先に確認</h2>
+    <p>撤退条件との関係：two_csp_capex_down や dram_contract_down_two_quarters のような明確な撤退シグナルは確認していない。一方で、capex_without_customer_backing と hbm4_excluded を否定するだけの新規一次情報もまだ不足している。</p>
+    <ul><li>弱気材料1：MicrosoftはFY2026 Q3 callで、2026年のCapEx約1,900億ドルのうち約250億ドルが高い部材価格の影響だと説明した。需要は強いが、メモリ価格上昇がCSPの投資効率を圧迫する構図は継続している。URL: https://www.microsoft.com/en-us/investor/events/fy-2026/earnings-fy-2026-q3 発表日: 2026-04-29 確認日: 2026-05-11</li><li>弱気材料2：TrendForceは2026-04-30に、CoWoS不足が継続し、NVIDIAがHBMやSSDを含む重要部材を前倒し確保していると述べた。Micronの需要自体には追い風だが、システム側の先端実装・供給制約が続くと、顧客側の立ち上がり速度が部材制約に左右される。URL: https://www.trendforce.com/presscenter/news/20260430-13028.html 発表日: 2026-04-30 確認日: 2026-05-11</li><li>弱気材料3：Micronは2026-04-29に5月20日の投資家イベント参加だけを公表しており、この週次確認ではHBM4、SOCAMM2、9650、6600 IONの追加顧客採用や追加受注を示す新規一次情報は確認できていない。需給が強くても、Micron固有の採用拡大をこの週次では追加確認できていない。URL: https://investors.micron.com/news-releases/news-release-details/micron-announces-participation-investor-event-3 発表日: 2026-04-29 確認日: 2026-05-11</li><li>撤退条件との関係：two_csp_capex_down や dram_contract_down_two_quarters のような明確な撤退シグナルは確認していない。一方で、capex_without_customer_backing と hbm4_excluded を否定するだけの新規一次情報もまだ不足している。</li></ul>
+  </section>
+
+  </section>
+
+  <nav class="toc" aria-label="目次">
+    <strong>目次</strong>
+    <a href="#sec-今週の結論">1. 今週の結論</a><a href="#sec-弱気材料を先に確認">2. 弱気材料を先に確認</a><a href="#sec-強気材料">3. 強気材料</a><a href="#sec-重要ニュース">4. 重要ニュース</a><a href="#sec-state更新候補">5. state更新候補</a><a href="#sec-source-log更新内容">6. source_log更新内容</a><a href="#sec-品質ゲート">7. 品質ゲート</a><a href="#sec-実行ログ要約-runs転記用">8. 実行ログ要約（runs転記用）</a><a href="#sec-次回確認すること">9. 次回確認すること</a><a href="#sec-出典">10. 出典</a>
+  </nav>
+
+  <section class="actions" aria-label="コピー操作">
+    <button type="button" aria-label="Copy next prompt" data-copy-label="next prompt" data-copy="# 次回確認プロンプト: Micron集中投資 週次ニュース監視&#10;&#10;- target: MU&#10;- judgement: UNRATED&#10;- score: N/A / 27&#10;- source_status: partially_verified&#10;&#10;次回レポートでは、以下を優先して一次情報または信頼できる出典で確認してください。&#10;&#10;## 未検証・不明点&#10;- 未記入&#10;&#10;## 次回監視イベント&#10;- Micron 2026-05-20イベントでHBM4、SOCAMM2、9650、6600 IONの追加コメントが出るか。&#10;- Dell Tech Worldで6600 IONの顧客反応、設計採用、売上寄与の示唆が出るか。&#10;- TrendForce以外の価格ソースでDRAM/NAND/HBM/enterprise SSDの方向感を補強できるか。&#10;- CoWoS / 3nm制約が、Micronの実売上認識タイミングや顧客導入速度にどこまで影響するか。&#10;&#10;## Open questions&#10;- Micronの2026-05-20イベントで、HBM4/SOCAMM2/9650/6600 IONの顧客名、顧客配分、受注進捗が開示されるか。&#10;- 6600 IONのDell Tech World展示後に、設計採用数、売上寄与、data center SSD shareへの示唆が出るか。&#10;- CoWoS / 3nm制約がMicronのHBM/SSD売上認識タイミングへどこまで影響するか。">Copy next prompt</button>
+    <button type="button" aria-label="Copy full report Markdown" data-copy-label="report Markdown" data-copy="---&#10;view: weekly&#10;target: MU&#10;target_id: MU&#10;report_type: weekly_watch&#10;title: Micron集中投資 週次ニュース監視&#10;date: 2026-05-11&#10;period: 2026-05-10_to_2026-05-11&#10;company: Micron Technology&#10;ticker: MU&#10;judgement: UNRATED&#10;score:&#10;score_max: 27&#10;source_status: partially_verified&#10;previous_report: ../weekly/2026-05-10_weekly.md&#10;generated_html: ../../views/2026-05-11_weekly.html&#10;---&#10;&#10;# Micron集中投資 週次ニュース監視&#10;&#10;対象：Micron Technology（MU）&#10;日付：2026-05-11&#10;対象期間：2026-05-10 から 2026-05-11&#10;警戒度：注意&#10;スコア：週次では未付与 / 27&#10;source_status：partially_verified&#10;&#10;注記：これは投資助言ではなく、次回の月次・四半期判定へ渡すための週次観測メモである。&#10;&#10;## 1. 今週の結論&#10;&#10;- 最も重要な変化：2026-05-11時点で、Micronの最新IR更新は2026-05-05の245TB 6600 ION SSD shipping発表と、2026-05-20のJ.P. Morganカンファレンス予定のままだった。需要面ではTrendForceが2026-05-06に上位9社CSPの2026年CapEx見通しを約8,300億ドルへ引き上げた一方、Microsoftは部材価格上昇だけで約250億ドルの負担を見込んでいる。&#10;- 投資仮説への影響：AIインフラ向けのメモリ需要は依然強いが、Micronの今週の新規一次情報は限定的で、HBM4顧客配分や6600 IONの顧客採用進捗はまだ確認できていない。需給の強さだけで強気判断へ進める材料は不足している。&#10;- 四半期判定に持ち越す論点：Micronの5月20日イベントで、HBM4/SOCAMM2/9650/6600 IONの顧客動向やFY2027 CapEx裏付けが補強されるかを確認する。&#10;&#10;## 2. 弱気材料を先に確認&#10;&#10;- 弱気材料1：MicrosoftはFY2026 Q3 callで、2026年のCapEx約1,900億ドルのうち約250億ドルが高い部材価格の影響だと説明した。需要は強いが、メモリ価格上昇がCSPの投資効率を圧迫する構図は継続している。URL: https://www.microsoft.com/en-us/investor/events/fy-2026/earnings-fy-2026-q3 発表日: 2026-04-29 確認日: 2026-05-11&#10;- 弱気材料2：TrendForceは2026-04-30に、CoWoS不足が継続し、NVIDIAがHBMやSSDを含む重要部材を前倒し確保していると述べた。Micronの需要自体には追い風だが、システム側の先端実装・供給制約が続くと、顧客側の立ち上がり速度が部材制約に左右される。URL: https://www.trendforce.com/presscenter/news/20260430-13028.html 発表日: 2026-04-30 確認日: 2026-05-11&#10;- 弱気材料3：Micronは2026-04-29に5月20日の投資家イベント参加だけを公表しており、この週次確認ではHBM4、SOCAMM2、9650、6600 IONの追加顧客採用や追加受注を示す新規一次情報は確認できていない。需給が強くても、Micron固有の採用拡大をこの週次では追加確認できていない。URL: https://investors.micron.com/news-releases/news-release-details/micron-announces-participation-investor-event-3 発表日: 2026-04-29 確認日: 2026-05-11&#10;- 撤退条件との関係：`two_csp_capex_down` や `dram_contract_down_two_quarters` のような明確な撤退シグナルは確認していない。一方で、`capex_without_customer_backing` と `hbm4_excluded` を否定するだけの新規一次情報もまだ不足している。&#10;&#10;## 3. 強気材料&#10;&#10;- 強気材料1：Micronは2026-05-05に245TB 6600 ION SSDのshipping開始を発表した。AI data lakeやcloud-scale object storage向けで、HDD構成比82%少ないラックで同等容量を実現すると説明している。URL: https://investors.micron.com/news-releases/news-release-details/industry-leading-245tb-micron-6600-ion-data-center-ssd-now 発表日: 2026-05-05 確認日: 2026-05-11&#10;- 強気材料2：TrendForceは2026-05-06に、上位9社CSPの2026年CapEx見通しを約8,300億ドル、前年比79%増へ上方修正した。Microsoft、Google、Meta、AWSの投資がいずれも大型化しており、AIインフラの総需要は引き続き強い。URL: https://www.trendforce.com/presscenter/news/20260506-13033.html 発表日: 2026-05-06 確認日: 2026-05-11&#10;- 強気材料3：Micronは2026-05-20のJ.P. Morganカンファレンス参加を公表しており、直近の需要・製品・投資計画に関する追加コメントが出る可能性がある。URL: https://investors.micron.com/news-releases/news-release-details/micron-announces-participation-investor-event-3 発表日: 2026-04-29 確認日: 2026-05-11&#10;&#10;## 4. 重要ニュース&#10;&#10;### 対象企業&#10;&#10;- Micronの今週確認できた最新IRは、2026-05-05の245TB 6600 ION SSD shipping発表と、2026-05-20のJ.P. Morganイベント告知だった。2026-05-11時点では、その後の新しいIRやSEC提出の増分はこの確認範囲では見当たらなかった。これはIRトップの最新掲載情報からの推論である。&#10;- 6600 IONは、AI data lake、cloud-scale file/object storage、ラック密度、電力効率を前面に出しており、「HBMだけでなくデータセンターSSDもAIメモリ階層のボトルネックになる」という仮説を支える。&#10;&#10;### 主要製品・技術テーマ&#10;&#10;- 6600 IONの公式発表では、245TB単体容量、82%少ないラック数、Dell Tech Worldでの40-slot Dell PowerEdge展示予定が明示された。今後は実展示後の顧客名や設計採用数が重要になる。&#10;- HBM4やSOCAMM2については、今週新しいMicron一次開示は確認できていない。3月時点の量産発表から前進した顧客配分や売上寄与は依然不明である。&#10;&#10;### 需要側&#10;&#10;- TrendForceは上位9社CSPの2026年CapEx見通しを約8,300億ドルへ引き上げ、AIサーバーの電力消費が2026年にgeneral-purpose serversを上回ると見ている。&#10;- Microsoftは2026年中もGPU、CPU、storage capacityの制約が続く見込みを示した。需要の強さと供給制約が同時進行している。&#10;&#10;### 市況&#10;&#10;- TrendForceの2026-05-06更新は需要面の強さを示す一方、2026-04-30更新ではCoWoSや3nmの制約継続を指摘している。メモリ単体の需給だけでなく、周辺サプライチェーンの制約がMicronの実需変換速度を左右する。&#10;- 月次で追っているDRAM/NAND価格上昇シナリオは崩れていないが、今週は新たな一次価格ソースを追加できていない。&#10;&#10;### 競合&#10;&#10;- 今週新規のSamsung / SK hynix一次情報は確認できていない。したがって、前回までに確認した「SamsungのVera Rubin向けHBM4/SOCAMM2量販」と「SK hynixのHBM・eSSD拡大」を相対比較の基準として維持する。&#10;- Micron側に新しい採用開示がない状態では、競合が先に追加顧客や量産規模を開示した場合の見劣りリスクが続く。&#10;&#10;### 地政学・規制&#10;&#10;- 今週確認した範囲では、Micronに直接関わる新規の対中規制、補助金変更、ファブ遅延の一次情報は確認できていない。&#10;- ただし、TrendForceのCoWoS/3nm制約指摘は、HBMやSSD需要が強くてもシステム立ち上げにサプライチェーンのボトルネックが残ることを示す補助情報として扱う。&#10;&#10;## 5. state更新候補&#10;&#10;### last_report&#10;&#10;- 最新週次を`targets/MU/reports/weekly/2026-05-11_weekly.md`へ更新する。&#10;- 判定はUNRATED、source_statusはpartially_verifiedを維持する。&#10;- 前回dry-run後も需要の強さは継続したが、Micron固有の新規採用確認は不足している点を明記する。&#10;&#10;### open_questions&#10;&#10;- Micronの2026-05-20イベントで、HBM4/SOCAMM2/9650/6600 IONの顧客名、顧客配分、受注進捗が開示されるか。&#10;- 6600 IONのDell Tech World展示後に、設計採用数、売上寄与、data center SSD shareへの示唆が出るか。&#10;- CoWoS / 3nm制約がMicronのHBM/SSD売上認識タイミングへどこまで影響するか。&#10;&#10;### alerts&#10;&#10;- MicrosoftのCapEx増額には高い部材価格の影響が約250億ドル含まれる。需要が強くても、CSP投資効率の悪化は警戒を続ける。&#10;- CoWoSと3nmの制約継続は、Micron単体ではなくAIサーバー全体の立ち上がりボトルネックとして監視する。&#10;&#10;### next_events&#10;&#10;- 2026-05-20のMicron J.P. Morganカンファレンスで追加コメントを確認する。&#10;- 2026-05-18から2026-05-21のDell Tech Worldで6600 ION展示後の顧客反応を確認する。&#10;- 次回月次でTrendForce以外の価格ソースを追加する。&#10;&#10;## 6. source_log更新内容&#10;&#10;- `targets/MU/sources/source_log.md`に追記した出典：&#10;  - Micron 6600 ION shipping発表&#10;  - TrendForce 2026-05-06 CSP CapEx更新&#10;  - TrendForce 2026-04-30 AI supply chain制約&#10;  - Microsoft FY2026 Q3 earnings call&#10;  - Micron 2026-05-20 investor event告知&#10;- 追記理由（重要主張との対応）：&#10;  - 6600 ION shipping継続確認、CSP需要の強さ、部材価格上昇リスク、サプライチェーン制約、次回イベント予定を本文の主要主張と対応付けるため。&#10;&#10;## 7. 品質ゲート&#10;&#10;- 弱気材料を先に確認したか：はい。&#10;- 強制警戒条件に触れる兆候を確認したか：はい。CSP CapEx下方修正やDRAM/HBM価格下落は確認していないが、顧客裏付け不足とシステム側制約は継続監視にした。&#10;- 出典URL、発表日、確認日があるか：はい。&#10;- 外部取得データを保存しない場合でも、出典URL、発表日、確認日を本文とsource_logに残したか：はい。&#10;- 未確認項目をopen_questionsへ回したか：はい。&#10;- 週次ではスコア未付与にしたか：はい。&#10;- `source_status: draft`のまま確定していないか：はい。`partially_verified`で確定する。&#10;- 投資助言ではなく観測レポートとして書いたか：はい。&#10;&#10;## 8. 実行ログ要約（runs転記用）&#10;&#10;- 対象レポート:&#10;  - ファイル名: `2026-05-11_weekly.md`&#10;  - パス: `targets/MU/reports/weekly/2026-05-11_weekly.md`&#10;- source_status最終値（`draft`不可）:&#10;  - 値: `partially_verified`&#10;  - 判定根拠: 主要主張の多くはMicron IRとMicrosoft IRで確認したが、需給・供給制約の一部はTrendForce補助情報に依存し、Micron固有の顧客採用確認が残るため。&#10;- security-gate install-check:&#10;  - 対象: `scripts/automation_readiness.mjs`、`scripts/automation_lock.mjs`&#10;  - 実行結果: sandbox制約により`EPERM`で失敗。runログへ記録する。&#10;- security-gate scan（外部取得データを保存した場合のみ）:&#10;  - 対象: なし&#10;  - 実行結果: 未実施&#10;- security-gate scan未実施時メモ（保存データなしの場合）:&#10;  - 理由: 外部取得データを保存せず、URL・発表日・確認日を本文と`targets/MU/sources/source_log.md`へ残したため。&#10;  - 出典管理（本文/`source_log`）: 実施済み&#10;- HTML生成:&#10;  - コマンド: `node shared/viewer/render.mjs --target targets/MU --report targets/MU/reports/weekly/2026-05-11_weekly.md --out targets/MU/views/2026-05-11_weekly.html`&#10;  - 結果: 実行待ち&#10;- report_verify:&#10;  - コマンド: `node scripts/report_verify.mjs --target targets/MU --report targets/MU/reports/weekly/2026-05-11_weekly.md`&#10;  - 結果（failures / warnings）: 実行待ち&#10;  - failures&gt;0時の修正内容: 実行後にrunログへ追記する&#10;&#10;## 9. 次回確認すること&#10;&#10;- Micron 2026-05-20イベントでHBM4、SOCAMM2、9650、6600 IONの追加コメントが出るか。&#10;- Dell Tech Worldで6600 IONの顧客反応、設計採用、売上寄与の示唆が出るか。&#10;- TrendForce以外の価格ソースでDRAM/NAND/HBM/enterprise SSDの方向感を補強できるか。&#10;- CoWoS / 3nm制約が、Micronの実売上認識タイミングや顧客導入速度にどこまで影響するか。&#10;&#10;## 10. 出典&#10;&#10;| 種別 | 発行元 | タイトル | URL | 発表日 | 確認日 |&#10;|---|---|---|---|---|---|&#10;| primary | Micron IR | Industry-Leading 245TB Micron 6600 ION Data Center SSD Now Shipping | https://investors.micron.com/news-releases/news-release-details/industry-leading-245tb-micron-6600-ion-data-center-ssd-now | 2026-05-05 | 2026-05-11 |&#10;| primary | Micron IR | Micron Announces Participation in Investor Event | https://investors.micron.com/news-releases/news-release-details/micron-announces-participation-investor-event-3 | 2026-04-29 | 2026-05-11 |&#10;| primary | Microsoft IR | Microsoft Fiscal Year 2026 Third Quarter Earnings Conference Call | https://www.microsoft.com/en-us/investor/events/fy-2026/earnings-fy-2026-q3 | 2026-04-29 | 2026-05-11 |&#10;| market_data | TrendForce | North American AI Data Center Expansion Drives 2026 CapEx of Top Nine CSPs to US$830 Billion, Says TrendForce | https://www.trendforce.com/presscenter/news/20260506-13033.html | 2026-05-06 | 2026-05-11 |&#10;| market_data | TrendForce | AI Competition Turns into a Supply Chain Arms Race, Tightening Advanced Packaging and 3nm Capacity, Says TrendForce | https://www.trendforce.com/presscenter/news/20260430-13028.html | 2026-04-30 | 2026-05-11 |&#10;">Copy report Markdown</button>
+    <button type="button" aria-label="Copy action summary" data-copy-label="action summary" data-copy="# Micron集中投資 週次ニュース監視 action summary&#10;&#10;- judgement: UNRATED&#10;- score: N/A / 27&#10;- source_status: partially_verified&#10;&#10;## 今週の結論&#10;- 最も重要な変化：2026-05-11時点で、Micronの最新IR更新は2026-05-05の245TB 6600 ION SSD shipping発表と、2026-05-20のJ.P. Morganカンファレンス予定のままだった。需要面ではTrendForceが2026-05-06に上位9社CSPの2026年CapEx見通しを約8,300億ドルへ引き上げた一方、Microsoftは部材価格上昇だけで約250億ドルの負担を見込んでいる。&#10;- 投資仮説への影響：AIインフラ向けのメモリ需要は依然強いが、Micronの今週の新規一次情報は限定的で、HBM4顧客配分や6600 IONの顧客採用進捗はまだ確認できていない。需給の強さだけで強気判断へ進める材料は不足している。&#10;- 四半期判定に持ち越す論点：Micronの5月20日イベントで、HBM4/SOCAMM2/9650/6600 IONの顧客動向やFY2027 CapEx裏付けが補強されるかを確認する。&#10;&#10;## 次回確認すること&#10;- Micron 2026-05-20イベントでHBM4、SOCAMM2、9650、6600 IONの追加コメントが出るか。&#10;- Dell Tech Worldで6600 IONの顧客反応、設計採用、売上寄与の示唆が出るか。&#10;- TrendForce以外の価格ソースでDRAM/NAND/HBM/enterprise SSDの方向感を補強できるか。&#10;- CoWoS / 3nm制約が、Micronの実売上認識タイミングや顧客導入速度にどこまで影響するか。">Copy action summary</button>
+    <button type="button" aria-label="Copy source checklist" data-copy-label="source checklist" data-copy="# Micron集中投資 週次ニュース監視 source checklist&#10;&#10;- source_status: partially_verified&#10;&#10;- [ ] primary / Micron IR / Industry-Leading 245TB Micron 6600 ION Data Center SSD Now Shipping / 確認済み&#10;- [ ] primary / Micron IR / Micron Announces Participation in Investor Event / 確認済み&#10;- [ ] primary / Microsoft IR / Microsoft Fiscal Year 2026 Third Quarter Earnings Conference Call / 確認済み&#10;- [ ] market_data / TrendForce / North American AI Data Center Expansion Drives 2026 CapEx of Top Nine CSPs to US$830 Billion, Says TrendForce / 確認済み&#10;- [ ] market_data / TrendForce / AI Competition Turns into a Supply Chain Arms Race, Tightening Advanced Packaging and 3nm Capacity, Says TrendForce / 確認済み">Copy source checklist</button>
+  </section>
+  <details class="copyFallback" data-copy-fallback>
+    <summary>Copy fallback</summary>
+    <p>クリップボードAPIが使えない場合は、下のMarkdownを選択して使用します。</p>
+    <textarea readonly aria-label="コピー対象Markdown"></textarea>
+  </details>
+
+<details class="sourceDrawer">
+    <summary><span>Source drawer</span>出典一覧 (5件、primary 3件)</summary>
+    <div class="sourceDrawerBody">
+      <p>一次情報を先頭に並べています。URL、発表日、確認日の欠落は次回確認対象です。</p>
+      <div class="sourceList"><article class="sourceItem primary">
+    <span class="sourceType">primary / Micron IR</span>
+    <strong class="sourceTitle"><a href="https://investors.micron.com/news-releases/news-release-details/industry-leading-245tb-micron-6600-ion-data-center-ssd-now">Industry-Leading 245TB Micron 6600 ION Data Center SSD Now Shipping</a></strong>
+    <p class="sourceMeta"><a href="https://investors.micron.com/news-releases/news-release-details/industry-leading-245tb-micron-6600-ion-data-center-ssd-now">URL</a> / 発表日: 2026-05-05 / 確認日: 2026-05-11</p>
+  </article><article class="sourceItem primary">
+    <span class="sourceType">primary / Micron IR</span>
+    <strong class="sourceTitle"><a href="https://investors.micron.com/news-releases/news-release-details/micron-announces-participation-investor-event-3">Micron Announces Participation in Investor Event</a></strong>
+    <p class="sourceMeta"><a href="https://investors.micron.com/news-releases/news-release-details/micron-announces-participation-investor-event-3">URL</a> / 発表日: 2026-04-29 / 確認日: 2026-05-11</p>
+  </article><article class="sourceItem primary">
+    <span class="sourceType">primary / Microsoft IR</span>
+    <strong class="sourceTitle"><a href="https://www.microsoft.com/en-us/investor/events/fy-2026/earnings-fy-2026-q3">Microsoft Fiscal Year 2026 Third Quarter Earnings Conference Call</a></strong>
+    <p class="sourceMeta"><a href="https://www.microsoft.com/en-us/investor/events/fy-2026/earnings-fy-2026-q3">URL</a> / 発表日: 2026-04-29 / 確認日: 2026-05-11</p>
+  </article><article class="sourceItem market_data">
+    <span class="sourceType">market_data / TrendForce</span>
+    <strong class="sourceTitle"><a href="https://www.trendforce.com/presscenter/news/20260506-13033.html">North American AI Data Center Expansion Drives 2026 CapEx of Top Nine CSPs to US$830 Billion, Says TrendForce</a></strong>
+    <p class="sourceMeta"><a href="https://www.trendforce.com/presscenter/news/20260506-13033.html">URL</a> / 発表日: 2026-05-06 / 確認日: 2026-05-11</p>
+  </article><article class="sourceItem market_data">
+    <span class="sourceType">market_data / TrendForce</span>
+    <strong class="sourceTitle"><a href="https://www.trendforce.com/presscenter/news/20260430-13028.html">AI Competition Turns into a Supply Chain Arms Race, Tightening Advanced Packaging and 3nm Capacity, Says TrendForce</a></strong>
+    <p class="sourceMeta"><a href="https://www.trendforce.com/presscenter/news/20260430-13028.html">URL</a> / 発表日: 2026-04-30 / 確認日: 2026-05-11</p>
+  </article></div>
+    </div>
+  </details>
+
+  <article class="report" data-report-path="targets/MU/reports/weekly/2026-05-11_weekly.md">
+<h1 id="sec-micron集中投資-週次ニュース監視">Micron集中投資 週次ニュース監視</h1>
+<p>対象：Micron Technology（MU）</p>
+<p>日付：2026-05-11</p>
+<p>対象期間：2026-05-10 から 2026-05-11</p>
+<p>警戒度：注意</p>
+<p>スコア：週次では<span class="dir unknown">未付与</span> / 27</p>
+<p>source_status：partially_verified</p>
+<p>注記：これは投資助言ではなく、次回の月次・四半期判定へ渡すための週次観測メモである。</p>
+<details class="sectionDetails" id="sec-今週の結論" open><summary>1. 今週の結論</summary>
+<ul>
+<li>最も重要な変化：2026-05-11時点で、Micronの最新IR更新は2026-05-05の245TB 6600 ION SSD shipping発表と、2026-05-20のJ.P. Morganカンファレンス予定のままだった。需要面ではTrendForceが2026-05-06に上位9社CSPの2026年CapEx見通しを約8,300億ドルへ引き上げた一方、Microsoftは部材価格<span class="dir up">上昇</span>だけで約250億ドルの負担を見込んでいる。</li>
+<li>投資仮説への影響：AIインフラ向けのメモリ需要は依然強いが、Micronの今週の新規一次情報は限定的で、HBM4顧客配分や6600 IONの顧客採用進捗はまだ確認できていない。需給の強さだけで強気判断へ進める材料は不足している。</li>
+<li>四半期判定に持ち越す論点：Micronの5月20日イベントで、HBM4/SOCAMM2/9650/6600 IONの顧客動向やFY2027 CapEx裏付けが補強されるかを確認する。</li>
+</ul>
+</details>
+<details class="sectionDetails" id="sec-弱気材料を先に確認" open><summary>2. 弱気材料を先に確認</summary>
+<ul>
+<li>弱気材料1：MicrosoftはFY2026 Q3 callで、2026年のCapEx約1,900億ドルのうち約250億ドルが高い部材価格の影響だと説明した。需要は強いが、メモリ価格<span class="dir up">上昇</span>がCSPの投資効率を圧迫する構図は継続している。URL: https://www.microsoft.com/en-us/investor/events/fy-2026/earnings-fy-2026-q3 発表日: 2026-04-29 確認日: 2026-05-11</li>
+<li>弱気材料2：TrendForceは2026-04-30に、CoWoS不足が継続し、NVIDIAがHBMやSSDを含む重要部材を前倒し確保していると述べた。Micronの需要自体には追い風だが、システム側の先端実装・供給制約が続くと、顧客側の立ち上がり速度が部材制約に左右される。URL: https://www.trendforce.com/presscenter/news/20260430-13028.html 発表日: 2026-04-30 確認日: 2026-05-11</li>
+<li>弱気材料3：Micronは2026-04-29に5月20日の投資家イベント参加だけを公表しており、この週次確認ではHBM4、SOCAMM2、9650、6600 IONの追加顧客採用や追加受注を示す新規一次情報は確認できていない。需給が強くても、Micron固有の採用拡大をこの週次では追加確認できていない。URL: https://investors.micron.com/news-releases/news-release-details/micron-announces-participation-investor-event-3 発表日: 2026-04-29 確認日: 2026-05-11</li>
+<li>撤退条件との関係：<code>two_csp_capex_down</code> や <code>dram_contract_down_two_quarters</code> のような明確な撤退シグナルは確認していない。一方で、<code>capex_without_customer_backing</code> と <code>hbm4_excluded</code> を否定するだけの新規一次情報もまだ不足している。</li>
+</ul>
+</details>
+<details class="sectionDetails" id="sec-強気材料" open><summary>3. 強気材料</summary>
+<ul>
+<li>強気材料1：Micronは2026-05-05に245TB 6600 ION SSDのshipping開始を発表した。AI data lakeやcloud-scale object storage向けで、HDD構成比82%少ないラックで同等容量を実現すると説明している。URL: https://investors.micron.com/news-releases/news-release-details/industry-leading-245tb-micron-6600-ion-data-center-ssd-now 発表日: 2026-05-05 確認日: 2026-05-11</li>
+<li>強気材料2：TrendForceは2026-05-06に、上位9社CSPの2026年CapEx見通しを約8,300億ドル、前年比79%増へ<span class="dir up">上方修正</span>した。Microsoft、Google、Meta、AWSの投資がいずれも大型化しており、AIインフラの総需要は引き続き強い。URL: https://www.trendforce.com/presscenter/news/20260506-13033.html 発表日: 2026-05-06 確認日: 2026-05-11</li>
+<li>強気材料3：Micronは2026-05-20のJ.P. Morganカンファレンス参加を公表しており、直近の需要・製品・投資計画に関する追加コメントが出る可能性がある。URL: https://investors.micron.com/news-releases/news-release-details/micron-announces-participation-investor-event-3 発表日: 2026-04-29 確認日: 2026-05-11</li>
+</ul>
+</details>
+<details class="sectionDetails" id="sec-重要ニュース" open><summary>4. 重要ニュース</summary>
+<h3 id="sec-対象企業">対象企業</h3>
+<ul>
+<li>Micronの今週確認できた最新IRは、2026-05-05の245TB 6600 ION SSD shipping発表と、2026-05-20のJ.P. Morganイベント告知だった。2026-05-11時点では、その後の新しいIRやSEC提出の増分はこの確認範囲では見当たらなかった。これはIRトップの最新掲載情報からの推論である。</li>
+<li>6600 IONは、AI data lake、cloud-scale file/object storage、ラック密度、電力効率を前面に出しており、「HBMだけでなくデータセンターSSDもAIメモリ階層のボトルネックになる」という仮説を支える。</li>
+</ul>
+<h3 id="sec-主要製品・技術テーマ">主要製品・技術テーマ</h3>
+<ul>
+<li>6600 IONの公式発表では、245TB単体容量、82%少ないラック数、Dell Tech Worldでの40-slot Dell PowerEdge展示予定が明示された。今後は実展示後の顧客名や設計採用数が重要になる。</li>
+<li>HBM4やSOCAMM2については、今週新しいMicron一次開示は確認できていない。3月時点の量産発表から前進した顧客配分や売上寄与は依然<span class="dir unknown">不明</span>である。</li>
+</ul>
+<h3 id="sec-需要側">需要側</h3>
+<ul>
+<li>TrendForceは上位9社CSPの2026年CapEx見通しを約8,300億ドルへ引き上げ、AIサーバーの電力消費が2026年にgeneral-purpose serversを上回ると見ている。</li>
+<li>Microsoftは2026年中もGPU、CPU、storage capacityの制約が続く見込みを示した。需要の強さと供給制約が同時進行している。</li>
+</ul>
+<h3 id="sec-市況">市況</h3>
+<ul>
+<li>TrendForceの2026-05-06更新は需要面の強さを示す一方、2026-04-30更新ではCoWoSや3nmの制約継続を指摘している。メモリ単体の需給だけでなく、周辺サプライチェーンの制約がMicronの実需変換速度を左右する。</li>
+<li>月次で追っているDRAM/NAND価格<span class="dir up">上昇</span>シナリオは崩れていないが、今週は新たな一次価格ソースを追加できていない。</li>
+</ul>
+<h3 id="sec-競合">競合</h3>
+<ul>
+<li>今週新規のSamsung / SK hynix一次情報は確認できていない。したがって、前回までに確認した「SamsungのVera Rubin向けHBM4/SOCAMM2量販」と「SK hynixのHBM・eSSD拡大」を相対比較の基準として維持する。</li>
+<li>Micron側に新しい採用開示がない状態では、競合が先に追加顧客や量産規模を開示した場合の見劣りリスクが続く。</li>
+</ul>
+<h3 id="sec-地政学・規制">地政学・規制</h3>
+<ul>
+<li>今週確認した範囲では、Micronに直接関わる新規の対中規制、補助金変更、ファブ遅延の一次情報は確認できていない。</li>
+<li>ただし、TrendForceのCoWoS/3nm制約指摘は、HBMやSSD需要が強くてもシステム立ち上げにサプライチェーンのボトルネックが残ることを示す補助情報として扱う。</li>
+</ul>
+</details>
+<details class="sectionDetails" id="sec-state更新候補" open><summary>5. state更新候補</summary>
+<h3 id="sec-last-report">last_report</h3>
+<ul>
+<li>最新週次を<code>targets/MU/reports/weekly/2026-05-11_weekly.md</code>へ更新する。</li>
+<li>判定は<span class="dir unknown">UNRATED</span>、source_statusはpartially_verifiedを維持する。</li>
+<li>前回dry-run後も需要の強さは継続したが、Micron固有の新規採用確認は不足している点を明記する。</li>
+</ul>
+<h3 id="sec-open-questions">open_questions</h3>
+<ul>
+<li>Micronの2026-05-20イベントで、HBM4/SOCAMM2/9650/6600 IONの顧客名、顧客配分、受注進捗が開示されるか。</li>
+<li>6600 IONのDell Tech World展示後に、設計採用数、売上寄与、data center SSD shareへの示唆が出るか。</li>
+<li>CoWoS / 3nm制約がMicronのHBM/SSD売上認識タイミングへどこまで影響するか。</li>
+</ul>
+<h3 id="sec-alerts">alerts</h3>
+<ul>
+<li>MicrosoftのCapEx増額には高い部材価格の影響が約250億ドル含まれる。需要が強くても、CSP投資効率の<span class="dir down">悪化</span>は警戒を続ける。</li>
+<li>CoWoSと3nmの制約継続は、Micron単体ではなくAIサーバー全体の立ち上がりボトルネックとして監視する。</li>
+</ul>
+<h3 id="sec-next-events">next_events</h3>
+<ul>
+<li>2026-05-20のMicron J.P. Morganカンファレンスで追加コメントを確認する。</li>
+<li>2026-05-18から2026-05-21のDell Tech Worldで6600 ION展示後の顧客反応を確認する。</li>
+<li>次回月次でTrendForce以外の価格ソースを追加する。</li>
+</ul>
+</details>
+<details class="sectionDetails" id="sec-source-log更新内容"><summary>6. source_log更新内容</summary>
+<ul>
+<li><code>targets/MU/sources/source_log.md</code>に追記した出典：</li>
+<li>Micron 6600 ION shipping発表</li>
+<li>TrendForce 2026-05-06 CSP CapEx更新</li>
+<li>TrendForce 2026-04-30 AI supply chain制約</li>
+<li>Microsoft FY2026 Q3 earnings call</li>
+<li>Micron 2026-05-20 investor event告知</li>
+<li>追記理由（重要主張との対応）：</li>
+<li>6600 ION shipping継続確認、CSP需要の強さ、部材価格<span class="dir up">上昇</span>リスク、サプライチェーン制約、次回イベント予定を本文の主要主張と対応付けるため。</li>
+</ul>
+</details>
+<details class="sectionDetails" id="sec-品質ゲート" open><summary>7. 品質ゲート</summary>
+<ul>
+<li>弱気材料を先に確認したか：はい。</li>
+<li>強制警戒条件に触れる兆候を確認したか：はい。CSP CapEx<span class="dir down">下方修正</span>やDRAM/HBM価格<span class="dir down">下落</span>は確認していないが、顧客裏付け不足とシステム側制約は継続監視にした。</li>
+<li>出典URL、発表日、確認日があるか：はい。</li>
+<li>外部取得データを保存しない場合でも、出典URL、発表日、確認日を本文とsource_logに残したか：はい。</li>
+<li><span class="dir unknown">未確認</span>項目をopen_questionsへ回したか：はい。</li>
+<li>週次ではスコア<span class="dir unknown">未付与</span>にしたか：はい。</li>
+<li><code>source_status: draft</code>のまま確定していないか：はい。<code>partially_verified</code>で確定する。</li>
+<li>投資助言ではなく観測レポートとして書いたか：はい。</li>
+</ul>
+</details>
+<details class="sectionDetails" id="sec-実行ログ要約-runs転記用" open><summary>8. 実行ログ要約（runs転記用）</summary>
+<ul>
+<li>対象レポート:</li>
+<li>ファイル名: <code>2026-05-11_weekly.md</code></li>
+<li>パス: <code>targets/MU/reports/weekly/2026-05-11_weekly.md</code></li>
+<li>source_status最終値（<code>draft</code>不可）:</li>
+<li>値: <code>partially_verified</code></li>
+<li>判定根拠: 主要主張の多くはMicron IRとMicrosoft IRで確認したが、需給・供給制約の一部はTrendForce補助情報に依存し、Micron固有の顧客採用確認が残るため。</li>
+<li>security-gate install-check:</li>
+<li>対象: <code>scripts/automation_readiness.mjs</code>、<code>scripts/automation_lock.mjs</code></li>
+<li>実行結果: sandbox制約により<code>EPERM</code>で失敗。runログへ記録する。</li>
+<li>security-gate scan（外部取得データを保存した場合のみ）:</li>
+<li>対象: なし</li>
+<li>実行結果: 未実施</li>
+<li>security-gate scan未実施時メモ（保存データなしの場合）:</li>
+<li>理由: 外部取得データを保存せず、URL・発表日・確認日を本文と<code>targets/MU/sources/source_log.md</code>へ残したため。</li>
+<li>出典管理（本文/<code>source_log</code>）: 実施済み</li>
+<li>HTML生成:</li>
+<li>コマンド: <code>node shared/viewer/render.mjs --target targets/MU --report targets/MU/reports/weekly/2026-05-11_weekly.md --out targets/MU/views/2026-05-11_weekly.html</code></li>
+<li>結果: 実行待ち</li>
+<li>report_verify:</li>
+<li>コマンド: <code>node scripts/report_verify.mjs --target targets/MU --report targets/MU/reports/weekly/2026-05-11_weekly.md</code></li>
+<li>結果（failures / warnings）: 実行待ち</li>
+<li>failures&gt;0時の修正内容: 実行後にrunログへ追記する</li>
+</ul>
+</details>
+<details class="sectionDetails" id="sec-次回確認すること" open><summary>9. 次回確認すること</summary>
+<ul>
+<li>Micron 2026-05-20イベントでHBM4、SOCAMM2、9650、6600 IONの追加コメントが出るか。</li>
+<li>Dell Tech Worldで6600 IONの顧客反応、設計採用、売上寄与の示唆が出るか。</li>
+<li>TrendForce以外の価格ソースでDRAM/NAND/HBM/enterprise SSDの方向感を補強できるか。</li>
+<li>CoWoS / 3nm制約が、Micronの実売上認識タイミングや顧客導入速度にどこまで影響するか。</li>
+</ul>
+</details>
+<details class="sectionDetails" id="sec-出典"><summary>10. 出典</summary>
+<div class="tableScroll"><table><thead><tr><th>種別</th><th>発行元</th><th>タイトル</th><th>URL</th><th>発表日</th><th>確認日</th></tr></thead><tbody><tr><td>primary</td><td>Micron IR</td><td>Industry-Leading 245TB Micron 6600 ION Data Center SSD Now Shipping</td><td>https://investors.micron.com/news-releases/news-release-details/industry-leading-245tb-micron-6600-ion-data-center-ssd-now</td><td>2026-05-05</td><td>2026-05-11</td></tr><tr><td>primary</td><td>Micron IR</td><td>Micron Announces Participation in Investor Event</td><td>https://investors.micron.com/news-releases/news-release-details/micron-announces-participation-investor-event-3</td><td>2026-04-29</td><td>2026-05-11</td></tr><tr><td>primary</td><td>Microsoft IR</td><td>Microsoft Fiscal Year 2026 Third Quarter Earnings Conference Call</td><td>https://www.microsoft.com/en-us/investor/events/fy-2026/earnings-fy-2026-q3</td><td>2026-04-29</td><td>2026-05-11</td></tr><tr><td>market_data</td><td>TrendForce</td><td>North American AI Data Center Expansion Drives 2026 CapEx of Top Nine CSPs to US$830 Billion, Says TrendForce</td><td>https://www.trendforce.com/presscenter/news/20260506-13033.html</td><td>2026-05-06</td><td>2026-05-11</td></tr><tr><td>market_data</td><td>TrendForce</td><td>AI Competition Turns into a Supply Chain Arms Race, Tightening Advanced Packaging and 3nm Capacity, Says TrendForce</td><td>https://www.trendforce.com/presscenter/news/20260430-13028.html</td><td>2026-04-30</td><td>2026-05-11</td></tr></tbody></table></div>
+</details>
+  </article>
+</main>
+
+<script>
+document.querySelectorAll("[data-copy]").forEach((button) => {
+  button.addEventListener("click", async () => {
+    const label = button.getAttribute("data-copy-label") || "text";
+    const text = button.getAttribute("data-copy") || "";
+    try {
+      await navigator.clipboard.writeText(text);
+      const original = button.textContent;
+      button.textContent = "コピー完了: " + label;
+      setTimeout(() => { button.textContent = original; }, 1200);
+    } catch (error) {
+      const fallback = document.querySelector("[data-copy-fallback]");
+      if (fallback) {
+        const textarea = fallback.querySelector("textarea");
+        fallback.open = true;
+        if (textarea) {
+          textarea.value = text;
+          textarea.focus();
+          textarea.select();
+        }
+      }
+      button.textContent = "コピー失敗";
+    }
+  });
+});
+</script>
+</body>
+</html>

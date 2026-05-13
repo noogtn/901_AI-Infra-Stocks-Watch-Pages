@@ -1,0 +1,975 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SK hynix競合target 初回ベースライン確認レポート</title>
+<style>
+
+:root {
+  color-scheme: light;
+  --bg: #f7f8fa;
+  --panel: #ffffff;
+  --text: #1f2933;
+  --muted: #627080;
+  --line: #d9dee6;
+  --accent: #145c9e;
+  --warn: #a85400;
+  --danger: #a51d2d;
+  --ok: #1f7a4d;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  line-height: 1.65;
+  overflow-wrap: anywhere;
+}
+.skipLink {
+  position: absolute;
+  left: 12px;
+  top: -48px;
+  z-index: 10;
+  background: #fff;
+  border: 2px solid var(--accent);
+  border-radius: 8px;
+  color: var(--accent);
+  padding: 8px 10px;
+}
+.skipLink:focus { top: 12px; }
+.topbar {
+  display: flex;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 28px clamp(16px, 4vw, 48px);
+  background: #ffffff;
+  border-bottom: 1px solid var(--line);
+}
+.eyebrow, .meta { color: var(--muted); margin: 0 0 6px; }
+h1 { margin: 0; font-size: 2rem; line-height: 1.18; letter-spacing: 0; }
+main { max-width: 1180px; margin: 0 auto; padding: 24px clamp(14px, 3vw, 32px) 56px; }
+.statusStack { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; }
+.badge {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 6px 10px;
+  font-weight: 700;
+  background: #fff;
+}
+.judgement.green { color: var(--ok); border-color: #8cc7a8; }
+.judgement.light_green { color: #4d7a1f; border-color: #b6d986; }
+.judgement.yellow { color: #7c6500; border-color: #d8c65a; }
+.judgement.orange { color: var(--warn); border-color: #d79a4a; }
+.judgement.red { color: var(--danger); border-color: #d8818d; }
+.judgement.unrated { color: #475569; border-color: #94a3b8; background: #f8fafc; }
+.source.needs_review { color: var(--danger); border-color: #d8818d; }
+.source.partially_verified, .source.draft { color: var(--warn); border-color: #d79a4a; }
+.source.verified { color: var(--ok); border-color: #8cc7a8; }
+.source.unknown, .source.unrated { color: #475569; border-color: #94a3b8; background: #f8fafc; }
+.statusCards, .summaryCards {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 18px;
+}
+.statusCard, .summaryCard {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-left: 6px solid var(--accent);
+  border-radius: 8px;
+  padding: 14px;
+}
+.statusCard > span, .summaryCard > span {
+  display: block;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 700;
+  margin-bottom: 4px;
+  text-transform: uppercase;
+}
+.statusCard strong, .summaryCard strong {
+  display: block;
+  font-size: 22px;
+  line-height: 1.25;
+}
+.statusCard p, .summaryCard p {
+  color: var(--muted);
+  margin: 8px 0 0;
+}
+.statusCard.green, .summaryCard.ok { border-left-color: var(--ok); }
+.statusCard.light_green { border-left-color: #6f9b2e; }
+.statusCard.yellow { border-left-color: #b69700; }
+.statusCard.orange, .statusCard.draft, .statusCard.partially_verified, .summaryCard.warn { border-left-color: var(--warn); }
+.statusCard.red, .statusCard.needs_review, .summaryCard.danger { border-left-color: var(--danger); }
+.statusCard.warn { border-left-color: var(--warn); }
+.statusCard.unrated, .statusCard.unknown { border-left-color: #64748b; }
+.summaryCard ul {
+  margin: 10px 0 0;
+  padding-left: 20px;
+}
+.summaryCard li { margin: 4px 0; }
+.decisionGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 18px;
+}
+.decisionGrid article {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 14px;
+}
+.decisionGrid span {
+  display: block;
+  color: var(--muted);
+  font-size: 13px;
+  margin-bottom: 4px;
+}
+.decisionGrid strong { font-size: 18px; line-height: 1.35; }
+.toc, .actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  align-items: center;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 12px;
+  margin-bottom: 16px;
+}
+.toc a { color: var(--accent); text-decoration: none; }
+button {
+  border: 1px solid #b9c2cf;
+  border-radius: 8px;
+  background: #fff;
+  color: var(--text);
+  padding: 8px 10px;
+  font: inherit;
+  cursor: pointer;
+  min-height: 44px;
+  touch-action: manipulation;
+}
+button:hover { border-color: var(--accent); color: var(--accent); }
+button:focus-visible,
+a:focus-visible,
+summary:focus-visible {
+  outline: 3px solid #5a8db8;
+  outline-offset: 3px;
+}
+.copyFallback {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  margin: 0 0 18px;
+  padding: 12px;
+}
+.copyFallback summary {
+  cursor: pointer;
+  font-weight: 700;
+}
+.copyFallback p {
+  color: var(--muted);
+  margin: 4px 0 8px;
+}
+.copyFallback textarea {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  font: 13px/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  min-height: 160px;
+  padding: 10px;
+  resize: vertical;
+  width: 100%;
+}
+.report {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 4px 18px 18px;
+}
+.report h1 { font-size: 28px; margin: 18px 0 10px; }
+.report h2 { font-size: 21px; margin: 24px 0 10px; padding-top: 8px; border-top: 1px solid var(--line); }
+.report h3 { font-size: 17px; margin: 18px 0 8px; }
+.report table { border-collapse: collapse; width: 100%; overflow-x: auto; display: block; }
+.report th, .report td { border: 1px solid var(--line); padding: 8px; text-align: left; vertical-align: top; }
+.report code { background: #eef1f5; padding: 2px 4px; border-radius: 4px; }
+.report pre { background: #111827; color: #f7f8fa; padding: 12px; border-radius: 8px; overflow-x: auto; }
+.sectionDetails {
+  border-top: 1px solid var(--line);
+  padding: 6px 0;
+}
+.sectionDetails > summary {
+  cursor: pointer;
+  font-size: 21px;
+  font-weight: 700;
+  padding: 10px 0;
+}
+.sectionDetails.sectionMarket {
+  border: 1px solid var(--line);
+  border-left: 6px solid var(--accent);
+  border-radius: 8px;
+  padding: 8px 12px 12px;
+  background: #fbfdff;
+}
+.sectionDetails.sectionMarket > summary {
+  margin: 0 0 4px;
+}
+.dir {
+  display: inline-block;
+  padding: 1px 6px;
+  border-radius: 999px;
+  font-size: 1em;
+  border: 1px solid transparent;
+}
+.dir.up {
+  color: var(--ok);
+  border-color: #8cc7a8;
+  background: #f0fbf5;
+}
+.dir.down {
+  color: var(--danger);
+  border-color: #d8818d;
+  background: #fff5f6;
+}
+.dir.flat {
+  color: #475569;
+  border-color: #94a3b8;
+  background: #f8fafc;
+}
+.dir.unknown {
+  color: var(--warn);
+  border-color: #d79a4a;
+  background: #fff9f1;
+  font-weight: 600;
+}
+.firstView {
+  display: grid;
+  gap: 14px;
+  margin-bottom: 18px;
+}
+.statusCards {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+.statusCard,
+.summaryCard,
+.decisionGrid article,
+.toc,
+.actions,
+.report,
+.sourceDrawer,
+.riskHighlight,
+.scoreboard {
+  box-shadow: 0 1px 2px rgba(31, 41, 51, 0.04);
+}
+.statusCard strong,
+.decisionGrid strong,
+.summaryCard strong {
+  overflow-wrap: anywhere;
+}
+.statusCard .miniList,
+.sourceDrawer .miniList {
+  margin: 10px 0 0;
+  padding-left: 18px;
+  color: var(--muted);
+  font-size: 14px;
+}
+.forcedCard.ok { border-left-color: var(--ok); }
+.forcedCard.warn { border-left-color: var(--warn); }
+.forcedCard.danger { border-left-color: var(--danger); }
+.sourceMetrics {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+}
+.metricPill {
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: #f8fafc;
+  color: #334155;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 2px 8px;
+}
+.riskHighlight {
+  background: #fffdf8;
+  border: 1px solid #e6d7b4;
+  border-left: 6px solid var(--warn);
+  border-radius: 8px;
+  padding: 14px;
+}
+.riskHighlight > span,
+.scoreboard > span,
+.sourceDrawer > summary span {
+  color: var(--muted);
+  display: block;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+.riskHighlight h2,
+.scoreboard h2 {
+  font-size: 18px;
+  line-height: 1.3;
+  margin: 2px 0 8px;
+}
+.riskHighlight ul {
+  display: grid;
+  gap: 6px;
+  margin: 10px 0 0;
+  padding-left: 20px;
+}
+.riskHighlight li::marker {
+  content: "Risk ";
+  color: var(--warn);
+  font-weight: 800;
+}
+.scoreboard {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 14px;
+}
+.scoreGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 12px;
+}
+.scoreItem {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fbfcfd;
+  min-width: 0;
+  padding: 12px;
+}
+.scoreItem header {
+  align-items: flex-start;
+  display: flex;
+  gap: 8px;
+  justify-content: space-between;
+}
+.scoreItem h3 {
+  font-size: 15px;
+  line-height: 1.35;
+  margin: 0;
+}
+.scoreValue {
+  border: 1px solid #c8d1dc;
+  border-radius: 999px;
+  color: #1f2933;
+  flex: 0 0 auto;
+  font-variant-numeric: tabular-nums;
+  font-weight: 800;
+  padding: 1px 8px;
+}
+.scoreItem p {
+  color: var(--muted);
+  font-size: 14px;
+  margin: 8px 0 0;
+}
+.scoreItem .scoreMeta {
+  color: var(--muted);
+  font-size: 12px;
+  margin-top: 8px;
+}
+.scoreItem.unrated .scoreValue,
+.scoreItem.unknown .scoreValue {
+  background: #fff9f1;
+  border-color: #d79a4a;
+  color: var(--warn);
+}
+.sourceDrawer {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  margin-bottom: 16px;
+  padding: 0;
+}
+.sourceDrawer > summary {
+  cursor: pointer;
+  font-weight: 800;
+  list-style-position: inside;
+  padding: 12px 14px;
+}
+.sourceDrawerBody {
+  border-top: 1px solid var(--line);
+  padding: 12px 14px 14px;
+}
+.sourceList {
+  display: grid;
+  gap: 8px;
+  margin-top: 12px;
+}
+.sourceItem {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 10px;
+}
+.sourceItem.primary {
+  border-left: 5px solid var(--ok);
+}
+.sourceItem.market_data {
+  border-left: 5px solid var(--accent);
+}
+.sourceType {
+  color: var(--muted);
+  display: block;
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+.sourceTitle {
+  display: block;
+  font-weight: 800;
+  line-height: 1.35;
+  margin-top: 2px;
+}
+.sourceMeta {
+  color: var(--muted);
+  font-size: 13px;
+  margin: 4px 0 0;
+}
+.sourceItem a {
+  color: var(--accent);
+}
+.report a {
+  color: var(--accent);
+  overflow-wrap: anywhere;
+}
+.tableScroll {
+  max-width: 100%;
+  overflow-x: auto;
+  overscroll-behavior-inline: contain;
+}
+.tableScroll table {
+  display: table;
+  min-width: 680px;
+  width: 100%;
+}
+@media (max-width: 720px) {
+  .topbar { flex-direction: column; }
+  .statusStack { align-items: flex-start; flex-direction: row; flex-wrap: wrap; }
+  .statusCards, .summaryCards { grid-template-columns: 1fr; }
+  .decisionGrid { grid-template-columns: 1fr; }
+  .scoreGrid { grid-template-columns: 1fr; }
+  .report { padding: 2px 12px 14px; }
+}
+@media (max-width: 420px) {
+  h1 { font-size: 1.45rem; }
+  main { padding-left: 10px; padding-right: 10px; }
+  .topbar { padding: 18px 12px; }
+  .badge,
+  button {
+    width: 100%;
+    justify-content: center;
+  }
+  .actions { align-items: stretch; flex-direction: column; }
+  .decisionGrid strong { font-size: 16px; }
+}
+@media print {
+  @page { margin: 14mm; }
+  body {
+    background: #fff;
+    color: #111;
+    font-size: 11pt;
+  }
+  main {
+    max-width: none;
+    padding: 0;
+  }
+  .topbar {
+    padding: 0 0 12px;
+    border-bottom-color: #999;
+  }
+  .toc, .report, .decisionGrid article, .statusCard, .summaryCard {
+    border-color: #999;
+    box-shadow: none;
+  }
+  .report table {
+    display: table;
+    table-layout: auto;
+    width: 100%;
+    font-size: 9pt;
+  }
+  .report thead {
+    display: table-header-group;
+  }
+  .report tr {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+  .report th, .report td {
+    overflow-wrap: anywhere;
+    word-break: break-word;
+    white-space: normal;
+  }
+  .toc, .statusCards, .summaryCards, .decisionGrid {
+    break-inside: avoid-page;
+  }
+  .report, .sectionDetails {
+    break-inside: auto;
+  }
+  a {
+    color: #111;
+    text-decoration: underline;
+  }
+}
+
+</style>
+
+<style>
+.pagesPublicNotice {
+  margin: 0;
+  padding: 10px 14px;
+  border-bottom: 1px solid #d7dee8;
+  background: #f6f8fb;
+  color: #243040;
+  font: 13px/1.55 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+.pagesPublicNotice strong {
+  display: inline-block;
+  margin-right: 8px;
+}
+.pagesPublicNotice small {
+  display: block;
+  margin-top: 2px;
+  color: #5b677a;
+  overflow-wrap: anywhere;
+}
+@media (max-width: 480px) {
+  .pagesPublicNotice {
+    padding: 9px 10px;
+  }
+  .pagesPublicNotice strong {
+    display: block;
+    margin: 0 0 2px;
+  }
+}
+</style>
+</head>
+<body>
+<aside class="pagesPublicNotice" role="note">
+  <strong>GitHub Pages public view</strong>
+  <span>このHTMLはGitHub Pagesでpublic配信される前提の閲覧用生成物です。個人情報・非公開メモ・認証情報を含めないでください。</span>
+  <small>source: targets/SKHYNIX/views/2026-05_initial_baseline.html / staged: 2026-05-13T22:05:31.239Z</small>
+</aside>
+
+<a class="skipLink" href="#main">本文へ移動</a>
+<header class="topbar">
+  <div>
+    <p class="eyebrow">000660 SK hynix</p>
+    <h1>SK hynix競合target 初回ベースライン確認レポート</h1>
+    <p class="meta">view: quarterly / date: 2026-05-10 / period: 2026-05_initial_baseline</p>
+  </div>
+  <div class="statusStack">
+    <span class="badge judgement unrated" aria-label="判定 UNRATED">UNRATED</span>
+    <span class="badge source partially_verified" aria-label="出典確認状況 partially_verified">partially_verified</span>
+  </div>
+</header>
+
+<main id="main">
+  <section class="firstView" aria-label="判断用ダッシュボード">
+  <section class="statusCards" aria-label="判定、出典品質、強制警戒条件">
+    <article class="statusCard judgementCard unrated">
+      <span>Judgement</span>
+      <strong>UNRATED</strong>
+      <p>現在の観測判定。色だけでなくラベルと本文で確認します。</p>
+    </article>
+    <article class="statusCard sourceCard partially_verified">
+      <span>Source status</span>
+      <strong>partially_verified</strong>
+      <p>一部は検証済み、未確認項目があります。 出典4件、一次情報4件。</p>
+      <div class="sourceMetrics" aria-label="出典内訳">
+        <span class="metricPill">primary 4</span>
+        <span class="metricPill">other 0</span>
+        <span class="metricPill">unknown 0</span>
+      </div>
+      <ul class="miniList"><li>未検証の初期ベースライン：直近決算本文、決算説明資料本文、HBM3E/HBM4/HBM4E採用、DRAM/NAND ASP、bit shipment、CapEx、inventory、FCF。</li><li>一次情報で確認できなかった項目：直近決算PDF本文の数値抽出、NVIDIAまたはCSPの名指し採用、TrendForce/Omdia等の市況情報。</li><li>URL未提供または本文未確認の項目：annual report、quarterly filing、最新presentation PDF本文。</li></ul>
+    </article>
+    <article class="statusCard forcedCard warn">
+      <span>Forced alert</span>
+      <strong>このtarget固有の強制警戒条件：SK hynixがNVIDIAまたは大手CSP向けH...</strong>
+      <p>本文中の撤退条件・強制警戒条件コメントから抽出しました。</p>
+      <ul><li>このtarget固有の強制警戒条件：SK hynixがNVIDIAまたは大手CSP向けHBM4/HBM4EでMicronを大きく上回る採用・歩留まり・長期契約を獲得した場合、Micron相対魅力の低下を警戒する。</li></ul>
+    </article>
+    <article class="statusCard previousChangeCard _">
+      <span>Previous change</span>
+      <strong>初回または前回なし</strong>
+      <p>前回レポートからの判定変化と主要な差分です。</p>
+      <ul class="miniList"><li>最も重要な変化: 初回ベースラインとして確認できたこと：SK hynixのIR入口、Earnings Release入口、上場情報、Newsroom入口を確認した。</li></ul>
+    </article>
+    <article class="statusCard unconfirmedCard warn">
+      <span>Unconfirmed</span>
+      <strong>4項目を確認</strong>
+      <p>強気材料として扱わず、次回確認へ回す項目です。</p>
+      <ul class="miniList"><li>未検証の初期ベースライン：直近決算本文、決算説明資料本文、HBM3E/HBM4/HBM4E採用、DRAM/NAND ASP、bit shipment、CapEx、inventory、FCF。</li><li>一次情報で確認できなかった項目：直近決算PDF本文の数値抽出、NVIDIAまたはCSPの名指し採用、TrendForce/Omdia等の市況情報。</li><li>URL未提供または本文未確認の項目：annual report、quarterly filing、最新presentation PDF本文。</li></ul>
+    </article>
+  </section>
+
+  <section class="decisionGrid">
+    <article>
+      <span>Score</span>
+      <strong>N/A / 27</strong>
+    </article>
+    <article>
+      <span>Conclusion</span>
+      <strong>SK hynixはMicron集中投資の相対比較で最優先の直接競合targetとして追加する。ただし現時点ではIR入口、上場情報、Earnings Release入口の確認に留まり、直近決算数値・HBM採用・バリュエーションは未評価である。</strong>
+    </article>
+    <article>
+      <span>Action</span>
+      <strong>対象企業次回決算：needs_research。</strong>
+    </article>
+  </section>
+
+<section class="riskHighlight" aria-label="弱気材料ファースト">
+    <span>Risk first</span>
+    <h2>弱気材料を先に確認</h2>
+    <p>弱気材料3：DRAM/HBM価格がピーク化し、CapExや在庫が同時に増える場合、メモリ市況全体の供給過剰リスクがMicronにも波及する。</p>
+    <ul><li>弱気材料1：SK hynixがHBMでMicronより明確に優位なら、Micron集中投資の相対魅力を下げる可能性がある。</li><li>弱気材料2：直近決算PDF本文をまだ抽出していないため、売上・利益・CapEx・在庫・HBMコメントを強気材料として扱えない。</li><li>弱気材料3：DRAM/HBM価格がピーク化し、CapExや在庫が同時に増える場合、メモリ市況全体の供給過剰リスクがMicronにも波及する。</li><li>これがMicron集中投資との比較に与える影響：SK hynixはMicronの投資仮説を補強する材料にも、相対劣後を示す材料にもなり得る。初回では未採点とし、確認済み入口だけを記録する。</li><li>未確認の弱気材料：needs_research。HBM4/HBM4E採用、NVIDIA向け契約、DRAM/HBM ASP、在庫、CapEx、FCF。</li></ul>
+  </section>
+<section class="scoreboard" aria-label="9項目スコアカード">
+    <span>Scoreboard</span>
+    <h2>総合：未採点 / 27</h2>
+    <p>判定スコアの確認結果です。</p>
+    <div class="scoreGrid"><article class="scoreItem unrated">
+    <header>
+      <h3>A. AI需要・CSP CapEx</h3>
+      <span class="scoreValue">未採点 / 3</span>
+    </header>
+    <p>理由は本文を確認。</p>
+    <p class="scoreMeta">前回比: 未抽出 / 重要出典: 本文を確認</p>
+  </article><article class="scoreItem unrated">
+    <header>
+      <h3>B. DRAM / HBM市況または該当中核市況</h3>
+      <span class="scoreValue">未採点 / 3</span>
+    </header>
+    <p>理由は本文を確認。</p>
+    <p class="scoreMeta">前回比: 未抽出 / 重要出典: 本文を確認</p>
+  </article><article class="scoreItem unrated">
+    <header>
+      <h3>C. NAND / SSD市況または該当隣接市況</h3>
+      <span class="scoreValue">未採点 / 3</span>
+    </header>
+    <p>理由は本文を確認。</p>
+    <p class="scoreMeta">前回比: 未抽出 / 重要出典: 本文を確認</p>
+  </article><article class="scoreItem unrated">
+    <header>
+      <h3>D. 対象企業決算・ガイダンス</h3>
+      <span class="scoreValue">未採点 / 3</span>
+    </header>
+    <p>理由は本文を確認。</p>
+    <p class="scoreMeta">前回比: 未抽出 / 重要出典: 本文を確認</p>
+  </article><article class="scoreItem unrated">
+    <header>
+      <h3>E. AI製品採用・ロードマップ</h3>
+      <span class="scoreValue">未採点 / 3</span>
+    </header>
+    <p>理由は本文を確認。</p>
+    <p class="scoreMeta">前回比: 未抽出 / 重要出典: 本文を確認</p>
+  </article><article class="scoreItem unrated">
+    <header>
+      <h3>F. CapExと供給規律</h3>
+      <span class="scoreValue">未採点 / 3</span>
+    </header>
+    <p>理由は本文を確認。</p>
+    <p class="scoreMeta">前回比: 未抽出 / 重要出典: 本文を確認</p>
+  </article><article class="scoreItem unrated">
+    <header>
+      <h3>G. 在庫・キャッシュフロー</h3>
+      <span class="scoreValue">未採点 / 3</span>
+    </header>
+    <p>理由は本文を確認。</p>
+    <p class="scoreMeta">前回比: 未抽出 / 重要出典: 本文を確認</p>
+  </article><article class="scoreItem unrated">
+    <header>
+      <h3>H. 競争環境</h3>
+      <span class="scoreValue">未採点 / 3</span>
+    </header>
+    <p>理由は本文を確認。</p>
+    <p class="scoreMeta">前回比: 未抽出 / 重要出典: 本文を確認</p>
+  </article><article class="scoreItem unrated">
+    <header>
+      <h3>I. バリュエーション</h3>
+      <span class="scoreValue">未採点 / 3</span>
+    </header>
+    <p>理由は本文を確認。</p>
+    <p class="scoreMeta">前回比: 未抽出 / 重要出典: 本文を確認</p>
+  </article></div>
+  </section>
+  </section>
+
+  <nav class="toc" aria-label="目次">
+    <strong>目次</strong>
+    <a href="#sec-親提供url受け取り欄">0. 親提供URL受け取り欄</a><a href="#sec-今回の結論">1. 今回の結論</a><a href="#sec-弱気材料を先に確認">2. 弱気材料を先に確認</a><a href="#sec-強制警戒条件・比較上の注意">3. 強制警戒条件・比較上の注意</a><a href="#sec-未検証・不明点">4. 未検証・不明点</a><a href="#sec-強気材料">5. 強気材料</a><a href="#sec-対象企業の事業・決算・ガイダンス確認">6. 対象企業の事業・決算・ガイダンス確認</a><a href="#sec-aiインフラ内での役割">7. AIインフラ内での役割</a><a href="#sec-市況確認">8. 市況確認</a><a href="#sec-競合比較">9. 競合比較</a><a href="#sec-判定スコア">10. 判定スコア</a><a href="#sec-portfolio更新候補">11. portfolio更新候補</a><a href="#sec-品質ゲート">12. 品質ゲート</a><a href="#sec-state更新候補">13. state更新候補</a><a href="#sec-データ・ログ更新候補">14. データ・ログ更新候補</a><a href="#sec-次回までの監視イベント">15. 次回までの監視イベント</a><a href="#sec-出典">16. 出典</a>
+  </nav>
+
+  <section class="actions" aria-label="コピー操作">
+    <button type="button" aria-label="Copy next prompt" data-copy-label="next prompt" data-copy="# 次回確認プロンプト: SK hynix競合target 初回ベースライン確認レポート&#10;&#10;- target: 000660&#10;- judgement: UNRATED&#10;- score: N/A / 27&#10;- source_status: partially_verified&#10;&#10;次回レポートでは、以下を優先して一次情報または信頼できる出典で確認してください。&#10;&#10;## 未検証・不明点&#10;- 未検証の初期ベースライン：直近決算本文、決算説明資料本文、HBM3E/HBM4/HBM4E採用、DRAM/NAND ASP、bit shipment、CapEx、inventory、FCF。&#10;- 一次情報で確認できなかった項目：直近決算PDF本文の数値抽出、NVIDIAまたはCSPの名指し採用、TrendForce/Omdia等の市況情報。&#10;- URL未提供または本文未確認の項目：annual report、quarterly filing、最新presentation PDF本文。&#10;- 次回へ持ち越す確認事項：Earnings Release PDFをsecurity-gate対象として取得し、決算KPIとHBMコメントを抽出する。&#10;&#10;## 次回監視イベント&#10;- 対象企業次回決算：needs_research。&#10;- 主要競合次回決算：Micron、Samsung、SanDisk。&#10;- 需要側企業決算：Microsoft、Alphabet、Amazon、Meta、Oracle、NVIDIA。&#10;- 関連業界イベント：NVIDIA GTC、HBM4/HBM4E関連発表。&#10;- 市況更新：DRAM/HBM/NAND contract price、enterprise SSD。&#10;- その他重要イベント：NVIDIAまたはCSPのHBM採用コメント。&#10;&#10;## Open questions&#10;- 直近決算KPI、HBM採用、CapEx、在庫、FCF、バリュエーション。">Copy next prompt</button>
+    <button type="button" aria-label="Copy full report Markdown" data-copy-label="report Markdown" data-copy="---&#10;view: quarterly&#10;target: SKHYNIX&#10;target_id: SKHYNIX&#10;report_type: target_initial_baseline&#10;title: SK hynix競合target 初回ベースライン確認レポート&#10;date: 2026-05-10&#10;period: 2026-05_initial_baseline&#10;company: SK hynix&#10;ticker: &quot;000660&quot;&#10;judgement: UNRATED&#10;score:&#10;score_max: 27&#10;source_status: partially_verified&#10;research_status: needs_research&#10;previous_report:&#10;generated_html: ../../views/2026-05_initial_baseline.html&#10;report_verify:&#10;---&#10;&#10;# SK hynix競合target 初回ベースライン確認レポート&#10;&#10;対象：SK hynix（000660）&#10;日付：2026-05-10&#10;対象期間：2026-05 初回target追加&#10;判定：UNRATED&#10;総合スコア：未付与 / 27&#10;一言結論：SK hynixはMicron集中投資の相対比較で最優先の直接競合targetとして追加する。ただし現時点ではIR入口、上場情報、Earnings Release入口の確認に留まり、直近決算数値・HBM採用・バリュエーションは未評価である。&#10;&#10;注記：これは投資助言ではなく、Micron集中投資との相対比較へ渡すための初回観測レポートである。未確認情報は`needs_review`または`needs_research`として隔離する。&#10;&#10;## 0. 親提供URL受け取り欄&#10;&#10;| source_id | 種別 | 発行元 | タイトルまたは確認対象 | URL | 発表日 | 確認日 | 期待する確認事項 | 処理状態 |&#10;|---|---|---|---|---|---|---|---|---|&#10;| SRC-SKH-001 | primary | SK hynix | Investor Relations | https://www.skhynix.com/ir/UI-FR-IR01/ | n/a | 2026-05-10 | IR入口、Earnings Release入口、銘柄コード | partially_verified |&#10;| SRC-SKH-002 | primary | SK hynix | Listing Information | https://www.skhynix.com/ir/UI-FR-IR03/ | n/a | 2026-05-10 | 上場市場、ticker、ISIN | verified |&#10;| SRC-SKH-003 | primary | SK hynix | Earnings Release | https://www.skhynix.com/ir/UI-FR-IR06/ | n/a | 2026-05-10 | 最新決算PDF入口 | partially_verified |&#10;| SRC-SKH-004 | primary | SK hynix | Newsroom | https://news.skhynix.com/ | n/a | 2026-05-10 | プレスリリース、Business、Corporate Earnings入口 | partially_verified |&#10;&#10;## 1. 今回の結論&#10;&#10;- 初回ベースラインとして確認できたこと：SK hynixのIR入口、Earnings Release入口、上場情報、Newsroom入口を確認した。&#10;- Micron集中投資との相対比較に使えること：SK hynixはHBM/DRAM/NANDの直接競合として、Micronの相対魅力を確認する最優先targetである。&#10;- まだ相対比較に使えないこと：直近決算の売上、粗利、営業利益率、FCF、CapEx、在庫、HBM採用状況、顧客構成、バリュエーションは未確認。&#10;- portfolioへ渡す状態：partial。`target_dir`は有効だが、相対魅力は`needs_research`のまま維持する。&#10;&#10;## 2. 弱気材料を先に確認&#10;&#10;- 弱気材料1：SK hynixがHBMでMicronより明確に優位なら、Micron集中投資の相対魅力を下げる可能性がある。&#10;- 弱気材料2：直近決算PDF本文をまだ抽出していないため、売上・利益・CapEx・在庫・HBMコメントを強気材料として扱えない。&#10;- 弱気材料3：DRAM/HBM価格がピーク化し、CapExや在庫が同時に増える場合、メモリ市況全体の供給過剰リスクがMicronにも波及する。&#10;- これがMicron集中投資との比較に与える影響：SK hynixはMicronの投資仮説を補強する材料にも、相対劣後を示す材料にもなり得る。初回では未採点とし、確認済み入口だけを記録する。&#10;- 未確認の弱気材料：`needs_research`。HBM4/HBM4E採用、NVIDIA向け契約、DRAM/HBM ASP、在庫、CapEx、FCF。&#10;&#10;## 3. 強制警戒条件・比較上の注意&#10;&#10;- このtarget固有の強制警戒条件：SK hynixがNVIDIAまたは大手CSP向けHBM4/HBM4EでMicronを大きく上回る採用・歩留まり・長期契約を獲得した場合、Micron相対魅力の低下を警戒する。&#10;- Micron側の強制警戒条件に影響する競合材料：SK hynixが供給増を進め、DRAM/HBM価格下落と在庫増加が同時に出た場合、Micronの強制ORANGE条件にも波及する。&#10;- portfolio比較で強気材料として扱ってはいけない情報：未確認のHBMシェア、NVIDIA向け採用、2026年供給契約、SNSや匿名情報。&#10;- `needs_review`に隔離した情報：現時点で未確認の決算数値、顧客名、シェア推定。&#10;&#10;## 4. 未検証・不明点&#10;&#10;- 未検証の初期ベースライン：直近決算本文、決算説明資料本文、HBM3E/HBM4/HBM4E採用、DRAM/NAND ASP、bit shipment、CapEx、inventory、FCF。&#10;- 一次情報で確認できなかった項目：直近決算PDF本文の数値抽出、NVIDIAまたはCSPの名指し採用、TrendForce/Omdia等の市況情報。&#10;- URL未提供または本文未確認の項目：annual report、quarterly filing、最新presentation PDF本文。&#10;- 次回へ持ち越す確認事項：Earnings Release PDFをsecurity-gate対象として取得し、決算KPIとHBMコメントを抽出する。&#10;&#10;## 5. 強気材料&#10;&#10;- 強気材料1：SK hynixはMicronと同じメモリ領域の直接競合であり、HBM/DRAM/NAND比較の主要ベンチマークになる。&#10;- 強気材料2：公式IRとEarnings Release入口を確認できたため、今後の定期観測をtarget単位で回せる。&#10;- 強気材料3：上場情報としてKorea Stock Exchange、ticker 000660、ISIN KR7000660001を確認できた。&#10;- これがMicron集中投資との比較を変える理由：SK hynixの確認済みデータが揃えば、MicronのHBM・DRAM・NAND・CapEx規律が相対的に強いか弱いかを直接比較できる。&#10;- 強気材料として採用しない未確認情報：HBMシェア、NVIDIA向け採用優位、2026年供給予約、粗利率優位。&#10;&#10;## 6. 対象企業の事業・決算・ガイダンス確認&#10;&#10;- 売上：needs_research。&#10;- 売上高ガイダンス：needs_research。&#10;- gross margin：needs_research。&#10;- operating margin：needs_research。&#10;- EPS：needs_research。&#10;- FCF：needs_research。&#10;- operating cash flow：needs_research。&#10;- CapEx：needs_research。&#10;- cash / investments / debt：needs_research。&#10;- inventory：needs_research。&#10;- セグメント：DRAM、NAND、HBM関連の確認が必要。&#10;- AIインフラ関連売上：needs_research。&#10;- 会社が明示した需要コメント：needs_research。&#10;- 会社が明示した供給・投資コメント：needs_research。&#10;&#10;## 7. AIインフラ内での役割&#10;&#10;- role_in_ai_infra：HBM、server DRAM、NANDを持つメモリ直接競合。&#10;- Micronとの直接競合領域：HBM、DRAM、NAND、enterprise SSD関連。&#10;- Micronとの隣接・代替領域：AIメモリ供給能力、顧客採用、CapEx規律。&#10;- AI需要が効く主要製品：HBM、DDR5/RDIMM、LPDDR、NAND、SSD。&#10;- 顧客・プラットフォーム採用状況：needs_research。&#10;- 技術世代・ロードマップ：HBM3E/HBM4/HBM4E、NAND世代、DDR5/RDIMMを次回確認。&#10;- Micron集中投資への示唆：SK hynixが強すぎる場合はMicron相対魅力低下、メモリ市場全体が強ければMicron仮説補強。&#10;&#10;## 8. 市況確認&#10;&#10;- DRAM：needs_research。&#10;- HBM：needs_research。&#10;- RDIMM：needs_research。&#10;- LPDDR：needs_research。&#10;- NAND：needs_research。&#10;- enterprise SSD：needs_research。&#10;- HDD / networking / optical / foundry / EDA / equipment等の該当市況：not_applicable。&#10;- 価格方向（上昇 / 横ばい / 下落 / 不明 / not_applicable）：不明。&#10;- 供給過剰リスク：不明。CapEx、在庫、ASPの同時悪化を監視する。&#10;&#10;## 9. 競合比較&#10;&#10;- Micronに対する相対優位：needs_research。&#10;- Micronに対する相対劣位：needs_research。&#10;- SK hynix / Samsung / SanDisk等の直接競合比較：本target自身。Samsung、SanDiskとの比較は未実施。&#10;- 隣接セクター比較：未実施。&#10;- Micron集中の相対魅力は上がったか、下がったか、未判定か：未判定。&#10;- portfolioの`relative_to_micron`候補：needs_research。&#10;&#10;## 10. 判定スコア&#10;&#10;- A. AI需要・CSP CapEx：未採点 / 3&#10;- B. DRAM / HBM市況または該当中核市況：未採点 / 3&#10;- C. NAND / SSD市況または該当隣接市況：未採点 / 3&#10;- D. 対象企業決算・ガイダンス：未採点 / 3&#10;- E. AI製品採用・ロードマップ：未採点 / 3&#10;- F. CapExと供給規律：未採点 / 3&#10;- G. 在庫・キャッシュフロー：未採点 / 3&#10;- H. 競争環境：未採点 / 3&#10;- I. バリュエーション：未採点 / 3&#10;- 総合：未採点 / 27&#10;- 通常スコア判定：UNRATED&#10;- 最終判定：UNRATED&#10;&#10;## 11. portfolio更新候補&#10;&#10;- ticker：000660&#10;- company：SK hynix&#10;- category：memory&#10;- role_in_ai_infra：memory_peer&#10;- current_target_dir：`targets/SKHYNIX`&#10;- monitoring_status：target_initialized&#10;- source_status：partially_verified&#10;- relative_to_micron：needs_research&#10;- diversification_candidate：needs_research&#10;- exit_pressure_on_micron：unknown&#10;- key_question：HBM/DRAM/NANDでMicronを相対的に上回っているか。&#10;- next_action：Earnings Release PDF本文を取得してsecurity-gate scan後にKPIを抽出する。&#10;&#10;## 12. 品質ゲート&#10;&#10;- `target.yaml`を最初に読んだか：はい。&#10;- 弱気材料を強気材料より先に確認したか：はい。&#10;- 親提供URLの発表日、確認日を残したか：はい。&#10;- 外部取得データを読む前に可能な限りsecurity-gateを実行したか：外部PDF本文は未取得。ローカルtargetファイルはscan対象にする。&#10;- 未確認情報を`needs_review`または`needs_research`へ隔離したか：はい。&#10;- portfolioで未確認銘柄を相対魅力確定済みとして扱わないよう明記したか：はい。&#10;- `source_status: draft`のまま確定していないか：はい。&#10;- `state/`と`runs/`更新候補を明記したか：はい。&#10;- HTML生成と`report_verify`の実行結果を`runs/`に記録したか：runログへ記録する。&#10;&#10;## 13. state更新候補&#10;&#10;### last_report&#10;&#10;- 初回ベースラインはsource_status: partially_verified。&#10;- IR入口、上場情報、Earnings Release入口を確認。&#10;&#10;### open_questions&#10;&#10;- 直近決算KPI、HBM採用、CapEx、在庫、FCF、バリュエーション。&#10;&#10;### alerts&#10;&#10;- SK hynixがHBM4/HBM4EでMicronを明確に上回る採用を得た場合、Micron相対魅力低下として警戒。&#10;&#10;### next_events&#10;&#10;- 次回決算日：needs_research。&#10;- Earnings Release PDF本文抽出：next。&#10;&#10;## 14. データ・ログ更新候補&#10;&#10;- `sources/source_log.md`追記候補：SRC-SKH-001からSRC-SKH-004を追加済み。&#10;- `sources/watchlist.md`追記候補：公式IR、Earnings Release、Listing、Newsroomを追加済み。&#10;- `data/scores.csv`更新候補：未採点のためヘッダーのみ。&#10;- `data/peer_comparison.csv`更新候補：未評価のためヘッダーのみ。&#10;- `data/valuation.csv`更新候補：未評価のためヘッダーのみ。&#10;- `runs/2026-05_initial_baseline_run.md`記録候補：security-gate、HTML生成、verify結果を記録する。&#10;- security-gate実行記録：runログへ記録する。&#10;- HTML生成結果：`targets/SKHYNIX/views/2026-05_initial_baseline.html`&#10;- `report_verify`実行結果：runログへ記録する。&#10;&#10;## 15. 次回までの監視イベント&#10;&#10;- 対象企業次回決算：needs_research。&#10;- 主要競合次回決算：Micron、Samsung、SanDisk。&#10;- 需要側企業決算：Microsoft、Alphabet、Amazon、Meta、Oracle、NVIDIA。&#10;- 関連業界イベント：NVIDIA GTC、HBM4/HBM4E関連発表。&#10;- 市況更新：DRAM/HBM/NAND contract price、enterprise SSD。&#10;- その他重要イベント：NVIDIAまたはCSPのHBM採用コメント。&#10;&#10;## 16. 出典&#10;&#10;| 種別 | 発行元 | タイトル | URL | 発表日 | 確認日 | source_id | reliability | status |&#10;|---|---|---|---|---|---|---|---|---|&#10;| primary | SK hynix | Investor Relations | https://www.skhynix.com/ir/UI-FR-IR01/ | n/a | 2026-05-10 | SRC-SKH-001 | high | partially_verified |&#10;| primary | SK hynix | Listing Information | https://www.skhynix.com/ir/UI-FR-IR03/ | n/a | 2026-05-10 | SRC-SKH-002 | high | verified |&#10;| primary | SK hynix | Earnings Release | https://www.skhynix.com/ir/UI-FR-IR06/ | n/a | 2026-05-10 | SRC-SKH-003 | high | partially_verified |&#10;| primary | SK hynix | Newsroom | https://news.skhynix.com/ | n/a | 2026-05-10 | SRC-SKH-004 | high | partially_verified |&#10;">Copy report Markdown</button>
+    <button type="button" aria-label="Copy action summary" data-copy-label="action summary" data-copy="# SK hynix競合target 初回ベースライン確認レポート action summary&#10;&#10;- judgement: UNRATED&#10;- score: N/A / 27&#10;- source_status: partially_verified&#10;&#10;## 今回の結論&#10;- 初回ベースラインとして確認できたこと：SK hynixのIR入口、Earnings Release入口、上場情報、Newsroom入口を確認した。&#10;- Micron集中投資との相対比較に使えること：SK hynixはHBM/DRAM/NANDの直接競合として、Micronの相対魅力を確認する最優先targetである。&#10;- まだ相対比較に使えないこと：直近決算の売上、粗利、営業利益率、FCF、CapEx、在庫、HBM採用状況、顧客構成、バリュエーションは未確認。&#10;- portfolioへ渡す状態：partial。`target_dir`は有効だが、相対魅力は`needs_research`のまま維持する。&#10;&#10;## 次回までの監視イベント&#10;- 対象企業次回決算：needs_research。&#10;- 主要競合次回決算：Micron、Samsung、SanDisk。&#10;- 需要側企業決算：Microsoft、Alphabet、Amazon、Meta、Oracle、NVIDIA。&#10;- 関連業界イベント：NVIDIA GTC、HBM4/HBM4E関連発表。&#10;- 市況更新：DRAM/HBM/NAND contract price、enterprise SSD。&#10;- その他重要イベント：NVIDIAまたはCSPのHBM採用コメント。&#10;&#10;## 未検証・不明点&#10;- 未検証の初期ベースライン：直近決算本文、決算説明資料本文、HBM3E/HBM4/HBM4E採用、DRAM/NAND ASP、bit shipment、CapEx、inventory、FCF。&#10;- 一次情報で確認できなかった項目：直近決算PDF本文の数値抽出、NVIDIAまたはCSPの名指し採用、TrendForce/Omdia等の市況情報。&#10;- URL未提供または本文未確認の項目：annual report、quarterly filing、最新presentation PDF本文。&#10;- 次回へ持ち越す確認事項：Earnings Release PDFをsecurity-gate対象として取得し、決算KPIとHBMコメントを抽出する。">Copy action summary</button>
+    <button type="button" aria-label="Copy source checklist" data-copy-label="source checklist" data-copy="# SK hynix競合target 初回ベースライン確認レポート source checklist&#10;&#10;- source_status: partially_verified&#10;&#10;- [ ] primary / SK hynix / Investor Relations / 確認済み&#10;- [ ] primary / SK hynix / Listing Information / 確認済み&#10;- [ ] primary / SK hynix / Earnings Release / 確認済み&#10;- [ ] primary / SK hynix / Newsroom / 確認済み">Copy source checklist</button>
+  </section>
+  <details class="copyFallback" data-copy-fallback>
+    <summary>Copy fallback</summary>
+    <p>クリップボードAPIが使えない場合は、下のMarkdownを選択して使用します。</p>
+    <textarea readonly aria-label="コピー対象Markdown"></textarea>
+  </details>
+
+<details class="sourceDrawer">
+    <summary><span>Source drawer</span>出典一覧 (4件、primary 4件)</summary>
+    <div class="sourceDrawerBody">
+      <p>一次情報を先頭に並べています。URL、発表日、確認日の欠落は次回確認対象です。</p>
+      <div class="sourceList"><article class="sourceItem primary">
+    <span class="sourceType">primary / SK hynix</span>
+    <strong class="sourceTitle"><a href="https://www.skhynix.com/ir/UI-FR-IR01/">Investor Relations</a></strong>
+    <p class="sourceMeta"><a href="https://www.skhynix.com/ir/UI-FR-IR01/">URL</a> / 発表日: n/a / 確認日: 2026-05-10</p>
+  </article><article class="sourceItem primary">
+    <span class="sourceType">primary / SK hynix</span>
+    <strong class="sourceTitle"><a href="https://www.skhynix.com/ir/UI-FR-IR03/">Listing Information</a></strong>
+    <p class="sourceMeta"><a href="https://www.skhynix.com/ir/UI-FR-IR03/">URL</a> / 発表日: n/a / 確認日: 2026-05-10</p>
+  </article><article class="sourceItem primary">
+    <span class="sourceType">primary / SK hynix</span>
+    <strong class="sourceTitle"><a href="https://www.skhynix.com/ir/UI-FR-IR06/">Earnings Release</a></strong>
+    <p class="sourceMeta"><a href="https://www.skhynix.com/ir/UI-FR-IR06/">URL</a> / 発表日: n/a / 確認日: 2026-05-10</p>
+  </article><article class="sourceItem primary">
+    <span class="sourceType">primary / SK hynix</span>
+    <strong class="sourceTitle"><a href="https://news.skhynix.com/">Newsroom</a></strong>
+    <p class="sourceMeta"><a href="https://news.skhynix.com/">URL</a> / 発表日: n/a / 確認日: 2026-05-10</p>
+  </article></div>
+    </div>
+  </details>
+
+  <article class="report" data-report-path="targets/SKHYNIX/reports/quarterly/2026-05_initial_baseline.md">
+<h1 id="sec-sk-hynix競合target-初回ベースライン確認レポート">SK hynix競合target 初回ベースライン確認レポート</h1>
+<p>対象：SK hynix（000660）</p>
+<p>日付：2026-05-10</p>
+<p>対象期間：2026-05 初回target追加</p>
+<p>判定：<span class="dir unknown">UNRATED</span></p>
+<p>総合スコア：<span class="dir unknown">未付与</span> / 27</p>
+<p>一言結論：SK hynixはMicron集中投資の相対比較で最優先の直接競合targetとして追加する。ただし現時点ではIR入口、上場情報、Earnings Release入口の確認に留まり、直近決算数値・HBM採用・バリュエーションは未評価である。</p>
+<p>注記：これは投資助言ではなく、Micron集中投資との相対比較へ渡すための初回観測レポートである。<span class="dir unknown">未確認</span>情報は<code>needs_review</code>または<code>needs_research</code>として隔離する。</p>
+<details class="sectionDetails" id="sec-親提供url受け取り欄" open><summary>0. 親提供URL受け取り欄</summary>
+<div class="tableScroll"><table><thead><tr><th>source_id</th><th>種別</th><th>発行元</th><th>タイトルまたは確認対象</th><th>URL</th><th>発表日</th><th>確認日</th><th>期待する確認事項</th><th>処理状態</th></tr></thead><tbody><tr><td>SRC-SKH-001</td><td>primary</td><td>SK hynix</td><td>Investor Relations</td><td>https://www.skhynix.com/ir/UI-FR-IR01/</td><td><span class="dir unknown">n/a</span></td><td>2026-05-10</td><td>IR入口、Earnings Release入口、銘柄コード</td><td>partially_verified</td></tr><tr><td>SRC-SKH-002</td><td>primary</td><td>SK hynix</td><td>Listing Information</td><td>https://www.skhynix.com/ir/UI-FR-IR03/</td><td><span class="dir unknown">n/a</span></td><td>2026-05-10</td><td>上場市場、ticker、ISIN</td><td>verified</td></tr><tr><td>SRC-SKH-003</td><td>primary</td><td>SK hynix</td><td>Earnings Release</td><td>https://www.skhynix.com/ir/UI-FR-IR06/</td><td><span class="dir unknown">n/a</span></td><td>2026-05-10</td><td>最新決算PDF入口</td><td>partially_verified</td></tr><tr><td>SRC-SKH-004</td><td>primary</td><td>SK hynix</td><td>Newsroom</td><td>https://news.skhynix.com/</td><td><span class="dir unknown">n/a</span></td><td>2026-05-10</td><td>プレスリリース、Business、Corporate Earnings入口</td><td>partially_verified</td></tr></tbody></table></div>
+</details>
+<details class="sectionDetails" id="sec-今回の結論" open><summary>1. 今回の結論</summary>
+<ul>
+<li>初回ベースラインとして確認できたこと：SK hynixのIR入口、Earnings Release入口、上場情報、Newsroom入口を確認した。</li>
+<li>Micron集中投資との相対比較に使えること：SK hynixはHBM/DRAM/NANDの直接競合として、Micronの相対魅力を確認する最優先targetである。</li>
+<li>まだ相対比較に使えないこと：直近決算の売上、粗利、営業利益率、FCF、CapEx、在庫、HBM採用状況、顧客構成、バリュエーションは<span class="dir unknown">未確認</span>。</li>
+<li>portfolioへ渡す状態：partial。<code>target_dir</code>は有効だが、相対魅力は<code>needs_research</code>のまま維持する。</li>
+</ul>
+</details>
+<details class="sectionDetails" id="sec-弱気材料を先に確認" open><summary>2. 弱気材料を先に確認</summary>
+<ul>
+<li>弱気材料1：SK hynixがHBMでMicronより明確に優位なら、Micron集中投資の相対魅力を下げる可能性がある。</li>
+<li>弱気材料2：直近決算PDF本文をまだ抽出していないため、売上・利益・CapEx・在庫・HBMコメントを強気材料として扱えない。</li>
+<li>弱気材料3：DRAM/HBM価格がピーク化し、CapExや在庫が同時に増える場合、メモリ市況全体の供給過剰リスクがMicronにも波及する。</li>
+<li>これがMicron集中投資との比較に与える影響：SK hynixはMicronの投資仮説を補強する材料にも、相対劣後を示す材料にもなり得る。初回では<span class="dir unknown">未採点</span>とし、確認済み入口だけを記録する。</li>
+<li><span class="dir unknown">未確認</span>の弱気材料：<code>needs_research</code>。HBM4/HBM4E採用、NVIDIA向け契約、DRAM/HBM ASP、在庫、CapEx、FCF。</li>
+</ul>
+</details>
+<details class="sectionDetails" id="sec-強制警戒条件・比較上の注意" open><summary>3. 強制警戒条件・比較上の注意</summary>
+<ul>
+<li>このtarget固有の強制警戒条件：SK hynixがNVIDIAまたは大手CSP向けHBM4/HBM4EでMicronを大きく上回る採用・歩留まり・長期契約を獲得した場合、Micron相対魅力の<span class="dir down">低下</span>を警戒する。</li>
+<li>Micron側の強制警戒条件に影響する競合材料：SK hynixが供給増を進め、DRAM/HBM価格<span class="dir down">下落</span>と在庫<span class="dir up">増加</span>が同時に出た場合、Micronの強制ORANGE条件にも波及する。</li>
+<li>portfolio比較で強気材料として扱ってはいけない情報：<span class="dir unknown">未確認</span>のHBMシェア、NVIDIA向け採用、2026年供給契約、SNSや匿名情報。</li>
+<li><code>needs_review</code>に隔離した情報：現時点で<span class="dir unknown">未確認</span>の決算数値、顧客名、シェア推定。</li>
+</ul>
+</details>
+<details class="sectionDetails" id="sec-未検証・不明点" open><summary>4. <span class="dir unknown">未検証</span>・<span class="dir unknown">不明</span>点</summary>
+<ul>
+<li><span class="dir unknown">未検証</span>の初期ベースライン：直近決算本文、決算説明資料本文、HBM3E/HBM4/HBM4E採用、DRAM/NAND ASP、bit shipment、CapEx、inventory、FCF。</li>
+<li>一次情報で確認できなかった項目：直近決算PDF本文の数値抽出、NVIDIAまたはCSPの名指し採用、TrendForce/Omdia等の市況情報。</li>
+<li>URL未提供または本文<span class="dir unknown">未確認</span>の項目：annual report、quarterly filing、最新presentation PDF本文。</li>
+<li>次回へ持ち越す確認事項：Earnings Release PDFをsecurity-gate対象として取得し、決算KPIとHBMコメントを抽出する。</li>
+</ul>
+</details>
+<details class="sectionDetails" id="sec-強気材料" open><summary>5. 強気材料</summary>
+<ul>
+<li>強気材料1：SK hynixはMicronと同じメモリ領域の直接競合であり、HBM/DRAM/NAND比較の主要ベンチマークになる。</li>
+<li>強気材料2：公式IRとEarnings Release入口を確認できたため、今後の定期観測をtarget単位で回せる。</li>
+<li>強気材料3：上場情報としてKorea Stock Exchange、ticker 000660、ISIN KR7000660001を確認できた。</li>
+<li>これがMicron集中投資との比較を変える理由：SK hynixの確認済みデータが揃えば、MicronのHBM・DRAM・NAND・CapEx規律が相対的に強いか弱いかを直接比較できる。</li>
+<li>強気材料として採用しない<span class="dir unknown">未確認</span>情報：HBMシェア、NVIDIA向け採用優位、2026年供給予約、粗利率優位。</li>
+</ul>
+</details>
+<details class="sectionDetails" id="sec-対象企業の事業・決算・ガイダンス確認" open><summary>6. 対象企業の事業・決算・ガイダンス確認</summary>
+<ul>
+<li>売上：needs_research。</li>
+<li>売上高ガイダンス：needs_research。</li>
+<li>gross margin：needs_research。</li>
+<li>operating margin：needs_research。</li>
+<li>EPS：needs_research。</li>
+<li>FCF：needs_research。</li>
+<li>operating cash flow：needs_research。</li>
+<li>CapEx：needs_research。</li>
+<li>cash / investments / debt：needs_research。</li>
+<li>inventory：needs_research。</li>
+<li>セグメント：DRAM、NAND、HBM関連の確認が必要。</li>
+<li>AIインフラ関連売上：needs_research。</li>
+<li>会社が明示した需要コメント：needs_research。</li>
+<li>会社が明示した供給・投資コメント：needs_research。</li>
+</ul>
+</details>
+<details class="sectionDetails" id="sec-aiインフラ内での役割" open><summary>7. AIインフラ内での役割</summary>
+<ul>
+<li>role_in_ai_infra：HBM、server DRAM、NANDを持つメモリ直接競合。</li>
+<li>Micronとの直接競合領域：HBM、DRAM、NAND、enterprise SSD関連。</li>
+<li>Micronとの隣接・代替領域：AIメモリ供給能力、顧客採用、CapEx規律。</li>
+<li>AI需要が効く主要製品：HBM、DDR5/RDIMM、LPDDR、NAND、SSD。</li>
+<li>顧客・プラットフォーム採用状況：needs_research。</li>
+<li>技術世代・ロードマップ：HBM3E/HBM4/HBM4E、NAND世代、DDR5/RDIMMを次回確認。</li>
+<li>Micron集中投資への示唆：SK hynixが強すぎる場合はMicron相対魅力<span class="dir down">低下</span>、メモリ市場全体が強ければMicron仮説補強。</li>
+</ul>
+</details>
+<details class="sectionDetails" id="sec-市況確認" open><summary>8. 市況確認</summary>
+<ul>
+<li>DRAM：needs_research。</li>
+<li>HBM：needs_research。</li>
+<li>RDIMM：needs_research。</li>
+<li>LPDDR：needs_research。</li>
+<li>NAND：needs_research。</li>
+<li>enterprise SSD：needs_research。</li>
+<li>HDD / networking / optical / foundry / EDA / equipment等の該当市況：not_applicable。</li>
+<li>価格方向（<span class="dir up">上昇</span> / <span class="dir flat">横ばい</span> / <span class="dir down">下落</span> / <span class="dir unknown">不明</span> / not_applicable）：<span class="dir unknown">不明</span>。</li>
+<li>供給過剰リスク：<span class="dir unknown">不明</span>。CapEx、在庫、ASPの同時<span class="dir down">悪化</span>を監視する。</li>
+</ul>
+</details>
+<details class="sectionDetails" id="sec-競合比較" open><summary>9. 競合比較</summary>
+<ul>
+<li>Micronに対する相対優位：needs_research。</li>
+<li>Micronに対する相対劣位：needs_research。</li>
+<li>SK hynix / Samsung / SanDisk等の直接競合比較：本target自身。Samsung、SanDiskとの比較は未実施。</li>
+<li>隣接セクター比較：未実施。</li>
+<li>Micron集中の相対魅力は上がったか、下がったか、未判定か：未判定。</li>
+<li>portfolioの<code>relative_to_micron</code>候補：needs_research。</li>
+</ul>
+</details>
+<details class="sectionDetails" id="sec-判定スコア" open><summary>10. 判定スコア</summary>
+<ul>
+<li>A. AI需要・CSP CapEx：<span class="dir unknown">未採点</span> / 3</li>
+<li>B. DRAM / HBM市況または該当中核市況：<span class="dir unknown">未採点</span> / 3</li>
+<li>C. NAND / SSD市況または該当隣接市況：<span class="dir unknown">未採点</span> / 3</li>
+<li>D. 対象企業決算・ガイダンス：<span class="dir unknown">未採点</span> / 3</li>
+<li>E. AI製品採用・ロードマップ：<span class="dir unknown">未採点</span> / 3</li>
+<li>F. CapExと供給規律：<span class="dir unknown">未採点</span> / 3</li>
+<li>G. 在庫・キャッシュフロー：<span class="dir unknown">未採点</span> / 3</li>
+<li>H. 競争環境：<span class="dir unknown">未採点</span> / 3</li>
+<li>I. バリュエーション：<span class="dir unknown">未採点</span> / 3</li>
+<li>総合：<span class="dir unknown">未採点</span> / 27</li>
+<li>通常スコア判定：<span class="dir unknown">UNRATED</span></li>
+<li>最終判定：<span class="dir unknown">UNRATED</span></li>
+</ul>
+</details>
+<details class="sectionDetails" id="sec-portfolio更新候補" open><summary>11. portfolio更新候補</summary>
+<ul>
+<li>ticker：000660</li>
+<li>company：SK hynix</li>
+<li>category：memory</li>
+<li>role_in_ai_infra：memory_peer</li>
+<li>current_target_dir：<code>targets/SKHYNIX</code></li>
+<li>monitoring_status：target_initialized</li>
+<li>source_status：partially_verified</li>
+<li>relative_to_micron：needs_research</li>
+<li>diversification_candidate：needs_research</li>
+<li>exit_pressure_on_micron：<span class="dir unknown">unknown</span></li>
+<li>key_question：HBM/DRAM/NANDでMicronを相対的に上回っているか。</li>
+<li>next_action：Earnings Release PDF本文を取得してsecurity-gate scan後にKPIを抽出する。</li>
+</ul>
+</details>
+<details class="sectionDetails" id="sec-品質ゲート" open><summary>12. 品質ゲート</summary>
+<ul>
+<li><code>target.yaml</code>を最初に読んだか：はい。</li>
+<li>弱気材料を強気材料より先に確認したか：はい。</li>
+<li>親提供URLの発表日、確認日を残したか：はい。</li>
+<li>外部取得データを読む前に可能な限りsecurity-gateを実行したか：外部PDF本文は未取得。ローカルtargetファイルはscan対象にする。</li>
+<li><span class="dir unknown">未確認</span>情報を<code>needs_review</code>または<code>needs_research</code>へ隔離したか：はい。</li>
+<li>portfolioで<span class="dir unknown">未確認</span>銘柄を相対魅力確定済みとして扱わないよう明記したか：はい。</li>
+<li><code>source_status: draft</code>のまま確定していないか：はい。</li>
+<li><code>state/</code>と<code>runs/</code>更新候補を明記したか：はい。</li>
+<li>HTML生成と<code>report_verify</code>の実行結果を<code>runs/</code>に記録したか：runログへ記録する。</li>
+</ul>
+</details>
+<details class="sectionDetails" id="sec-state更新候補" open><summary>13. state更新候補</summary>
+<h3 id="sec-last-report">last_report</h3>
+<ul>
+<li>初回ベースラインはsource_status: partially_verified。</li>
+<li>IR入口、上場情報、Earnings Release入口を確認。</li>
+</ul>
+<h3 id="sec-open-questions">open_questions</h3>
+<ul>
+<li>直近決算KPI、HBM採用、CapEx、在庫、FCF、バリュエーション。</li>
+</ul>
+<h3 id="sec-alerts">alerts</h3>
+<ul>
+<li>SK hynixがHBM4/HBM4EでMicronを明確に上回る採用を得た場合、Micron相対魅力<span class="dir down">低下</span>として警戒。</li>
+</ul>
+<h3 id="sec-next-events">next_events</h3>
+<ul>
+<li>次回決算日：needs_research。</li>
+<li>Earnings Release PDF本文抽出：next。</li>
+</ul>
+</details>
+<details class="sectionDetails" id="sec-データ・ログ更新候補" open><summary>14. データ・ログ更新候補</summary>
+<ul>
+<li><code>sources/source_log.md</code>追記候補：SRC-SKH-001からSRC-SKH-004を追加済み。</li>
+<li><code>sources/watchlist.md</code>追記候補：公式IR、Earnings Release、Listing、Newsroomを追加済み。</li>
+<li><code>data/scores.csv</code>更新候補：<span class="dir unknown">未採点</span>のためヘッダーのみ。</li>
+<li><code>data/peer_comparison.csv</code>更新候補：未評価のためヘッダーのみ。</li>
+<li><code>data/valuation.csv</code>更新候補：未評価のためヘッダーのみ。</li>
+<li><code>runs/2026-05_initial_baseline_run.md</code>記録候補：security-gate、HTML生成、verify結果を記録する。</li>
+<li>security-gate実行記録：runログへ記録する。</li>
+<li>HTML生成結果：<code>targets/SKHYNIX/views/2026-05_initial_baseline.html</code></li>
+<li><code>report_verify</code>実行結果：runログへ記録する。</li>
+</ul>
+</details>
+<details class="sectionDetails" id="sec-次回までの監視イベント" open><summary>15. 次回までの監視イベント</summary>
+<ul>
+<li>対象企業次回決算：needs_research。</li>
+<li>主要競合次回決算：Micron、Samsung、SanDisk。</li>
+<li>需要側企業決算：Microsoft、Alphabet、Amazon、Meta、Oracle、NVIDIA。</li>
+<li>関連業界イベント：NVIDIA GTC、HBM4/HBM4E関連発表。</li>
+<li>市況更新：DRAM/HBM/NAND contract price、enterprise SSD。</li>
+<li>その他重要イベント：NVIDIAまたはCSPのHBM採用コメント。</li>
+</ul>
+</details>
+<details class="sectionDetails" id="sec-出典"><summary>16. 出典</summary>
+<div class="tableScroll"><table><thead><tr><th>種別</th><th>発行元</th><th>タイトル</th><th>URL</th><th>発表日</th><th>確認日</th><th>source_id</th><th>reliability</th><th>status</th></tr></thead><tbody><tr><td>primary</td><td>SK hynix</td><td>Investor Relations</td><td>https://www.skhynix.com/ir/UI-FR-IR01/</td><td><span class="dir unknown">n/a</span></td><td>2026-05-10</td><td>SRC-SKH-001</td><td>high</td><td>partially_verified</td></tr><tr><td>primary</td><td>SK hynix</td><td>Listing Information</td><td>https://www.skhynix.com/ir/UI-FR-IR03/</td><td><span class="dir unknown">n/a</span></td><td>2026-05-10</td><td>SRC-SKH-002</td><td>high</td><td>verified</td></tr><tr><td>primary</td><td>SK hynix</td><td>Earnings Release</td><td>https://www.skhynix.com/ir/UI-FR-IR06/</td><td><span class="dir unknown">n/a</span></td><td>2026-05-10</td><td>SRC-SKH-003</td><td>high</td><td>partially_verified</td></tr><tr><td>primary</td><td>SK hynix</td><td>Newsroom</td><td>https://news.skhynix.com/</td><td><span class="dir unknown">n/a</span></td><td>2026-05-10</td><td>SRC-SKH-004</td><td>high</td><td>partially_verified</td></tr></tbody></table></div>
+</details>
+  </article>
+</main>
+
+<script>
+document.querySelectorAll("[data-copy]").forEach((button) => {
+  button.addEventListener("click", async () => {
+    const label = button.getAttribute("data-copy-label") || "text";
+    const text = button.getAttribute("data-copy") || "";
+    try {
+      await navigator.clipboard.writeText(text);
+      const original = button.textContent;
+      button.textContent = "コピー完了: " + label;
+      setTimeout(() => { button.textContent = original; }, 1200);
+    } catch (error) {
+      const fallback = document.querySelector("[data-copy-fallback]");
+      if (fallback) {
+        const textarea = fallback.querySelector("textarea");
+        fallback.open = true;
+        if (textarea) {
+          textarea.value = text;
+          textarea.focus();
+          textarea.select();
+        }
+      }
+      button.textContent = "コピー失敗";
+    }
+  });
+});
+</script>
+</body>
+</html>

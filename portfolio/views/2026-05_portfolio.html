@@ -1,0 +1,861 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AIインフラ銘柄 portfolio横断比較 初期レポート</title>
+<style>
+
+:root {
+  color-scheme: light;
+  --bg: #f6f7f9;
+  --panel: #ffffff;
+  --text: #202833;
+  --muted: #657386;
+  --line: #d8dee8;
+  --accent: #125c8f;
+  --ok: #1d724b;
+  --warn: #9b5a00;
+  --danger: #a72735;
+  --unknown: #5b6678;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  line-height: 1.62;
+  overflow-wrap: anywhere;
+}
+.skipLink {
+  position: absolute;
+  left: 12px;
+  top: -48px;
+  z-index: 10;
+  background: #fff;
+  border: 2px solid var(--accent);
+  border-radius: 8px;
+  color: var(--accent);
+  padding: 8px 10px;
+}
+.skipLink:focus { top: 12px; }
+.topbar {
+  display: flex;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 26px clamp(16px, 4vw, 48px);
+  background: var(--panel);
+  border-bottom: 1px solid var(--line);
+}
+h1 {
+  margin: 0;
+  font-size: 2rem;
+  line-height: 1.18;
+  letter-spacing: 0;
+}
+.eyebrow, .meta {
+  color: var(--muted);
+  margin: 0 0 6px;
+}
+.statusStack {
+  align-items: flex-end;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.badge {
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  display: inline-flex;
+  font-weight: 800;
+  padding: 6px 10px;
+}
+.green { color: var(--ok); border-color: #8fc7a8; }
+.light_green { color: #557b1f; border-color: #b9d689; }
+.yellow { color: #7b6800; border-color: #d8c65a; }
+.orange, .partially_verified, .draft { color: var(--warn); border-color: #d59b50; }
+.red, .needs_review { color: var(--danger); border-color: #d9848f; }
+.unrated, .unknown { color: var(--unknown); border-color: #a5afbd; }
+main {
+  margin: 0 auto;
+  max-width: 1200px;
+  padding: 22px clamp(14px, 3vw, 32px) 56px;
+}
+.firstView {
+  display: grid;
+  gap: 14px;
+  margin-bottom: 18px;
+}
+.decisionStrip {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: 1.4fr 1.4fr 0.8fr;
+}
+.decisionStrip article,
+.candidateCard,
+.comparisonGrid,
+.sourceDrawer,
+.toc,
+.actions,
+.copyFallback,
+.report {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  box-shadow: 0 1px 2px rgba(32, 40, 51, 0.04);
+}
+.decisionStrip article,
+.candidateCard {
+  padding: 14px;
+}
+.decisionStrip span,
+.candidateCard > span,
+.comparisonGrid > span,
+.sourceDrawer > summary span {
+  color: var(--muted);
+  display: block;
+  font-size: 13px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+.decisionStrip strong {
+  display: block;
+  font-size: 18px;
+  line-height: 1.35;
+}
+.candidateBoard {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+.candidateCard {
+  border-left: 6px solid var(--unknown);
+}
+.candidateCard.diversify { border-left-color: var(--ok); }
+.candidateCard.exit { border-left-color: var(--danger); }
+.candidateCard.unknown { border-left-color: var(--warn); }
+.candidateCard h2 {
+  font-size: 20px;
+  line-height: 1.25;
+  margin: 2px 0 8px;
+}
+.candidateCard ul {
+  margin: 8px 0 0;
+  padding-left: 20px;
+}
+.candidateCard li { margin: 4px 0; }
+.empty {
+  color: var(--muted);
+  margin: 8px 0 0;
+}
+.comparisonGrid {
+  padding: 14px;
+}
+.comparisonGrid h2 {
+  font-size: 20px;
+  line-height: 1.25;
+  margin: 2px 0 10px;
+}
+.gridRows {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+.companyCard {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 12px;
+}
+.companyCard strong {
+  display: block;
+  font-size: 18px;
+  line-height: 1.3;
+  margin-bottom: 8px;
+}
+.field {
+  border-top: 1px solid #edf0f5;
+  display: grid;
+  gap: 4px;
+  grid-template-columns: 92px 1fr;
+  padding: 6px 0;
+}
+.field span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+.actions,
+.toc {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  margin-bottom: 16px;
+  padding: 12px;
+}
+.toc a {
+  color: var(--accent);
+  text-decoration: none;
+}
+button {
+  background: #fff;
+  border: 1px solid #b9c2cf;
+  border-radius: 8px;
+  color: var(--text);
+  cursor: pointer;
+  font: inherit;
+  min-height: 44px;
+  padding: 8px 10px;
+  touch-action: manipulation;
+}
+button:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+button:focus-visible,
+a:focus-visible,
+summary:focus-visible {
+  outline: 3px solid #5a8db8;
+  outline-offset: 3px;
+}
+.copyFallback {
+  margin: 0 0 16px;
+  padding: 12px;
+}
+.copyFallback summary,
+.sourceDrawer > summary {
+  cursor: pointer;
+  font-weight: 800;
+}
+.copyFallback p {
+  color: var(--muted);
+  margin: 4px 0 8px;
+}
+.copyFallback textarea {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  font: 13px/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  min-height: 160px;
+  padding: 10px;
+  resize: vertical;
+  width: 100%;
+}
+.sourceDrawer {
+  margin-bottom: 16px;
+  padding: 12px;
+}
+.sourceDrawer .sourceBody {
+  border-top: 1px solid var(--line);
+  margin-top: 10px;
+  padding-top: 10px;
+}
+.report {
+  padding: 4px 18px 18px;
+}
+.report h1 { font-size: 28px; margin: 18px 0 10px; }
+.report h2 {
+  border-top: 1px solid var(--line);
+  font-size: 21px;
+  margin: 24px 0 10px;
+  padding-top: 8px;
+}
+.report h3 { font-size: 17px; margin: 18px 0 8px; }
+.report table {
+  border-collapse: collapse;
+  display: block;
+  overflow-x: auto;
+  width: 100%;
+}
+.report th,
+.report td {
+  border: 1px solid var(--line);
+  padding: 8px;
+  text-align: left;
+  vertical-align: top;
+}
+.report code {
+  background: #eef1f5;
+  border-radius: 4px;
+  padding: 2px 4px;
+}
+.report pre {
+  background: #111827;
+  border-radius: 8px;
+  color: #f7f8fa;
+  overflow-x: auto;
+  padding: 12px;
+}
+@media (max-width: 720px) {
+  .topbar,
+  .decisionStrip,
+  .candidateBoard {
+    grid-template-columns: 1fr;
+  }
+  .topbar {
+    display: grid;
+  }
+  .statusStack {
+    align-items: flex-start;
+  }
+}
+@media (max-width: 420px) {
+  main {
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+  h1 { font-size: 1.55rem; }
+  .field {
+    grid-template-columns: 1fr;
+  }
+  .actions button {
+    width: 100%;
+  }
+}
+
+</style>
+
+<style>
+.pagesPublicNotice {
+  margin: 0;
+  padding: 10px 14px;
+  border-bottom: 1px solid #d7dee8;
+  background: #f6f8fb;
+  color: #243040;
+  font: 13px/1.55 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+.pagesPublicNotice strong {
+  display: inline-block;
+  margin-right: 8px;
+}
+.pagesPublicNotice small {
+  display: block;
+  margin-top: 2px;
+  color: #5b677a;
+  overflow-wrap: anywhere;
+}
+@media (max-width: 480px) {
+  .pagesPublicNotice {
+    padding: 9px 10px;
+  }
+  .pagesPublicNotice strong {
+    display: block;
+    margin: 0 0 2px;
+  }
+}
+</style>
+</head>
+<body>
+<aside class="pagesPublicNotice" role="note">
+  <strong>GitHub Pages public view</strong>
+  <span>このHTMLはGitHub Pagesでpublic配信される前提の閲覧用生成物です。個人情報・非公開メモ・認証情報を含めないでください。</span>
+  <small>source: portfolio/views/2026-05_portfolio.html / staged: 2026-05-13T22:05:31.239Z</small>
+</aside>
+
+<a class="skipLink" href="#main">本文へ移動</a>
+<header class="topbar">
+  <div>
+    <p class="eyebrow">Portfolio View</p>
+    <h1>AIインフラ銘柄 portfolio横断比較 初期レポート</h1>
+    <p class="meta">period: 2026-05 / date: 2026-05-11</p>
+  </div>
+  <div class="statusStack">
+    <span class="badge unrated">UNRATED</span>
+    <span class="badge source partially_verified">partially_verified</span>
+  </div>
+</header>
+
+<main id="main">
+  <section class="firstView" aria-label="portfolio判断ダッシュボード">
+    <section class="decisionStrip" aria-label="結論とアクション">
+      <article>
+        <span>Conclusion</span>
+        <strong>Micron単体の観測材料：月次市況ではDRAM、RDIMM、NAND、enterprise SSDが上昇または逼迫方向。四半期初回ベースラインではFY2026 Q2売上、粗利率、FY2026 Q3ガイダンス、HBM4/SOCAMM2/Gen6 SSD量産をMicron公式情報で概ね確認済み。</strong>
+      </article>
+      <article>
+        <span>Action</span>
+        <strong>SK hynix、Samsung、SanDiskの直近決算から、HBM、server DRAM、SOCAMM2、enterprise SSD、NAND、CapEx、在庫、粗利率を同じ表で比較する。</strong>
+      </article>
+      <article>
+        <span>Source Status</span>
+        <strong>partially_verified</strong>
+      </article>
+    </section>
+
+    <section class="candidateBoard" aria-label="分散候補、撤退候補、未確認">
+<article class="candidateCard diversify">
+  <span>分散候補</span>
+  <h2>分散候補</h2>
+  <ul><li>現時点では競合・隣接10社の初回baselineがそろい、Broadcom、Arista、Asteraの顧客集中リスク、Arista、Astera、Broadcomのvaluation入力snapshotを追加確認した段階。Broadcom、Arista、Astera Labs、ASML、TSMC、Synopsys、Cadenceは、Micronのメモリサイクルリスクを分散できる可能性があるが、相対採点は未実施。</li><li>SanDiskはNAND / enterprise SSDへの分散候補になり得るが、Micronと同じメモリサイクル要因も強く、真の分散になるかは未確認。</li><li>SK hynixとSamsungはMicronの相対優位確認には必須だが、同じメモリサイクルへの集中を強める可能性がある。</li></ul>
+</article>
+<article class="candidateCard exit">
+  <span>撤退候補</span>
+  <h2>撤退候補</h2>
+  <ul><li>現時点では撤退候補を指定しない。</li><li>Micronの撤退検討条件は、DRAM/HBM/NAND価格下落、CSP CapEx下方修正、在庫増加、ASP下落、FCF悪化、HBM採用劣後が同時に出るかで判断する。</li><li>他候補は未確認のため、撤退候補ではなく「未評価」とする。</li></ul>
+</article>
+<article class="candidateCard unknown">
+  <span>未確認</span>
+  <h2>未確認</h2>
+  <ul><li>SK hynix、Samsung、SanDiskの直近決算から、HBM、server DRAM、SOCAMM2、enterprise SSD、NAND、CapEx、在庫、粗利率を同じ表で比較する。</li><li>Broadcom、Arista、Astera Labsの初回baselineを起点に、AI関連売上内訳、backlog、Asteraの顧客名とend customer対応、粗利低下要因、FCF、CapEx、software renewal quality、inventory quality、peer同一基準valuationを確認する。Broadcom、Arista、Asteraの顧客集中、Arista、Astera、Broadcomのvaluation入力snapshotは取得済み。Aristaは <code>RP-202605-P0-0007</code> と <code>RP-202605-P0-0026</code>、Asteraは <code>RP-202605-P0-0009</code> と <code>RP-202605-P0-0027</code>、Broadcomは <code>RP-202605-P0-0010</code> でreview済みopen。次はBroadcomのAI revenue customer/product mix、Arista/AsteraのFCF/CapEx同一基準比較、AsteraのAR/inventory qualityとend customer mapping、各社のpeer同一基準比較を優先する。</li><li>ASML、TSMC、Synopsys、Cadenceの初回baselineを起点に、AI関連売上、backlog/RPO、粗利、FCF、CapEx、規制影響、バリュエーションまたはpeer同一基準比較を確認する。ASMLのvaluation入力snapshotは確認済みだが、相対魅力は確定しない。TSMCはRP-202605-P0-0019でcustomer concentration、RP-202605-P0-0020でvaluation readinessをreview済みだが、顧客集中注記本文、share count、market price、EV、倍率定義が不足するためopenのまま維持する。SynopsysはRP-202605-P0-0017でcustomer concentrationをreview済みだが、顧客集中注記本文がないためopenのまま維持する。CadenceはRP-202605-P0-0012でvaluation readinessをreview済みだが、share count、market price、debt、EV、倍率定義が不足するためopenのまま維持する。SamsungはRP-202605-P0-0014、SanDiskはRP-202605-P0-0015、SKHYNIXはRP-202605-P0-0016でvaluation_metricsの候補入力をreview済みだが、EV、倍率、peer共通basisが不足するためopenのまま維持する。</li><li>MicronのFY2026 Q3決算で、粗利率約81%ガイダンスの達成、inventory、ASP、FCF、CapExを確認する。</li><li>HBM4/HBM4Eの顧客別配分、Vera Rubin世代でのMicron / SK hynix / Samsungの相対採用を確認する。MicronについてはNVIDIA/CSP側の名指し採用、HBM売上金額、peer同一基準valuationを継続確認する。</li><li>TrendForce以外のOmdia、IDC、DRAMeXchange等でDRAM/NAND/HBM/eSSD市況を確認する。</li></ul>
+</article>
+    </section>
+
+<section class="comparisonGrid" aria-label="比較グリッド">
+  <span>Watchlist Comparison Grid</span>
+  <h2>監視銘柄比較</h2>
+  <div class="gridRows">
+<article class="companyCard">
+  <strong>主対象</strong>
+<div class="field"><span>候補</span><div>Micron Technology（MU）</div></div><div class="field"><span>target_dir</span><div><code>targets/MU</code></div></div><div class="field"><span>monitoring_status</span><div><code>active_target</code></div></div><div class="field"><span>初期扱い</span><div>集中投資仮説の中心</div></div><div class="field"><span>確認状況</span><div>月次・四半期レポートで部分確認済み</div></div>
+</article><article class="companyCard">
+  <strong>メモリ競合</strong>
+<div class="field"><span>候補</span><div>SK hynix</div></div><div class="field"><span>target_dir</span><div><code>targets/SKHYNIX</code></div></div><div class="field"><span>monitoring_status</span><div><code>baseline_ready</code></div></div><div class="field"><span>初期扱い</span><div>HBM / server DRAM / eSSD比較候補</div></div><div class="field"><span>確認状況</span><div>IR、Listing、Earnings入口確認済み。RP-202605-P0-0016で財務・株式数候補を部分確認したがneeds_research/open維持</div></div>
+</article><article class="companyCard">
+  <strong>メモリ競合</strong>
+<div class="field"><span>候補</span><div>Samsung</div></div><div class="field"><span>target_dir</span><div><code>targets/SAMSUNG</code></div></div><div class="field"><span>monitoring_status</span><div><code>baseline_ready</code></div></div><div class="field"><span>初期扱い</span><div>HBM4 / SOCAMM2 / NAND比較候補</div></div><div class="field"><span>確認状況</span><div>IR、Listing、1Q 2026 presentationを初回確認済み。RP-202605-P0-0014で価格・株式数候補を部分確認したがneeds_research/open維持</div></div>
+</article><article class="companyCard">
+  <strong>NAND / SSD</strong>
+<div class="field"><span>候補</span><div>SanDisk</div></div><div class="field"><span>target_dir</span><div><code>targets/SANDISK</code></div></div><div class="field"><span>monitoring_status</span><div><code>baseline_ready</code></div></div><div class="field"><span>初期扱い</span><div>datacenter SSD相対比較候補</div></div><div class="field"><span>確認状況</span><div>IR、ticker、Q3 FY2026 resultsを初回確認済み。RP-202605-P0-0015でvaluation candidateを部分確認したがneeds_research/open維持</div></div>
+</article><article class="companyCard">
+  <strong>ASIC / networking</strong>
+<div class="field"><span>候補</span><div>Broadcom</div></div><div class="field"><span>target_dir</span><div><code>targets/BROADCOM</code></div></div><div class="field"><span>monitoring_status</span><div><code>baseline_ready</code></div></div><div class="field"><span>初期扱い</span><div>AI ASIC / networking / infrastructure software分散候補</div></div><div class="field"><span>確認状況</span><div>Q1 FY2026公式リリースから売上、AI revenue、segment revenue、Q2 guidance、OCF、CapEx、FCFを初回確認。SEC 10-QでQ1 FY2026の1社distributor直接売上42%、distributor売上55%、上位5エンド顧客約50%、valuation snapshotを確認</div></div>
+</article><article class="companyCard">
+  <strong>networking</strong>
+<div class="field"><span>候補</span><div>Arista</div></div><div class="field"><span>target_dir</span><div><code>targets/ARISTA</code></div></div><div class="field"><span>monitoring_status</span><div><code>baseline_ready</code></div></div><div class="field"><span>初期扱い</span><div>AI cluster networking分散候補</div></div><div class="field"><span>確認状況</span><div>Q1 2026公式リリースから売上、gross margin、operating margin、EPS、Q2 outlookを初回確認</div></div>
+</article><article class="companyCard">
+  <strong>connectivity</strong>
+<div class="field"><span>候補</span><div>Astera Labs</div></div><div class="field"><span>target_dir</span><div><code>targets/ASTERA</code></div></div><div class="field"><span>monitoring_status</span><div><code>baseline_ready</code></div></div><div class="field"><span>初期扱い</span><div>AI connectivity分散候補</div></div><div class="field"><span>確認状況</span><div>Q1 2026公式リリースから売上、gross margin、operating margin、cash flow、inventory、Q2 gross margin outlookを初回確認。SEC 10-Qで2026年Q1の10%以上顧客5社合計売上90%、売掛金91%、valuation snapshotを確認</div></div>
+</article><article class="companyCard">
+  <strong>equipment</strong>
+<div class="field"><span>候補</span><div>ASML</div></div><div class="field"><span>target_dir</span><div><code>targets/ASML</code></div></div><div class="field"><span>monitoring_status</span><div><code>baseline_ready</code></div></div><div class="field"><span>初期扱い</span><div>半導体装置分散候補</div></div><div class="field"><span>確認状況</span><div>Q1 2026公式リリースから売上、gross margin、net income、cash、Q2/2026 outlook、AI infrastructure関連コメントを初回確認。RP-202605-P0-0008でvaluation入力snapshot、cash/debt、net cash、OCF、PPE purchasesも確認</div></div>
+</article><article class="companyCard">
+  <strong>foundry</strong>
+<div class="field"><span>候補</span><div>TSMC</div></div><div class="field"><span>target_dir</span><div><code>targets/TSMC</code></div></div><div class="field"><span>monitoring_status</span><div><code>baseline_ready</code></div></div><div class="field"><span>初期扱い</span><div>AI半導体製造基盤候補</div></div><div class="field"><span>確認状況</span><div>1Q26公式資料から売上、margin、technology mix、HPC mix、cash flow、CapEx、2Q26/2026 outlookを初回確認</div></div>
+</article><article class="companyCard">
+  <strong>EDA</strong>
+<div class="field"><span>候補</span><div>Synopsys</div></div><div class="field"><span>target_dir</span><div><code>targets/SYNOPSYS</code></div></div><div class="field"><span>monitoring_status</span><div><code>baseline_ready</code></div></div><div class="field"><span>初期扱い</span><div>EDA分散候補</div></div><div class="field"><span>確認状況</span><div>Q1 FY2026公式リリースから売上、EPS、gross margin、cash、debt、Q2/FY2026 guidance、AI R&amp;Dコメントを初回確認。RP-202605-P0-0017でcustomer concentrationをreview済みだが、顧客集中注記本文がなくneeds_research/open維持</div></div>
+</article><article class="companyCard">
+  <strong>EDA</strong>
+<div class="field"><span>候補</span><div>Cadence</div></div><div class="field"><span>target_dir</span><div><code>targets/CADENCE</code></div></div><div class="field"><span>monitoring_status</span><div><code>baseline_ready</code></div></div><div class="field"><span>初期扱い</span><div>EDA分散候補</div></div><div class="field"><span>確認状況</span><div>Q1 2026公式リリースから売上、operating margin、EPS、cash flow、地域別/製品別mix、規制リスクを初回確認。RP-202605-P0-0011とRP-202605-P0-0012で顧客集中とvaluationをreview済みだが、どちらもneeds_research維持</div></div>
+</article>
+  </div>
+</section>
+  </section>
+
+  <section class="actions" aria-label="コピー操作">
+    <button type="button" data-copy-label="next prompt" data-copy="# Next portfolio prompt
+
+対象: AIインフラ銘柄 portfolio横断比較 初期レポート
+期間: 2026-05
+作成日: 2026-05-11
+
+## 次回確認
+- SK hynix、Samsung、SanDiskの直近決算から、HBM、server DRAM、SOCAMM2、enterprise SSD、NAND、CapEx、在庫、粗利率を同じ表で比較する。
+- Broadcom、Arista、Astera Labsの初回baselineを起点に、AI関連売上内訳、backlog、Asteraの顧客名とend customer対応、粗利低下要因、FCF、CapEx、software renewal quality、inventory quality、peer同一基準valuationを確認する。Broadcom、Arista、Asteraの顧客集中、Arista、Astera、Broadcomのvaluation入力snapshotは取得済み。Aristaは RP-202605-P0-0007 と RP-202605-P0-0026、Asteraは RP-202605-P0-0009 と RP-202605-P0-0027、Broadcomは RP-202605-P0-0010 でreview済みopen。次はBroadcomのAI revenue customer/product mix、Arista/AsteraのFCF/CapEx同一基準比較、AsteraのAR/inventory qualityとend customer mapping、各社のpeer同一基準比較を優先する。
+- ASML、TSMC、Synopsys、Cadenceの初回baselineを起点に、AI関連売上、backlog/RPO、粗利、FCF、CapEx、規制影響、バリュエーションまたはpeer同一基準比較を確認する。ASMLのvaluation入力snapshotは確認済みだが、相対魅力は確定しない。TSMCはRP-202605-P0-0019でcustomer concentration、RP-202605-P0-0020でvaluation readinessをreview済みだが、顧客集中注記本文、share count、market price、EV、倍率定義が不足するためopenのまま維持する。SynopsysはRP-202605-P0-0017でcustomer concentrationをreview済みだが、顧客集中注記本文がないためopenのまま維持する。CadenceはRP-202605-P0-0012でvaluation readinessをreview済みだが、share count、market price、debt、EV、倍率定義が不足するためopenのまま維持する。SamsungはRP-202605-P0-0014、SanDiskはRP-202605-P0-0015、SKHYNIXはRP-202605-P0-0016でvaluation_metricsの候補入力をreview済みだが、EV、倍率、peer共通basisが不足するためopenのまま維持する。
+- MicronのFY2026 Q3決算で、粗利率約81%ガイダンスの達成、inventory、ASP、FCF、CapExを確認する。
+- HBM4/HBM4Eの顧客別配分、Vera Rubin世代でのMicron / SK hynix / Samsungの相対採用を確認する。MicronについてはNVIDIA/CSP側の名指し採用、HBM売上金額、peer同一基準valuationを継続確認する。
+- TrendForce以外のOmdia、IDC、DRAMeXchange等でDRAM/NAND/HBM/eSSD市況を確認する。
+- portfolio HTML生成時は、Micron集中、分散候補、未評価候補、撤退検討候補を一画面で比較できるようにする。
+
+## 前回アクション
+- SK hynix、Samsung、SanDiskの直近決算から、HBM、server DRAM、SOCAMM2、enterprise SSD、NAND、CapEx、在庫、粗利率を同じ表で比較する。">Copy next prompt</button>
+    <button type="button" data-copy-label="action summary" data-copy="# AIインフラ銘柄 portfolio横断比較 初期レポート
+
+- period: 2026-05
+- date: 2026-05-11
+- portfolio_judgement: UNRATED
+- source_status: partially_verified
+- conclusion: Micron単体の観測材料：月次市況ではDRAM、RDIMM、NAND、enterprise SSDが上昇または逼迫方向。四半期初回ベースラインではFY2026 Q2売上、粗利率、FY2026 Q3ガイダンス、HBM4/SOCAMM2/Gen6 SSD量産をMicron公式情報で概ね確認済み。
+- action: SK hynix、Samsung、SanDiskの直近決算から、HBM、server DRAM、SOCAMM2、enterprise SSD、NAND、CapEx、在庫、粗利率を同じ表で比較する。
+
+## 分散候補
+- 現時点では競合・隣接10社の初回baselineがそろい、Broadcom、Arista、Asteraの顧客集中リスク、Arista、Astera、Broadcomのvaluation入力snapshotを追加確認した段階。Broadcom、Arista、Astera Labs、ASML、TSMC、Synopsys、Cadenceは、Micronのメモリサイクルリスクを分散できる可能性があるが、相対採点は未実施。
+- SanDiskはNAND / enterprise SSDへの分散候補になり得るが、Micronと同じメモリサイクル要因も強く、真の分散になるかは未確認。
+- SK hynixとSamsungはMicronの相対優位確認には必須だが、同じメモリサイクルへの集中を強める可能性がある。
+
+## 撤退候補
+- 現時点では撤退候補を指定しない。
+- Micronの撤退検討条件は、DRAM/HBM/NAND価格下落、CSP CapEx下方修正、在庫増加、ASP下落、FCF悪化、HBM採用劣後が同時に出るかで判断する。
+- 他候補は未確認のため、撤退候補ではなく「未評価」とする。
+
+## 未確認
+- SK hynix、Samsung、SanDiskの直近決算から、HBM、server DRAM、SOCAMM2、enterprise SSD、NAND、CapEx、在庫、粗利率を同じ表で比較する。
+- Broadcom、Arista、Astera Labsの初回baselineを起点に、AI関連売上内訳、backlog、Asteraの顧客名とend customer対応、粗利低下要因、FCF、CapEx、software renewal quality、inventory quality、peer同一基準valuationを確認する。Broadcom、Arista、Asteraの顧客集中、Arista、Astera、Broadcomのvaluation入力snapshotは取得済み。Aristaは RP-202605-P0-0007 と RP-202605-P0-0026、Asteraは RP-202605-P0-0009 と RP-202605-P0-0027、Broadcomは RP-202605-P0-0010 でreview済みopen。次はBroadcomのAI revenue customer/product mix、Arista/AsteraのFCF/CapEx同一基準比較、AsteraのAR/inventory qualityとend customer mapping、各社のpeer同一基準比較を優先する。
+- ASML、TSMC、Synopsys、Cadenceの初回baselineを起点に、AI関連売上、backlog/RPO、粗利、FCF、CapEx、規制影響、バリュエーションまたはpeer同一基準比較を確認する。ASMLのvaluation入力snapshotは確認済みだが、相対魅力は確定しない。TSMCはRP-202605-P0-0019でcustomer concentration、RP-202605-P0-0020でvaluation readinessをreview済みだが、顧客集中注記本文、share count、market price、EV、倍率定義が不足するためopenのまま維持する。SynopsysはRP-202605-P0-0017でcustomer concentrationをreview済みだが、顧客集中注記本文がないためopenのまま維持する。CadenceはRP-202605-P0-0012でvaluation readinessをreview済みだが、share count、market price、debt、EV、倍率定義が不足するためopenのまま維持する。SamsungはRP-202605-P0-0014、SanDiskはRP-202605-P0-0015、SKHYNIXはRP-202605-P0-0016でvaluation_metricsの候補入力をreview済みだが、EV、倍率、peer共通basisが不足するためopenのまま維持する。
+- MicronのFY2026 Q3決算で、粗利率約81%ガイダンスの達成、inventory、ASP、FCF、CapExを確認する。
+- HBM4/HBM4Eの顧客別配分、Vera Rubin世代でのMicron / SK hynix / Samsungの相対採用を確認する。MicronについてはNVIDIA/CSP側の名指し採用、HBM売上金額、peer同一基準valuationを継続確認する。
+- TrendForce以外のOmdia、IDC、DRAMeXchange等でDRAM/NAND/HBM/eSSD市況を確認する。
+- portfolio HTML生成時は、Micron集中、分散候補、未評価候補、撤退検討候補を一画面で比較できるようにする。">Copy action summary</button>
+    <button type="button" data-copy-label="source checklist" data-copy="# Source checklist
+
+この初期portfolioレポートは、以下のローカルMarkdownを入力にした。URL、発表日、確認日は入力レポート内の出典表に基づく。
+
+| 種別 | 発行元 | タイトル | URL | 発表日 | 確認日 | 入力レポート |
+|---|---|---|---|---|---|---|
+| local_report | local | Micron集中投資 月次市況確認 | `targets/MU/reports/monthly/2026-05_monthly.md` | 2026-05-10 | 2026-05-10 | 月次 |
+| local_report | local | Micron集中投資 初回ベースライン検証レポート | `targets/MU/reports/quarterly/FY2026-Q2_initial_baseline.md` | 2026-05-10 | 2026-05-10 | 四半期 |
+| market_data | TrendForce | AI Server Demand to Drive Memory Contract Price Increases in 2Q26 as CSPs Secure Supply via Long-Term Agreements | https://www.trendforce.com/presscenter/news/20260331-12995.html | 2026-03-31 | 2026-05-10 | 月次 |
+| market_data | TrendForce | North American AI Data Center Expansion Drives 2026 CapEx of Top Nine CSPs to US$830 Billion, Says TrendForce | https://www.trendforce.com/presscenter/news/20260506-13033.html | 2026-05-06 | 2026-05-10 | 月次 |
+| primary | Micron IR | Micron Technology, Inc. Reports Results for the Second Quarter of Fiscal 2026 | https://investors.micron.com/news-releases/news-release-details/micron-technology-inc-reports-results-second-quarter-fiscal-2026 | 2026-03-18 | 2026-05-10 | 月次 / 四半期 |
+| primary | Micron IR | Fiscal Q2 2026 Earnings Call Prepared Remarks | https://investors.micron.com/static-files/e089f8c0-065d-47b8-9d02-bfa863cdb357 | 2026-03-18 | 2026-05-10 | 四半期 |
+| primary | SEC | Micron FY2026 Q2 Form 10-Q | https://www.sec.gov/Archives/edgar/data/723125/000072312526000006/mu-20260226.htm | 2026-03-19 | 2026-05-10 | 四半期 |
+| primary | Micron IR | Micron in High-Volume Production of HBM4 Designed for NVIDIA Vera Rubin, PCIe Gen6 SSD and SOCAMM2 | https://investors.micron.com/news-releases/news-release-details/micron-high-volume-production-hbm4-designed-nvidia-vera-rubin | 2026-03-16 | 2026-05-10 | 四半期 |
+| primary | Samsung Semiconductor Newsroom | Samsung Electronics Announces First Quarter 2026 Results | https://news.samsungsemiconductor.com/global/samsung-electronics-announces-first-quarter-2026-results/ | 2026-04-30 | 2026-05-10 | 月次 |
+| primary | SK hynix / PR Newswire | SK hynix Announces 1Q26 Financial Results | https://www.prnewswire.com/news-releases/sk-hynix-announces-1q26-financial-results-302750959.html | 2026-04-22 | 2026-05-10 | 月次 |
+| primary | SanDisk / Nasdaq | Sandisk Reports Fiscal Third Quarter 2026 Financial Results | https://www.nasdaq.com/press-release/sandisk-reports-fiscal-third-quarter-2026-financial-results-2026-04-30 | 2026-04-30 | 2026-05-10 | 月次 |
+| local_report | local | SK hynix競合target 初回ベースライン確認レポート | `targets/SKHYNIX/reports/quarterly/2026-05_initial_baseline.md` | 2026-05-10 | 2026-05-10 | Phase 7 |
+| local_source_map | local | SKHYNIX RP-202605-P0-0016 valuation source map | `targets/SKHYNIX/evidence/verified/RP-202605-P0-0016_valuation_source_map.md` | 2026-05-11 | 2026-05-11 | RP-202605-P0-0016 |
+| local_run_log | local | SKHYNIX RP-202605-P0-0016 valuation run log | `targets/SKHYNIX/runs/2026-05-11_rp_202605_p0_0016_valuation_run.md` | 2026-05-11 | 2026-05-11 | RP-202605-P0-0016 |
+| local_source_map | local | SKHYNIX RP-202605-P0-0023 HBM outperformance source map | `targets/SKHYNIX/evidence/verified/RP-202605-P0-0023_hbm_outperformance_vs_mu_source_map.md` | 2026-05-11 | 2026-05-11 | RP-202605-P0-0023 |
+| local_source_map | local | SKHYNIX RP-202605-P0-0024 HBM4/HBM4E adoption source map | `targets/SKHYNIX/evidence/verified/RP-202605-P0-0024_hbm4_hbm4e_adoption_source_map.md` | 2026-05-11 | 2026-05-11 | RP-202605-P0-0024 |
+| local_source_map | local | SKHYNIX RP-202605-P0-0025 supply overbuild risk source map | `targets/SKHYNIX/evidence/verified/RP-202605-P0-0025_supply_overbuild_risk_source_map.md` | 2026-05-11 | 2026-05-11 | RP-202605-P0-0025 |
+| local_report | local | Samsung競合target 初回ベースライン確認レポート | `targets/SAMSUNG/reports/quarterly/2026-05_initial_baseline.md` | 2026-05-10 | 2026-05-10 | Phase 7 |
+| local_source_map | local | SAMSUNG RP-202605-P0-0014 valuation source map | `targets/SAMSUNG/evidence/verified/RP-202605-P0-0014_valuation_source_map.md` | 2026-05-11 | 2026-05-11 | RP-202605-P0-0014 |
+| local_run_log | local | SAMSUNG RP-202605-P0-0014 valuation run log | `targets/SAMSUNG/runs/2026-05-11_rp_202605_p0_0014_valuation_run.md` | 2026-05-11 | 2026-05-11 | RP-202605-P0-0014 |
+| local_report | local | SanDisk競合target 初回ベースライン確認レポート | `targets/SANDISK/reports/quarterly/2026-05_initial_baseline.md` | 2026-05-10 | 2026-05-10 | Phase 7 |
+| local_source_map | local | SANDISK RP-202605-P0-0015 valuation source map | `targets/SANDISK/evidence/verified/RP-202605-P0-0015_valuation_source_map.md` | 2026-05-11 | 2026-05-11 | RP-202605-P0-0015 |
+| local_run_log | local | SANDISK RP-202605-P0-0015 valuation run log | `targets/SANDISK/runs/2026-05-11_rp_202605_p0_0015_valuation_run.md` | 2026-05-11 | 2026-05-11 | RP-202605-P0-0015 |
+| local_source_map | local | MU RP-202605-P0-0013 valuation source map | `targets/MU/evidence/verified/RP-202605-P0-0013_valuation_source_map.md` | 2026-05-11 | 2026-05-11 | RP-202605-P0-0013 |
+| local_run_log | local | MU RP-202605-P0-0013 valuation run log | `targets/MU/runs/2026-05-11_rp_202605_p0_0013_valuation_run.md` | 2026-05-11 | 2026-05-11 | RP-202605-P0-0013 |
+| local_source_map | local | MU RP-202605-P0-0021 HBM customer named by NVIDIA source map | `targets/MU/evidence/verified/RP-202605-P0-0021_hbm_customer_named_by_nvidia_source_map.md` | 2026-05-11 | 2026-05-11 | RP-202605-P0-0021 |
+| local_run_log | local | MU RP-202605-P0-0021 HBM customer named by NVIDIA run log | `targets/MU/runs/2026-05-11_rp_202605_p0_0021_hbm_customer_named_by_nvidia_run.md` | 2026-05-11 | 2026-05-11 | RP-202605-P0-0021 |
+| local_source_map | local | MU RP-202605-P0-0022 HBM revenue source map | `targets/MU/evidence/verified/RP-202605-P0-0022_hbm_revenue_source_map.md` | 2026-05-11 | 2026-05-11 | RP-202605-P0-0022 |
+| local_run_log | local | MU RP-202605-P0-0022 HBM revenue run log | `targets/MU/runs/2026-05-11_rp_202605_p0_0022_hbm_revenue_run.md` | 2026-05-11 | 2026-05-11 | RP-202605-P0-0022 |
+| local_report | local | Broadcom隣接target 初回ベースライン確認レポート | `targets/BROADCOM/reports/quarterly/2026-05_initial_baseline.md` | 2026-05-11 | 2026-05-11 | Phase 7 / RP-202605-P0-0005 / RP-202605-P0-0006 |
+| local_report | local | Arista隣接target 初回ベースライン確認レポート | `targets/ARISTA/reports/quarterly/2026-Q1_initial_baseline.md` | 2026-05-10 | 2026-05-10 | Phase 7 |
+| local_report | local | Astera Labs隣接target 初回ベースライン確認レポート | `targets/ASTERA/reports/quarterly/2026-Q1_initial_baseline.md` | 2026-05-10 | 2026-05-10 | Phase 7 |
+| local_report | local | ASML隣接target 初回ベースライン確認レポート | `targets/ASML/reports/quarterly/2026-Q1_initial_baseline.md` | 2026-05-10 | 2026-05-10 | Phase 7 |
+| local_report | local | TSMC上流・半導体基盤target 初回ベースライン確認レポート | `targets/TSMC/reports/quarterly/2026-Q1_initial_baseline.md` | 2026-05-10 | 2026-05-10 | Phase 7 |
+| local_report | local | Synopsys隣接target 初回ベースライン確認レポート | `targets/SYNOPSYS/reports/quarterly/2026-Q1_initial_baseline.md` | 2026-05-10 | 2026-05-10 | Phase 7 |
+| local_source_map | local | SYNOPSYS RP-202605-P0-0017 customer concentration source map | `targets/SYNOPSYS/evidence/verified/RP-202605-P0-0017_customer_concentration_source_map.md` | 2026-05-11 | 2026-05-11 | RP-202605-P0-0017 |
+| local_run_log | local | SYNOPSYS RP-202605-P0-0017 customer concentration run log | `targets/SYNOPSYS/runs/2026-05-11_rp_202605_p0_0017_customer_concentration_run.md` | 2026-05-11 | 2026-05-11 | RP-202605-P0-0017 |
+| local_source_map | local | TSMC RP-202605-P0-0019 customer concentration source map | `targets/TSMC/evidence/verified/RP-202605-P0-0019_customer_concentration_source_map.md` | 2026-05-11 | 2026-05-11 | RP-202605-P0-0019 |
+| local_run_log | local | TSMC RP-202605-P0-0019 customer concentration run log | `targets/TSMC/runs/2026-05-11_rp_202605_p0_0019_customer_concentration_run.md` | 2026-05-11 | 2026-05-11 | RP-202605-P0-0019 |
+| local_source_map | local | TSMC RP-202605-P0-0020 valuation source map | `targets/TSMC/evidence/verified/RP-202605-P0-0020_valuation_source_map.md` | 2026-05-11 | 2026-05-11 | RP-202605-P0-0020 |
+| local_run_log | local | TSMC RP-202605-P0-0020 valuation run log | `targets/TSMC/runs/2026-05-11_rp_202605_p0_0020_valuation_run.md` | 2026-05-11 | 2026-05-11 | RP-202605-P0-0020 |
+| local_report | local | Cadence EDA/system design target 初回ベースライン確認レポート | `targets/CADENCE/reports/quarterly/2026-Q1_initial_baseline.md` | 2026-05-10 | 2026-05-10 | Phase 7 |
+| primary | Broadcom Inc. | Broadcom Inc. Announces First Quarter Fiscal Year 2026 Financial Results | https://investors.broadcom.com/news-releases/news-release-details/broadcom-inc-announces-first-quarter-fiscal-year-2026-financial | 2026-03-04 | 2026-05-10 | Phase 7 |
+| sec_api | SEC | Broadcom Inc. submissions JSON | https://data.sec.gov/submissions/CIK0001730168.json | 2026-05-11 | 2026-05-11 | RP-202605-P0-0005 |
+| sec_filing | Broadcom Inc. | Form 10-Q, quarter ended February 1, 2026 | https://www.sec.gov/Archives/edgar/data/1730168/000173016826000016/avgo-20260201.htm | 2026-03-11 | 2026-05-11 | RP-202605-P0-0005 / RP-202605-P0-0006 |
+| sec_xbrl_json | SEC | Broadcom Inc. companyfacts JSON | https://data.sec.gov/api/xbrl/companyfacts/CIK0001730168.json | n/a | 2026-05-11 | RP-202605-P0-0006 |
+| market_data | Stooq | AVGO.US latest quote CSV | https://stooq.com/q/l/?s=avgo.us&amp;f=sd2t2ohlcv&amp;h&amp;e=csv | 2026-05-08 | 2026-05-11 | RP-202605-P0-0006 |
+| primary | Arista Networks, Inc. | Arista Networks, Inc. Reports First Quarter 2026 Financial Results | https://investors.arista.com/Communications/Press-Releases-and-Events/Press-Release-Detail/2026/Arista-Networks-Inc--Reports-First-Quarter-2026-Financial-Results/ | 2026-05-05 | 2026-05-10 | Phase 7 |
+| primary | Astera Labs, Inc. | Astera Labs Reports First Quarter 2026 Financial Results | https://ir.asteralabs.com/news-releases/news-release-details/astera-labs-reports-first-quarter-2026-financial-results | 2026-05-05 | 2026-05-10 | Phase 7 |
+| sec_filing | Astera Labs, Inc. | Form 10-Q, quarter ended March 31, 2026 | https://www.sec.gov/Archives/edgar/data/1736297/000173629726000020/alab-20260331.htm | 2026-05-06 | 2026-05-11 | RP-202605-P0-0003 / RP-202605-P0-0004 |
+| sec_filing | Astera Labs, Inc. | Form 10-K, fiscal year ended December 31, 2025 | https://www.sec.gov/Archives/edgar/data/1736297/000173629726000010/alab-20251231.htm | 2026-02-20 | 2026-05-11 | RP-202605-P0-0003 needs_review_not_used |
+| market_data | Stooq | ALAB.US latest quote CSV | https://stooq.com/q/l/?s=alab.us&amp;f=sd2t2ohlcv&amp;h&amp;e=csv | 2026-05-08 | 2026-05-11 | RP-202605-P0-0004 |
+| local_source_map | local | ASTERA RP-202605-P0-0009 score readiness source map | `targets/ASTERA/evidence/verified/RP-202605-P0-0009_micron_diversification_score_readiness_source_map.md` | 2026-05-11 | 2026-05-11 | RP-202605-P0-0009 |
+| local_run_log | local | ASTERA RP-202605-P0-0009 score readiness run log | `targets/ASTERA/runs/2026-05-11_rp_202605_p0_0009_micron_diversification_score_readiness_run.md` | 2026-05-11 | 2026-05-11 | RP-202605-P0-0009 |
+| local_source_map | local | ASTERA RP-202605-P0-0027 product / AI connectivity revenue source map | `targets/ASTERA/evidence/verified/RP-202605-P0-0027_product_or_ai_connectivity_revenue_source_map.md` | 2026-05-11 | 2026-05-11 | RP-202605-P0-0027 |
+| local_source_map | local | ARISTA RP-202605-P0-0007 score readiness source map | `targets/ARISTA/evidence/verified/RP-202605-P0-0007_micron_diversification_score_readiness_source_map.md` | 2026-05-11 | 2026-05-11 | RP-202605-P0-0007 |
+| local_run_log | local | ARISTA RP-202605-P0-0007 score readiness run log | `targets/ARISTA/runs/2026-05-11_rp_202605_p0_0007_micron_diversification_score_readiness_run.md` | 2026-05-11 | 2026-05-11 | RP-202605-P0-0007 |
+| local_source_map | local | ARISTA RP-202605-P0-0026 AI networking revenue source map | `targets/ARISTA/evidence/verified/RP-202605-P0-0026_ai_networking_revenue_source_map.md` | 2026-05-11 | 2026-05-11 | RP-202605-P0-0026 |
+| local_source_map | local | BROADCOM RP-202605-P0-0010 score readiness source map | `targets/BROADCOM/evidence/verified/RP-202605-P0-0010_micron_diversification_score_readiness_source_map.md` | 2026-05-11 | 2026-05-11 | RP-202605-P0-0010 |
+| local_run_log | local | BROADCOM RP-202605-P0-0010 score readiness run log | `targets/BROADCOM/runs/2026-05-11_rp_202605_p0_0010_micron_diversification_score_readiness_run.md` | 2026-05-11 | 2026-05-11 | RP-202605-P0-0010 |
+| primary | ASML Holding N.V. | ASML reports EUR 8.8 billion total net sales and EUR 2.8 billion net income in Q1 2026 | https://www.asml.com/en/news/press-releases/2026/q1-2026-financial-results | 2026-04-15 | 2026-05-10 | Phase 7 |
+| local_source_map | local | ASML RP-202605-P0-0008 valuation source map | `targets/ASML/evidence/verified/RP-202605-P0-0008_valuation_source_map.md` | 2026-05-11 | 2026-05-11 | RP-202605-P0-0008 |
+| primary | TSMC | 1Q26 Earnings Release | https://investor.tsmc.com/english/encrypt/files/encrypt_file/reports/2026-04/e85216eea8dccd8ca75d7e040e8d57be3ccd618b/1Q26%20EarningsRelease.pdf | 2026-04-16 | 2026-05-10 | Phase 7 |
+| primary | TSMC | 1Q26 Presentation | https://investor.tsmc.com/english/encrypt/files/encrypt_file/reports/2026-04/a7e3abe65a3fbc342aa55f9f53a5490dd621c1ac/1Q26%20Presentation%20%28E%29.pdf | 2026-04-16 | 2026-05-10 | Phase 7 |
+| primary | Synopsys, Inc. | Synopsys Posts Financial Results for First Quarter Fiscal Year 2026 | https://news.synopsys.com/2026-02-25-Synopsys-Posts-Financial-Results-for-First-Quarter-Fiscal-Year-2026 | 2026-02-25 | 2026-05-10 | Phase 7 |
+| primary | Cadence Design Systems, Inc. | Cadence Reports First Quarter 2026 Financial Results | https://investor.cadence.com/news/news-details/2026/Cadence-Reports-First-Quarter-2026-Financial-Results/default.aspx | 2026-04-27 | 2026-05-10 | Phase 7 |">Copy source checklist</button>
+    <button type="button" data-copy-label="portfolio markdown" data-copy="---
+view: portfolio
+report_type: portfolio_initial
+title: AIインフラ銘柄 portfolio横断比較 初期レポート
+date: 2026-05-11
+period: 2026-05
+base_currency: USD
+source_status: partially_verified
+judgement: UNRATED
+primary_target: MU
+generated_html: ../views/2026-05_portfolio.html
+---
+
+# AIインフラ銘柄 portfolio横断比較 初期レポート
+
+対象期間：2026-05
+作成日：2026-05-11
+主対象：Micron Technology（MU）
+
+注記：これは投資助言ではなく、Micron集中投資とAIインフラ関連銘柄を比較するための初期観測レポートである。Phase 7でSK hynix、Samsung、SanDisk、Broadcom、Arista、Astera Labs、ASML、TSMC、Synopsys、Cadenceの公式一次情報入口と初回target baselineを追加したが、portfolio横断の相対採点はまだ未実施である。
+
+## 1. 初期結論
+
+- Micron単体の観測材料：月次市況ではDRAM、RDIMM、NAND、enterprise SSDが上昇または逼迫方向。四半期初回ベースラインではFY2026 Q2売上、粗利率、FY2026 Q3ガイダンス、HBM4/SOCAMM2/Gen6 SSD量産をMicron公式情報で概ね確認済み。
+- portfolio横断の結論：現時点ではMicron集中の相対魅力が上がったか下がったかは未判定。理由は、競合・隣接10社の初回baselineはそろったが、同一基準の27点採点、バリュエーション、CapEx/FCF比較をまだ実施していないため。顧客集中はBroadcom、Arista、Astera、valuation入力snapshotはMU、Arista、Astera、Broadcom、ASMLで確認済み。ただしMU valuationはpeer共通basis未固定、MUのHBM顧客側名指し採用は未確認、HBM売上金額は未開示である。Samsung valuation_metricsはRP-202605-P0-0014で価格・株式数候補、SanDisk valuation_metricsはRP-202605-P0-0015でvaluation candidate、SKHYNIX valuation_metricsはRP-202605-P0-0016で財務・株式数候補、Synopsys customer concentrationはRP-202605-P0-0017でreview済みだが、EV、倍率、peer共通basisまたは顧客集中注記本文が不足するため採点には使わない。
+- Phase 7更新：`targets/SKHYNIX`、`targets/SAMSUNG`、`targets/SANDISK`、`targets/BROADCOM`、`targets/ARISTA`、`targets/ASTERA`、`targets/ASML`、`targets/TSMC`、`targets/SYNOPSYS`、`targets/CADENCE`のtarget構成、source_log、初回baseline、HTMLビューを追加した。portfolio CSVでは10社を`baseline_ready`、`source_status: partially_verified`へ進めたが、scoreと相対魅力は未採点のまま維持する。
+- 分散候補：未判定。候補リストは作るが、数値比較・バリュエーション・リスク比較は次回以降。
+- 撤退候補：未判定。Micronに即時撤退を示す強制警戒条件は既存レポート上は確認されていないが、CapEx増加、競争、将来供給過剰は重要監視対象。
+- source_status：`partially_verified`。Micron材料は一部確認済みで、MU valuation_metricsは `RP-202605-P0-0013` で入力snapshot取得済み、HBM顧客側名指し採用は `RP-202605-P0-0021` で未確認、HBM revenueは `RP-202605-P0-0022` で金額未開示と確認済み。ARISTAの顧客集中とvaluation入力snapshot、ASTERAの顧客集中とvaluation入力snapshot、BROADCOMの顧客集中とvaluation入力snapshot、ASMLのvaluation入力snapshotも一次情報中心で追加確認済み。ARISTAのscore readinessは `RP-202605-P0-0007`、AI networking revenueは `RP-202605-P0-0026`、ASTERAのscore readinessは `RP-202605-P0-0009`、product / AI connectivity revenueは `RP-202605-P0-0027`、BROADCOMのscore readinessは `RP-202605-P0-0010` でreview済みだが、AI networking / connectivity revenueの定量内訳、company-defined FCF、CapEx同一基準比較、AR / inventory quality、end customer mapping、software renewal quality、inventory quality、year five以降のdebt maturity、peer同一基準比較が残るため `not_scoreable` / `open` を維持する。CADENCE、SAMSUNG、SANDISK、SKHYNIX、SYNOPSYS、TSMCもreview済みだが、顧客集中注記本文、EV、倍率、peer共通basis、HBM顧客側採用、供給規律入力が不足するため `needs_research` / `open` を維持する。ただしportfolio横断判断に必要な競合値はまだ大きく不足する。
+
+## 2. 弱気材料を先に確認
+
+- 弱気材料1：MicronのCapExが大きい。FY2026のnet PP&amp;E capexは250億ドル超、FY2027もHBM/DRAM関連投資で大きく増える見込み。将来の供給過剰リスクをportfolio比較の中心リスクに置く。
+- 弱気材料2：月次市況では短期供給不足が確認される一方、価格急騰はPC・スマートフォン側の需要抑制や、CSP側の投資効率悪化につながる可能性がある。
+- 弱気材料3：MicronのHBM強気シナリオはまだ顧客側一次情報で完全には裏付かない。NVIDIA/CSP側一次情報ではMicron HBM/HBM4/HBM4Eの名指し採用を確認できず、HBM売上金額も未開示である。Micron側自己発表と顧客側採用確認、CMBU売上とHBM単独売上は分けて扱う。
+- 弱気材料4：Micron公式情報では、HBM需要が弱まった場合にHBM向け能力が通常DRAMへ戻り、DRAM供給増・価格下押しにつながるリスクが説明されている。
+- 弱気材料5：中国CACによるMicron製品購入制限、台湾DRAM生産集中、関税・輸出規制・貿易障壁は、Micron固有リスクとして残る。
+- 弱気材料6：BroadcomはQ1 FY2026の1社semiconductor distributor向け直接売上42%、distributor売上55%、上位5エンド顧客約50%を確認済みで、AI ASIC / networking分散候補として強い顧客集中リスクを持つ。さらに2026-05-08 valuation snapshotはEV/Sales annualized Q1 27.8821x、GAAP P/E annualized Q1 71.6667x、derived FCF yield 1.5244%で、AI成長を相当織り込んでいる可能性がある。MU valuation snapshotも2026-05-08終値$746.81、EV/Sales annualized Q2 8.7562x、GAAP P/E 15.4683x、adjusted FCF yield 3.2766%で、市況上振れを含む可能性があるため割安判定へ進めない。RP-202605-P0-0010でRPO、contract liabilities、inventory、working capital、debt maturity through year fourを部分確認したが、AI revenue customer/product mix、software renewal quality、inventory quality、year five以降のdebt maturity、peer同一基準比較が未確認のため `not_scoreable` 維持。ASML、TSMC、Synopsys、Cadence、Samsung、SanDisk、SK hynix、Arista、Asteraもそれぞれ未確認の顧客集中、valuation、AI revenue mix、FCF/CapEx、HBM採用、供給規律入力が残る。隣接候補の過大valuationとMicron自身の市況ピーク倍率を同時に見落とさない。
+
+## 3. 強気材料
+
+- 強気材料1：DRAM、NAND、RDIMM、enterprise SSDは、既存月次レポート上では上昇または逼迫方向。AIインフラがメモリ階層全体を制約にするというMicron仮説を補強する。
+- 強気材料2：Micron初回ベースラインでは、FY2026 Q2売上238.60億ドル、Non-GAAP粗利率74.9%、FY2026 Q3売上ガイダンス335億ドル±7.5億ドル、粗利率約81%が確認されている。
+- 強気材料3：MicronはHBM4 36GB 12H、SOCAMM2、PCIe Gen6 9650 SSDをNVIDIA Vera Rubin世代向けに設計された製品として量産していると自社発表した。
+- 強気材料4：AI inference、agentic AI、KV cache、vector database、enterprise SSD需要は、既存Micron月次・四半期レポートで継続確認対象として整理されている。
+- 強気材料5：TrendForce由来の既存月次レポートでは、上位9社CSPの2026年CapExが約8,300億ドル、前年比79%増とされ、AIインフラ投資が長期戦略である可能性を示している。
+
+## 4. 初期portfolio universe
+
+| 区分 | 候補 | target_dir | monitoring_status | 初期扱い | 確認状況 |
+|---|---|---|---|---|---|
+| 主対象 | Micron Technology（MU） | `targets/MU` | `active_target` | 集中投資仮説の中心 | 月次・四半期レポートで部分確認済み |
+| メモリ競合 | SK hynix | `targets/SKHYNIX` | `baseline_ready` | HBM / server DRAM / eSSD比較候補 | IR、Listing、Earnings入口確認済み。RP-202605-P0-0016で財務・株式数候補を部分確認したがneeds_research/open維持 |
+| メモリ競合 | Samsung | `targets/SAMSUNG` | `baseline_ready` | HBM4 / SOCAMM2 / NAND比較候補 | IR、Listing、1Q 2026 presentationを初回確認済み。RP-202605-P0-0014で価格・株式数候補を部分確認したがneeds_research/open維持 |
+| NAND / SSD | SanDisk | `targets/SANDISK` | `baseline_ready` | datacenter SSD相対比較候補 | IR、ticker、Q3 FY2026 resultsを初回確認済み。RP-202605-P0-0015でvaluation candidateを部分確認したがneeds_research/open維持 |
+| ASIC / networking | Broadcom | `targets/BROADCOM` | `baseline_ready` | AI ASIC / networking / infrastructure software分散候補 | Q1 FY2026公式リリースから売上、AI revenue、segment revenue、Q2 guidance、OCF、CapEx、FCFを初回確認。SEC 10-QでQ1 FY2026の1社distributor直接売上42%、distributor売上55%、上位5エンド顧客約50%、valuation snapshotを確認 |
+| networking | Arista | `targets/ARISTA` | `baseline_ready` | AI cluster networking分散候補 | Q1 2026公式リリースから売上、gross margin、operating margin、EPS、Q2 outlookを初回確認 |
+| connectivity | Astera Labs | `targets/ASTERA` | `baseline_ready` | AI connectivity分散候補 | Q1 2026公式リリースから売上、gross margin、operating margin、cash flow、inventory、Q2 gross margin outlookを初回確認。SEC 10-Qで2026年Q1の10%以上顧客5社合計売上90%、売掛金91%、valuation snapshotを確認 |
+| equipment | ASML | `targets/ASML` | `baseline_ready` | 半導体装置分散候補 | Q1 2026公式リリースから売上、gross margin、net income、cash、Q2/2026 outlook、AI infrastructure関連コメントを初回確認。RP-202605-P0-0008でvaluation入力snapshot、cash/debt、net cash、OCF、PPE purchasesも確認 |
+| foundry | TSMC | `targets/TSMC` | `baseline_ready` | AI半導体製造基盤候補 | 1Q26公式資料から売上、margin、technology mix、HPC mix、cash flow、CapEx、2Q26/2026 outlookを初回確認 |
+| EDA | Synopsys | `targets/SYNOPSYS` | `baseline_ready` | EDA分散候補 | Q1 FY2026公式リリースから売上、EPS、gross margin、cash、debt、Q2/FY2026 guidance、AI R&amp;Dコメントを初回確認。RP-202605-P0-0017でcustomer concentrationをreview済みだが、顧客集中注記本文がなくneeds_research/open維持 |
+| EDA | Cadence | `targets/CADENCE` | `baseline_ready` | EDA分散候補 | Q1 2026公式リリースから売上、operating margin、EPS、cash flow、地域別/製品別mix、規制リスクを初回確認。RP-202605-P0-0011とRP-202605-P0-0012で顧客集中とvaluationをreview済みだが、どちらもneeds_research維持 |
+
+注記：`target_dir`はPhase 7で個別targetを追加した後にportfolioが読み取り専用で参照するローカルパスであり、企業側の一次情報ではない。現時点で`active_target`はMicron、`baseline_ready`はSK hynix、Samsung、SanDisk、Broadcom、Arista、Astera Labs、ASML、TSMC、Synopsys、Cadence。全候補でtickerと初回baselineは登録済みだが、score、相対魅力、分散価値、撤退候補妥当性は確定させない。
+
+## 4.1 Phase 7 target追加後のportfolio更新案
+
+競合target追加後にportfolio側で必要な更新は、個別targetの原本を上書きせず、読み取り専用の集約に限定する。
+
+| 更新対象 | 更新方針 | needs_researchを維持する条件 |
+|---|---|---|
+| `target_dir` | 追加済みtargetのローカル参照先を保持する。パス命名を変える場合はCSVだけで吸収する。 | target未作成、またはtarget名が確定していない場合 |
+| `monitoring_status` | target雛形作成時に`target_initialized`、初回baseline作成後に`baseline_ready`、portfolio反映後に`portfolio_ready`へ進める。 | targetがあっても一次情報レポートが未作成の場合 |
+| `ticker` | 個別targetの`target.yaml`に記録された市場・tickerを転記する。 | 上場単位、ADR、普通株、親会社単位が未確認の場合 |
+| `relative_attractiveness_vs_mu` | 競合の初回baselineとMUの同時期レポートを同じ比較軸で読んだ後に更新する。 | HBM、粗利、CapEx、在庫、顧客構成、valuationのいずれかが不足する場合 |
+| `diversification_value` | memory、networking、foundry、EDAなどの収益ドライバー差を確認してから更新する。 | 収益ドライバーと相関リスクが未確認の場合 |
+| `exit_candidate_relevance` | MU縮小時の受け皿候補かを、流動性、バリュエーション、事業リスク込みで評価する。 | 一次情報と価格指標が揃わない場合 |
+| `score_0_27` / `judgement` | Phase 7 targetの初回baselineが`partially_verified`以上になってから採点する。 | `research_status: needs_research`または`source_status: needs_review`のままの場合 |
+
+運用順序は、SK hynix、Samsung、SanDisk、Broadcom、Arista、Astera Labs、ASML、TSMC、Synopsys、Cadenceの初回baselineまで追加済み。次は同一基準KPI抽出、27点採点、バリュエーション比較、Micron相対魅力の更新に進む。弱気材料は各候補で強気材料より先に確認し、相対魅力の上方修正は一次情報と確認日が揃うまで行わない。
+
+## 5. 初期比較軸
+
+| 比較軸 | Micronの現在地 | 他候補の確認状態 | 次回確認 |
+|---|---|---|---|
+| AI需要感応度 | HBM / DRAM / NAND / eSSD / SOCAMM2で高い | 未確認 | 各社のAI売上比率、受注、backlog、ガイダンス |
+| 価格決定力 | DRAM/NAND価格上昇局面では強い | 未確認 | ASP、契約期間、顧客集中、値上げ継続性 |
+| 供給規律 | CapEx増加により中期リスクあり | 未確認 | 各社CapEx、長期契約、在庫、稼働率 |
+| 競争優位 | Micron公式情報では製品進捗確認済み | 未確認 | HBM4/HBM4E採用配分、eSSD share、SOCAMM2 design wins |
+| 地政学・規制 | 中国CAC、台湾集中、関税・輸出規制リスクあり | 未確認 | 各候補の地域別売上、製造拠点、規制影響 |
+| バリュエーション | Micronは未採点 | Arista / Astera / Broadcom / ASMLは入力snapshot確認済み。他候補は未確認が多く、相対採点は未実施 | 売上成長、粗利、FCF、PER/EV系指標 |
+| portfolio分散効果 | Micron単体はメモリサイクル感応度が高い | 未確認 | memory / networking / foundry / EDA間の相関とリスク |
+
+## 6. 相対魅力の初期判定
+
+| 対象 | 初期判定 | 理由 | 次回までの扱い |
+|---|---|---|---|
+| MU | UNRATED | 単体材料は強いが、valuation peer basis、HBM顧客側名指し採用、HBM売上金額、27点スコアと競合比較が未完了 | 主対象として継続監視 |
+| SK hynix | UNRATED | IR、Listing、Earnings入口は確認済み。RP-202605-P0-0016でFY2025 revenue、EPS、cash/investments、debt、OCF、CapEx、FCF candidate、2025-12-31 sharesを部分確認し、RP-202605-P0-0023から0025でHBM outperformance / HBM4-HBM4E adoption / supply overbuild riskをreview済みだが、株価、market cap、EV、倍率、顧客側名指し採用、契約、出荷量、歩留まり、同一期間ASP/在庫/FCFが不足するため採点不可 | HBM / server DRAM / eSSD比較対象 |
+| Samsung | UNRATED | 1Q 2026 presentationでMemory/DSとAI memoryコメントを確認。RP-202605-P0-0014で2026-05-11 common/preferred/GDR price candidatesと2025Q4 share countsを部分確認したが、debt、OCF/FCF/CapEx、EV、P/E、EV/Sales、FCF yieldまたはEV/FCF、common/preferred/GDR扱いが不足するため採点不可。相対採点は未実施 | Micron相対採用リスクの比較対象 |
+| SanDisk | UNRATED | Q3 FY2026 resultsでDatacenter/NAND関連の強い数値を確認。RP-202605-P0-0015でvaluation candidateを部分確認したが、peer共通basis未固定とreview-required HTML不使用のため採点不可。相対採点は未実施 | NAND / eSSD分散候補 |
+| Broadcom | UNRATED | Q1 FY2026公式リリースでAI revenue、Q2 guidance、segment revenue、FCFを初回確認。顧客集中はQ1 FY2026の1社distributor直接売上42%、distributor売上55%、上位5エンド顧客約50%をSEC 10-Qで確認済み。valuation snapshotは2026-05-08終値$430.00、diluted-basis EV/Sales annualized Q1 27.8821x、GAAP P/E annualized Q1 71.6667xで高い。RP-202605-P0-0010でRPO、contract liabilities、inventory、working capital、debt maturity through year fourを部分確認したが、AI revenue内訳、software renewal quality、inventory quality、year five以降のdebt maturity、peer同一基準比較は未確認 | ASIC / networking / software分散候補 |
+| Arista | UNRATED | Q1 2026公式リリースで売上、margin、EPS、Q2 outlookを初回確認。FY2025の2大エンド顧客比率16%/26%、上位2 reseller売掛金集中52%、valuation入力snapshot、OCF、PPE purchasesも確認済み。score readinessとAI networking revenueはreview済みだが、AI networking単独売上、AI/Cloud titan別売上、company-defined FCF、CapEx同一基準比較、gross margin低下要因は未確認のため `not_scoreable` / `open` 維持 | networking分散候補 |
+| Astera Labs | UNRATED | Q1 2026公式リリースで売上、margin、cash flow、inventory、Q2 gross margin outlookを初回確認。顧客集中は2026年Q1の10%以上顧客5社合計売上90%、売掛金91%をSEC 10-Qで確認済み。valuation snapshotは2026-05-08終値$199.79、diluted-basis EV/Sales annualized Q1 28.3830xで高い。score readinessとproduct / AI connectivity revenueはreview済みで、Q1全社売上とQ2 revenue guidanceは確認したが、AR/inventoryの質、製品別売上、顧客別採用売上、顧客名とend customer対応は未確認のため `not_scoreable` / `open` 維持 | connectivity分散候補 |
+| ASML | UNRATED | Q1 2026公式リリースで売上、margin、net income、cash、outlook、AI infrastructure関連コメントを初回確認。valuation入力snapshotは2026-05-08 Euronext終値EUR 1,319.40、EV/Sales annualized Q1 14.3501x、annualized Q1 P/E 46.1329x。order intake定量、backlog、China exposure、company-defined FCF、peer同一基準比較は未確認 | equipment分散候補 |
+| TSMC | UNRATED | 1Q26公式資料で売上、margin、technology mix、HPC mix、FCF、CapEx、2Q26/2026 outlookを初回確認。customer concentrationはRP-202605-P0-0019、valuation readinessはRP-202605-P0-0020でreview済みだが、顧客集中注記本文、share count、market price、EV、倍率定義がなく採点不可。advanced packaging、地政学も未確認 | foundry分散候補 |
+| Synopsys | UNRATED | Q1 FY2026公式リリースで売上、EPS、gross margin、cash、debt、guidance、AI R&amp;Dコメントを初回確認。customer concentrationはRP-202605-P0-0017でreview済みだが、顧客集中注記本文がローカル原本になく、10%超顧客の有無も不明のため採点不可。Ansys統合、規制、valuationも未確認 | EDA分散候補 |
+| Cadence | UNRATED | Q1 2026公式リリースで売上、operating margin、EPS、cash flow、地域別/製品別mixを初回確認。customer concentrationとvaluation readinessはreview済みだが、顧客集中注記本文、share count、market price、debt、EV、倍率定義が不足するため採点不可。DOJ/BIS settlement、China露出、RPO/ARRも未確認 | EDA分散候補 |
+
+## 7. 分散候補と撤退候補
+
+### 分散候補
+
+- 現時点では競合・隣接10社の初回baselineがそろい、Broadcom、Arista、Asteraの顧客集中リスク、Arista、Astera、Broadcomのvaluation入力snapshotを追加確認した段階。Broadcom、Arista、Astera Labs、ASML、TSMC、Synopsys、Cadenceは、Micronのメモリサイクルリスクを分散できる可能性があるが、相対採点は未実施。
+- SanDiskはNAND / enterprise SSDへの分散候補になり得るが、Micronと同じメモリサイクル要因も強く、真の分散になるかは未確認。
+- SK hynixとSamsungはMicronの相対優位確認には必須だが、同じメモリサイクルへの集中を強める可能性がある。
+
+### 撤退候補
+
+- 現時点では撤退候補を指定しない。
+- Micronの撤退検討条件は、DRAM/HBM/NAND価格下落、CSP CapEx下方修正、在庫増加、ASP下落、FCF悪化、HBM採用劣後が同時に出るかで判断する。
+- 他候補は未確認のため、撤退候補ではなく「未評価」とする。
+
+## 8. 次回確認事項
+
+- SK hynix、Samsung、SanDiskの直近決算から、HBM、server DRAM、SOCAMM2、enterprise SSD、NAND、CapEx、在庫、粗利率を同じ表で比較する。
+- Broadcom、Arista、Astera Labsの初回baselineを起点に、AI関連売上内訳、backlog、Asteraの顧客名とend customer対応、粗利低下要因、FCF、CapEx、software renewal quality、inventory quality、peer同一基準valuationを確認する。Broadcom、Arista、Asteraの顧客集中、Arista、Astera、Broadcomのvaluation入力snapshotは取得済み。Aristaは `RP-202605-P0-0007` と `RP-202605-P0-0026`、Asteraは `RP-202605-P0-0009` と `RP-202605-P0-0027`、Broadcomは `RP-202605-P0-0010` でreview済みopen。次はBroadcomのAI revenue customer/product mix、Arista/AsteraのFCF/CapEx同一基準比較、AsteraのAR/inventory qualityとend customer mapping、各社のpeer同一基準比較を優先する。
+- ASML、TSMC、Synopsys、Cadenceの初回baselineを起点に、AI関連売上、backlog/RPO、粗利、FCF、CapEx、規制影響、バリュエーションまたはpeer同一基準比較を確認する。ASMLのvaluation入力snapshotは確認済みだが、相対魅力は確定しない。TSMCはRP-202605-P0-0019でcustomer concentration、RP-202605-P0-0020でvaluation readinessをreview済みだが、顧客集中注記本文、share count、market price、EV、倍率定義が不足するためopenのまま維持する。SynopsysはRP-202605-P0-0017でcustomer concentrationをreview済みだが、顧客集中注記本文がないためopenのまま維持する。CadenceはRP-202605-P0-0012でvaluation readinessをreview済みだが、share count、market price、debt、EV、倍率定義が不足するためopenのまま維持する。SamsungはRP-202605-P0-0014、SanDiskはRP-202605-P0-0015、SKHYNIXはRP-202605-P0-0016でvaluation_metricsの候補入力をreview済みだが、EV、倍率、peer共通basisが不足するためopenのまま維持する。
+- MicronのFY2026 Q3決算で、粗利率約81%ガイダンスの達成、inventory、ASP、FCF、CapExを確認する。
+- HBM4/HBM4Eの顧客別配分、Vera Rubin世代でのMicron / SK hynix / Samsungの相対採用を確認する。MicronについてはNVIDIA/CSP側の名指し採用、HBM売上金額、peer同一基準valuationを継続確認する。
+- TrendForce以外のOmdia、IDC、DRAMeXchange等でDRAM/NAND/HBM/eSSD市況を確認する。
+- portfolio HTML生成時は、Micron集中、分散候補、未評価候補、撤退検討候補を一画面で比較できるようにする。
+
+## 9. 品質ゲート
+
+- 弱気材料を先に確認したか：はい。
+- 競合・隣接10社の追加公式ソース確認範囲を明記したか：はい。
+- 競合値を未確認として扱ったか：はい。
+- 重要主張にURL、発表日、確認日を残したか：既存レポート由来の出典を下表に記載。
+- 不明な点を不明と書いたか：はい。
+- 投資助言ではなく判断材料として書いたか：はい。
+
+## 10. 出典
+
+この初期portfolioレポートは、以下のローカルMarkdownを入力にした。URL、発表日、確認日は入力レポート内の出典表に基づく。
+
+| 種別 | 発行元 | タイトル | URL | 発表日 | 確認日 | 入力レポート |
+|---|---|---|---|---|---|---|
+| local_report | local | Micron集中投資 月次市況確認 | `targets/MU/reports/monthly/2026-05_monthly.md` | 2026-05-10 | 2026-05-10 | 月次 |
+| local_report | local | Micron集中投資 初回ベースライン検証レポート | `targets/MU/reports/quarterly/FY2026-Q2_initial_baseline.md` | 2026-05-10 | 2026-05-10 | 四半期 |
+| market_data | TrendForce | AI Server Demand to Drive Memory Contract Price Increases in 2Q26 as CSPs Secure Supply via Long-Term Agreements | https://www.trendforce.com/presscenter/news/20260331-12995.html | 2026-03-31 | 2026-05-10 | 月次 |
+| market_data | TrendForce | North American AI Data Center Expansion Drives 2026 CapEx of Top Nine CSPs to US$830 Billion, Says TrendForce | https://www.trendforce.com/presscenter/news/20260506-13033.html | 2026-05-06 | 2026-05-10 | 月次 |
+| primary | Micron IR | Micron Technology, Inc. Reports Results for the Second Quarter of Fiscal 2026 | https://investors.micron.com/news-releases/news-release-details/micron-technology-inc-reports-results-second-quarter-fiscal-2026 | 2026-03-18 | 2026-05-10 | 月次 / 四半期 |
+| primary | Micron IR | Fiscal Q2 2026 Earnings Call Prepared Remarks | https://investors.micron.com/static-files/e089f8c0-065d-47b8-9d02-bfa863cdb357 | 2026-03-18 | 2026-05-10 | 四半期 |
+| primary | SEC | Micron FY2026 Q2 Form 10-Q | https://www.sec.gov/Archives/edgar/data/723125/000072312526000006/mu-20260226.htm | 2026-03-19 | 2026-05-10 | 四半期 |
+| primary | Micron IR | Micron in High-Volume Production of HBM4 Designed for NVIDIA Vera Rubin, PCIe Gen6 SSD and SOCAMM2 | https://investors.micron.com/news-releases/news-release-details/micron-high-volume-production-hbm4-designed-nvidia-vera-rubin | 2026-03-16 | 2026-05-10 | 四半期 |
+| primary | Samsung Semiconductor Newsroom | Samsung Electronics Announces First Quarter 2026 Results | https://news.samsungsemiconductor.com/global/samsung-electronics-announces-first-quarter-2026-results/ | 2026-04-30 | 2026-05-10 | 月次 |
+| primary | SK hynix / PR Newswire | SK hynix Announces 1Q26 Financial Results | https://www.prnewswire.com/news-releases/sk-hynix-announces-1q26-financial-results-302750959.html | 2026-04-22 | 2026-05-10 | 月次 |
+| primary | SanDisk / Nasdaq | Sandisk Reports Fiscal Third Quarter 2026 Financial Results | https://www.nasdaq.com/press-release/sandisk-reports-fiscal-third-quarter-2026-financial-results-2026-04-30 | 2026-04-30 | 2026-05-10 | 月次 |
+| local_report | local | SK hynix競合target 初回ベースライン確認レポート | `targets/SKHYNIX/reports/quarterly/2026-05_initial_baseline.md` | 2026-05-10 | 2026-05-10 | Phase 7 |
+| local_source_map | local | SKHYNIX RP-202605-P0-0016 valuation source map | `targets/SKHYNIX/evidence/verified/RP-202605-P0-0016_valuation_source_map.md` | 2026-05-11 | 2026-05-11 | RP-202605-P0-0016 |
+| local_run_log | local | SKHYNIX RP-202605-P0-0016 valuation run log | `targets/SKHYNIX/runs/2026-05-11_rp_202605_p0_0016_valuation_run.md` | 2026-05-11 | 2026-05-11 | RP-202605-P0-0016 |
+| local_source_map | local | SKHYNIX RP-202605-P0-0023 HBM outperformance source map | `targets/SKHYNIX/evidence/verified/RP-202605-P0-0023_hbm_outperformance_vs_mu_source_map.md` | 2026-05-11 | 2026-05-11 | RP-202605-P0-0023 |
+| local_source_map | local | SKHYNIX RP-202605-P0-0024 HBM4/HBM4E adoption source map | `targets/SKHYNIX/evidence/verified/RP-202605-P0-0024_hbm4_hbm4e_adoption_source_map.md` | 2026-05-11 | 2026-05-11 | RP-202605-P0-0024 |
+| local_source_map | local | SKHYNIX RP-202605-P0-0025 supply overbuild risk source map | `targets/SKHYNIX/evidence/verified/RP-202605-P0-0025_supply_overbuild_risk_source_map.md` | 2026-05-11 | 2026-05-11 | RP-202605-P0-0025 |
+| local_report | local | Samsung競合target 初回ベースライン確認レポート | `targets/SAMSUNG/reports/quarterly/2026-05_initial_baseline.md` | 2026-05-10 | 2026-05-10 | Phase 7 |
+| local_source_map | local | SAMSUNG RP-202605-P0-0014 valuation source map | `targets/SAMSUNG/evidence/verified/RP-202605-P0-0014_valuation_source_map.md` | 2026-05-11 | 2026-05-11 | RP-202605-P0-0014 |
+| local_run_log | local | SAMSUNG RP-202605-P0-0014 valuation run log | `targets/SAMSUNG/runs/2026-05-11_rp_202605_p0_0014_valuation_run.md` | 2026-05-11 | 2026-05-11 | RP-202605-P0-0014 |
+| local_report | local | SanDisk競合target 初回ベースライン確認レポート | `targets/SANDISK/reports/quarterly/2026-05_initial_baseline.md` | 2026-05-10 | 2026-05-10 | Phase 7 |
+| local_source_map | local | SANDISK RP-202605-P0-0015 valuation source map | `targets/SANDISK/evidence/verified/RP-202605-P0-0015_valuation_source_map.md` | 2026-05-11 | 2026-05-11 | RP-202605-P0-0015 |
+| local_run_log | local | SANDISK RP-202605-P0-0015 valuation run log | `targets/SANDISK/runs/2026-05-11_rp_202605_p0_0015_valuation_run.md` | 2026-05-11 | 2026-05-11 | RP-202605-P0-0015 |
+| local_source_map | local | MU RP-202605-P0-0013 valuation source map | `targets/MU/evidence/verified/RP-202605-P0-0013_valuation_source_map.md` | 2026-05-11 | 2026-05-11 | RP-202605-P0-0013 |
+| local_run_log | local | MU RP-202605-P0-0013 valuation run log | `targets/MU/runs/2026-05-11_rp_202605_p0_0013_valuation_run.md` | 2026-05-11 | 2026-05-11 | RP-202605-P0-0013 |
+| local_source_map | local | MU RP-202605-P0-0021 HBM customer named by NVIDIA source map | `targets/MU/evidence/verified/RP-202605-P0-0021_hbm_customer_named_by_nvidia_source_map.md` | 2026-05-11 | 2026-05-11 | RP-202605-P0-0021 |
+| local_run_log | local | MU RP-202605-P0-0021 HBM customer named by NVIDIA run log | `targets/MU/runs/2026-05-11_rp_202605_p0_0021_hbm_customer_named_by_nvidia_run.md` | 2026-05-11 | 2026-05-11 | RP-202605-P0-0021 |
+| local_source_map | local | MU RP-202605-P0-0022 HBM revenue source map | `targets/MU/evidence/verified/RP-202605-P0-0022_hbm_revenue_source_map.md` | 2026-05-11 | 2026-05-11 | RP-202605-P0-0022 |
+| local_run_log | local | MU RP-202605-P0-0022 HBM revenue run log | `targets/MU/runs/2026-05-11_rp_202605_p0_0022_hbm_revenue_run.md` | 2026-05-11 | 2026-05-11 | RP-202605-P0-0022 |
+| local_report | local | Broadcom隣接target 初回ベースライン確認レポート | `targets/BROADCOM/reports/quarterly/2026-05_initial_baseline.md` | 2026-05-11 | 2026-05-11 | Phase 7 / RP-202605-P0-0005 / RP-202605-P0-0006 |
+| local_report | local | Arista隣接target 初回ベースライン確認レポート | `targets/ARISTA/reports/quarterly/2026-Q1_initial_baseline.md` | 2026-05-10 | 2026-05-10 | Phase 7 |
+| local_report | local | Astera Labs隣接target 初回ベースライン確認レポート | `targets/ASTERA/reports/quarterly/2026-Q1_initial_baseline.md` | 2026-05-10 | 2026-05-10 | Phase 7 |
+| local_report | local | ASML隣接target 初回ベースライン確認レポート | `targets/ASML/reports/quarterly/2026-Q1_initial_baseline.md` | 2026-05-10 | 2026-05-10 | Phase 7 |
+| local_report | local | TSMC上流・半導体基盤target 初回ベースライン確認レポート | `targets/TSMC/reports/quarterly/2026-Q1_initial_baseline.md` | 2026-05-10 | 2026-05-10 | Phase 7 |
+| local_report | local | Synopsys隣接target 初回ベースライン確認レポート | `targets/SYNOPSYS/reports/quarterly/2026-Q1_initial_baseline.md` | 2026-05-10 | 2026-05-10 | Phase 7 |
+| local_source_map | local | SYNOPSYS RP-202605-P0-0017 customer concentration source map | `targets/SYNOPSYS/evidence/verified/RP-202605-P0-0017_customer_concentration_source_map.md` | 2026-05-11 | 2026-05-11 | RP-202605-P0-0017 |
+| local_run_log | local | SYNOPSYS RP-202605-P0-0017 customer concentration run log | `targets/SYNOPSYS/runs/2026-05-11_rp_202605_p0_0017_customer_concentration_run.md` | 2026-05-11 | 2026-05-11 | RP-202605-P0-0017 |
+| local_source_map | local | TSMC RP-202605-P0-0019 customer concentration source map | `targets/TSMC/evidence/verified/RP-202605-P0-0019_customer_concentration_source_map.md` | 2026-05-11 | 2026-05-11 | RP-202605-P0-0019 |
+| local_run_log | local | TSMC RP-202605-P0-0019 customer concentration run log | `targets/TSMC/runs/2026-05-11_rp_202605_p0_0019_customer_concentration_run.md` | 2026-05-11 | 2026-05-11 | RP-202605-P0-0019 |
+| local_source_map | local | TSMC RP-202605-P0-0020 valuation source map | `targets/TSMC/evidence/verified/RP-202605-P0-0020_valuation_source_map.md` | 2026-05-11 | 2026-05-11 | RP-202605-P0-0020 |
+| local_run_log | local | TSMC RP-202605-P0-0020 valuation run log | `targets/TSMC/runs/2026-05-11_rp_202605_p0_0020_valuation_run.md` | 2026-05-11 | 2026-05-11 | RP-202605-P0-0020 |
+| local_report | local | Cadence EDA/system design target 初回ベースライン確認レポート | `targets/CADENCE/reports/quarterly/2026-Q1_initial_baseline.md` | 2026-05-10 | 2026-05-10 | Phase 7 |
+| primary | Broadcom Inc. | Broadcom Inc. Announces First Quarter Fiscal Year 2026 Financial Results | https://investors.broadcom.com/news-releases/news-release-details/broadcom-inc-announces-first-quarter-fiscal-year-2026-financial | 2026-03-04 | 2026-05-10 | Phase 7 |
+| sec_api | SEC | Broadcom Inc. submissions JSON | https://data.sec.gov/submissions/CIK0001730168.json | 2026-05-11 | 2026-05-11 | RP-202605-P0-0005 |
+| sec_filing | Broadcom Inc. | Form 10-Q, quarter ended February 1, 2026 | https://www.sec.gov/Archives/edgar/data/1730168/000173016826000016/avgo-20260201.htm | 2026-03-11 | 2026-05-11 | RP-202605-P0-0005 / RP-202605-P0-0006 |
+| sec_xbrl_json | SEC | Broadcom Inc. companyfacts JSON | https://data.sec.gov/api/xbrl/companyfacts/CIK0001730168.json | n/a | 2026-05-11 | RP-202605-P0-0006 |
+| market_data | Stooq | AVGO.US latest quote CSV | https://stooq.com/q/l/?s=avgo.us&amp;f=sd2t2ohlcv&amp;h&amp;e=csv | 2026-05-08 | 2026-05-11 | RP-202605-P0-0006 |
+| primary | Arista Networks, Inc. | Arista Networks, Inc. Reports First Quarter 2026 Financial Results | https://investors.arista.com/Communications/Press-Releases-and-Events/Press-Release-Detail/2026/Arista-Networks-Inc--Reports-First-Quarter-2026-Financial-Results/ | 2026-05-05 | 2026-05-10 | Phase 7 |
+| primary | Astera Labs, Inc. | Astera Labs Reports First Quarter 2026 Financial Results | https://ir.asteralabs.com/news-releases/news-release-details/astera-labs-reports-first-quarter-2026-financial-results | 2026-05-05 | 2026-05-10 | Phase 7 |
+| sec_filing | Astera Labs, Inc. | Form 10-Q, quarter ended March 31, 2026 | https://www.sec.gov/Archives/edgar/data/1736297/000173629726000020/alab-20260331.htm | 2026-05-06 | 2026-05-11 | RP-202605-P0-0003 / RP-202605-P0-0004 |
+| sec_filing | Astera Labs, Inc. | Form 10-K, fiscal year ended December 31, 2025 | https://www.sec.gov/Archives/edgar/data/1736297/000173629726000010/alab-20251231.htm | 2026-02-20 | 2026-05-11 | RP-202605-P0-0003 needs_review_not_used |
+| market_data | Stooq | ALAB.US latest quote CSV | https://stooq.com/q/l/?s=alab.us&amp;f=sd2t2ohlcv&amp;h&amp;e=csv | 2026-05-08 | 2026-05-11 | RP-202605-P0-0004 |
+| local_source_map | local | ASTERA RP-202605-P0-0009 score readiness source map | `targets/ASTERA/evidence/verified/RP-202605-P0-0009_micron_diversification_score_readiness_source_map.md` | 2026-05-11 | 2026-05-11 | RP-202605-P0-0009 |
+| local_run_log | local | ASTERA RP-202605-P0-0009 score readiness run log | `targets/ASTERA/runs/2026-05-11_rp_202605_p0_0009_micron_diversification_score_readiness_run.md` | 2026-05-11 | 2026-05-11 | RP-202605-P0-0009 |
+| local_source_map | local | ASTERA RP-202605-P0-0027 product / AI connectivity revenue source map | `targets/ASTERA/evidence/verified/RP-202605-P0-0027_product_or_ai_connectivity_revenue_source_map.md` | 2026-05-11 | 2026-05-11 | RP-202605-P0-0027 |
+| local_source_map | local | ARISTA RP-202605-P0-0007 score readiness source map | `targets/ARISTA/evidence/verified/RP-202605-P0-0007_micron_diversification_score_readiness_source_map.md` | 2026-05-11 | 2026-05-11 | RP-202605-P0-0007 |
+| local_run_log | local | ARISTA RP-202605-P0-0007 score readiness run log | `targets/ARISTA/runs/2026-05-11_rp_202605_p0_0007_micron_diversification_score_readiness_run.md` | 2026-05-11 | 2026-05-11 | RP-202605-P0-0007 |
+| local_source_map | local | ARISTA RP-202605-P0-0026 AI networking revenue source map | `targets/ARISTA/evidence/verified/RP-202605-P0-0026_ai_networking_revenue_source_map.md` | 2026-05-11 | 2026-05-11 | RP-202605-P0-0026 |
+| local_source_map | local | BROADCOM RP-202605-P0-0010 score readiness source map | `targets/BROADCOM/evidence/verified/RP-202605-P0-0010_micron_diversification_score_readiness_source_map.md` | 2026-05-11 | 2026-05-11 | RP-202605-P0-0010 |
+| local_run_log | local | BROADCOM RP-202605-P0-0010 score readiness run log | `targets/BROADCOM/runs/2026-05-11_rp_202605_p0_0010_micron_diversification_score_readiness_run.md` | 2026-05-11 | 2026-05-11 | RP-202605-P0-0010 |
+| primary | ASML Holding N.V. | ASML reports EUR 8.8 billion total net sales and EUR 2.8 billion net income in Q1 2026 | https://www.asml.com/en/news/press-releases/2026/q1-2026-financial-results | 2026-04-15 | 2026-05-10 | Phase 7 |
+| local_source_map | local | ASML RP-202605-P0-0008 valuation source map | `targets/ASML/evidence/verified/RP-202605-P0-0008_valuation_source_map.md` | 2026-05-11 | 2026-05-11 | RP-202605-P0-0008 |
+| primary | TSMC | 1Q26 Earnings Release | https://investor.tsmc.com/english/encrypt/files/encrypt_file/reports/2026-04/e85216eea8dccd8ca75d7e040e8d57be3ccd618b/1Q26%20EarningsRelease.pdf | 2026-04-16 | 2026-05-10 | Phase 7 |
+| primary | TSMC | 1Q26 Presentation | https://investor.tsmc.com/english/encrypt/files/encrypt_file/reports/2026-04/a7e3abe65a3fbc342aa55f9f53a5490dd621c1ac/1Q26%20Presentation%20%28E%29.pdf | 2026-04-16 | 2026-05-10 | Phase 7 |
+| primary | Synopsys, Inc. | Synopsys Posts Financial Results for First Quarter Fiscal Year 2026 | https://news.synopsys.com/2026-02-25-Synopsys-Posts-Financial-Results-for-First-Quarter-Fiscal-Year-2026 | 2026-02-25 | 2026-05-10 | Phase 7 |
+| primary | Cadence Design Systems, Inc. | Cadence Reports First Quarter 2026 Financial Results | https://investor.cadence.com/news/news-details/2026/Cadence-Reports-First-Quarter-2026-Financial-Results/default.aspx | 2026-04-27 | 2026-05-10 | Phase 7 |
+">Copy portfolio markdown</button>
+  </section>
+  <details class="copyFallback" data-copy-fallback>
+    <summary>Copy fallback</summary>
+    <p>クリップボードAPIが使えない場合は、下のMarkdownを選択して使用します。</p>
+    <textarea readonly aria-label="コピー対象Markdown"></textarea>
+  </details>
+
+<details class="sourceDrawer">
+  <summary><span>Source Drawer</span>出典一覧</summary>
+  <div class="sourceBody">
+<p>この初期portfolioレポートは、以下のローカルMarkdownを入力にした。URL、発表日、確認日は入力レポート内の出典表に基づく。</p>
+<table><thead><tr><th>種別</th><th>発行元</th><th>タイトル</th><th>URL</th><th>発表日</th><th>確認日</th><th>入力レポート</th></tr></thead><tbody><tr><td>local_report</td><td>local</td><td>Micron集中投資 月次市況確認</td><td><code>targets/MU/reports/monthly/2026-05_monthly.md</code></td><td>2026-05-10</td><td>2026-05-10</td><td>月次</td></tr><tr><td>local_report</td><td>local</td><td>Micron集中投資 初回ベースライン検証レポート</td><td><code>targets/MU/reports/quarterly/FY2026-Q2_initial_baseline.md</code></td><td>2026-05-10</td><td>2026-05-10</td><td>四半期</td></tr><tr><td>market_data</td><td>TrendForce</td><td>AI Server Demand to Drive Memory Contract Price Increases in 2Q26 as CSPs Secure Supply via Long-Term Agreements</td><td>https://www.trendforce.com/presscenter/news/20260331-12995.html</td><td>2026-03-31</td><td>2026-05-10</td><td>月次</td></tr><tr><td>market_data</td><td>TrendForce</td><td>North American AI Data Center Expansion Drives 2026 CapEx of Top Nine CSPs to US$830 Billion, Says TrendForce</td><td>https://www.trendforce.com/presscenter/news/20260506-13033.html</td><td>2026-05-06</td><td>2026-05-10</td><td>月次</td></tr><tr><td>primary</td><td>Micron IR</td><td>Micron Technology, Inc. Reports Results for the Second Quarter of Fiscal 2026</td><td>https://investors.micron.com/news-releases/news-release-details/micron-technology-inc-reports-results-second-quarter-fiscal-2026</td><td>2026-03-18</td><td>2026-05-10</td><td>月次 / 四半期</td></tr><tr><td>primary</td><td>Micron IR</td><td>Fiscal Q2 2026 Earnings Call Prepared Remarks</td><td>https://investors.micron.com/static-files/e089f8c0-065d-47b8-9d02-bfa863cdb357</td><td>2026-03-18</td><td>2026-05-10</td><td>四半期</td></tr><tr><td>primary</td><td>SEC</td><td>Micron FY2026 Q2 Form 10-Q</td><td>https://www.sec.gov/Archives/edgar/data/723125/000072312526000006/mu-20260226.htm</td><td>2026-03-19</td><td>2026-05-10</td><td>四半期</td></tr><tr><td>primary</td><td>Micron IR</td><td>Micron in High-Volume Production of HBM4 Designed for NVIDIA Vera Rubin, PCIe Gen6 SSD and SOCAMM2</td><td>https://investors.micron.com/news-releases/news-release-details/micron-high-volume-production-hbm4-designed-nvidia-vera-rubin</td><td>2026-03-16</td><td>2026-05-10</td><td>四半期</td></tr><tr><td>primary</td><td>Samsung Semiconductor Newsroom</td><td>Samsung Electronics Announces First Quarter 2026 Results</td><td>https://news.samsungsemiconductor.com/global/samsung-electronics-announces-first-quarter-2026-results/</td><td>2026-04-30</td><td>2026-05-10</td><td>月次</td></tr><tr><td>primary</td><td>SK hynix / PR Newswire</td><td>SK hynix Announces 1Q26 Financial Results</td><td>https://www.prnewswire.com/news-releases/sk-hynix-announces-1q26-financial-results-302750959.html</td><td>2026-04-22</td><td>2026-05-10</td><td>月次</td></tr><tr><td>primary</td><td>SanDisk / Nasdaq</td><td>Sandisk Reports Fiscal Third Quarter 2026 Financial Results</td><td>https://www.nasdaq.com/press-release/sandisk-reports-fiscal-third-quarter-2026-financial-results-2026-04-30</td><td>2026-04-30</td><td>2026-05-10</td><td>月次</td></tr><tr><td>local_report</td><td>local</td><td>SK hynix競合target 初回ベースライン確認レポート</td><td><code>targets/SKHYNIX/reports/quarterly/2026-05_initial_baseline.md</code></td><td>2026-05-10</td><td>2026-05-10</td><td>Phase 7</td></tr><tr><td>local_source_map</td><td>local</td><td>SKHYNIX RP-202605-P0-0016 valuation source map</td><td><code>targets/SKHYNIX/evidence/verified/RP-202605-P0-0016_valuation_source_map.md</code></td><td>2026-05-11</td><td>2026-05-11</td><td>RP-202605-P0-0016</td></tr><tr><td>local_run_log</td><td>local</td><td>SKHYNIX RP-202605-P0-0016 valuation run log</td><td><code>targets/SKHYNIX/runs/2026-05-11_rp_202605_p0_0016_valuation_run.md</code></td><td>2026-05-11</td><td>2026-05-11</td><td>RP-202605-P0-0016</td></tr><tr><td>local_source_map</td><td>local</td><td>SKHYNIX RP-202605-P0-0023 HBM outperformance source map</td><td><code>targets/SKHYNIX/evidence/verified/RP-202605-P0-0023_hbm_outperformance_vs_mu_source_map.md</code></td><td>2026-05-11</td><td>2026-05-11</td><td>RP-202605-P0-0023</td></tr><tr><td>local_source_map</td><td>local</td><td>SKHYNIX RP-202605-P0-0024 HBM4/HBM4E adoption source map</td><td><code>targets/SKHYNIX/evidence/verified/RP-202605-P0-0024_hbm4_hbm4e_adoption_source_map.md</code></td><td>2026-05-11</td><td>2026-05-11</td><td>RP-202605-P0-0024</td></tr><tr><td>local_source_map</td><td>local</td><td>SKHYNIX RP-202605-P0-0025 supply overbuild risk source map</td><td><code>targets/SKHYNIX/evidence/verified/RP-202605-P0-0025_supply_overbuild_risk_source_map.md</code></td><td>2026-05-11</td><td>2026-05-11</td><td>RP-202605-P0-0025</td></tr><tr><td>local_report</td><td>local</td><td>Samsung競合target 初回ベースライン確認レポート</td><td><code>targets/SAMSUNG/reports/quarterly/2026-05_initial_baseline.md</code></td><td>2026-05-10</td><td>2026-05-10</td><td>Phase 7</td></tr><tr><td>local_source_map</td><td>local</td><td>SAMSUNG RP-202605-P0-0014 valuation source map</td><td><code>targets/SAMSUNG/evidence/verified/RP-202605-P0-0014_valuation_source_map.md</code></td><td>2026-05-11</td><td>2026-05-11</td><td>RP-202605-P0-0014</td></tr><tr><td>local_run_log</td><td>local</td><td>SAMSUNG RP-202605-P0-0014 valuation run log</td><td><code>targets/SAMSUNG/runs/2026-05-11_rp_202605_p0_0014_valuation_run.md</code></td><td>2026-05-11</td><td>2026-05-11</td><td>RP-202605-P0-0014</td></tr><tr><td>local_report</td><td>local</td><td>SanDisk競合target 初回ベースライン確認レポート</td><td><code>targets/SANDISK/reports/quarterly/2026-05_initial_baseline.md</code></td><td>2026-05-10</td><td>2026-05-10</td><td>Phase 7</td></tr><tr><td>local_source_map</td><td>local</td><td>SANDISK RP-202605-P0-0015 valuation source map</td><td><code>targets/SANDISK/evidence/verified/RP-202605-P0-0015_valuation_source_map.md</code></td><td>2026-05-11</td><td>2026-05-11</td><td>RP-202605-P0-0015</td></tr><tr><td>local_run_log</td><td>local</td><td>SANDISK RP-202605-P0-0015 valuation run log</td><td><code>targets/SANDISK/runs/2026-05-11_rp_202605_p0_0015_valuation_run.md</code></td><td>2026-05-11</td><td>2026-05-11</td><td>RP-202605-P0-0015</td></tr><tr><td>local_source_map</td><td>local</td><td>MU RP-202605-P0-0013 valuation source map</td><td><code>targets/MU/evidence/verified/RP-202605-P0-0013_valuation_source_map.md</code></td><td>2026-05-11</td><td>2026-05-11</td><td>RP-202605-P0-0013</td></tr><tr><td>local_run_log</td><td>local</td><td>MU RP-202605-P0-0013 valuation run log</td><td><code>targets/MU/runs/2026-05-11_rp_202605_p0_0013_valuation_run.md</code></td><td>2026-05-11</td><td>2026-05-11</td><td>RP-202605-P0-0013</td></tr><tr><td>local_source_map</td><td>local</td><td>MU RP-202605-P0-0021 HBM customer named by NVIDIA source map</td><td><code>targets/MU/evidence/verified/RP-202605-P0-0021_hbm_customer_named_by_nvidia_source_map.md</code></td><td>2026-05-11</td><td>2026-05-11</td><td>RP-202605-P0-0021</td></tr><tr><td>local_run_log</td><td>local</td><td>MU RP-202605-P0-0021 HBM customer named by NVIDIA run log</td><td><code>targets/MU/runs/2026-05-11_rp_202605_p0_0021_hbm_customer_named_by_nvidia_run.md</code></td><td>2026-05-11</td><td>2026-05-11</td><td>RP-202605-P0-0021</td></tr><tr><td>local_source_map</td><td>local</td><td>MU RP-202605-P0-0022 HBM revenue source map</td><td><code>targets/MU/evidence/verified/RP-202605-P0-0022_hbm_revenue_source_map.md</code></td><td>2026-05-11</td><td>2026-05-11</td><td>RP-202605-P0-0022</td></tr><tr><td>local_run_log</td><td>local</td><td>MU RP-202605-P0-0022 HBM revenue run log</td><td><code>targets/MU/runs/2026-05-11_rp_202605_p0_0022_hbm_revenue_run.md</code></td><td>2026-05-11</td><td>2026-05-11</td><td>RP-202605-P0-0022</td></tr><tr><td>local_report</td><td>local</td><td>Broadcom隣接target 初回ベースライン確認レポート</td><td><code>targets/BROADCOM/reports/quarterly/2026-05_initial_baseline.md</code></td><td>2026-05-11</td><td>2026-05-11</td><td>Phase 7 / RP-202605-P0-0005 / RP-202605-P0-0006</td></tr><tr><td>local_report</td><td>local</td><td>Arista隣接target 初回ベースライン確認レポート</td><td><code>targets/ARISTA/reports/quarterly/2026-Q1_initial_baseline.md</code></td><td>2026-05-10</td><td>2026-05-10</td><td>Phase 7</td></tr><tr><td>local_report</td><td>local</td><td>Astera Labs隣接target 初回ベースライン確認レポート</td><td><code>targets/ASTERA/reports/quarterly/2026-Q1_initial_baseline.md</code></td><td>2026-05-10</td><td>2026-05-10</td><td>Phase 7</td></tr><tr><td>local_report</td><td>local</td><td>ASML隣接target 初回ベースライン確認レポート</td><td><code>targets/ASML/reports/quarterly/2026-Q1_initial_baseline.md</code></td><td>2026-05-10</td><td>2026-05-10</td><td>Phase 7</td></tr><tr><td>local_report</td><td>local</td><td>TSMC上流・半導体基盤target 初回ベースライン確認レポート</td><td><code>targets/TSMC/reports/quarterly/2026-Q1_initial_baseline.md</code></td><td>2026-05-10</td><td>2026-05-10</td><td>Phase 7</td></tr><tr><td>local_report</td><td>local</td><td>Synopsys隣接target 初回ベースライン確認レポート</td><td><code>targets/SYNOPSYS/reports/quarterly/2026-Q1_initial_baseline.md</code></td><td>2026-05-10</td><td>2026-05-10</td><td>Phase 7</td></tr><tr><td>local_source_map</td><td>local</td><td>SYNOPSYS RP-202605-P0-0017 customer concentration source map</td><td><code>targets/SYNOPSYS/evidence/verified/RP-202605-P0-0017_customer_concentration_source_map.md</code></td><td>2026-05-11</td><td>2026-05-11</td><td>RP-202605-P0-0017</td></tr><tr><td>local_run_log</td><td>local</td><td>SYNOPSYS RP-202605-P0-0017 customer concentration run log</td><td><code>targets/SYNOPSYS/runs/2026-05-11_rp_202605_p0_0017_customer_concentration_run.md</code></td><td>2026-05-11</td><td>2026-05-11</td><td>RP-202605-P0-0017</td></tr><tr><td>local_source_map</td><td>local</td><td>TSMC RP-202605-P0-0019 customer concentration source map</td><td><code>targets/TSMC/evidence/verified/RP-202605-P0-0019_customer_concentration_source_map.md</code></td><td>2026-05-11</td><td>2026-05-11</td><td>RP-202605-P0-0019</td></tr><tr><td>local_run_log</td><td>local</td><td>TSMC RP-202605-P0-0019 customer concentration run log</td><td><code>targets/TSMC/runs/2026-05-11_rp_202605_p0_0019_customer_concentration_run.md</code></td><td>2026-05-11</td><td>2026-05-11</td><td>RP-202605-P0-0019</td></tr><tr><td>local_source_map</td><td>local</td><td>TSMC RP-202605-P0-0020 valuation source map</td><td><code>targets/TSMC/evidence/verified/RP-202605-P0-0020_valuation_source_map.md</code></td><td>2026-05-11</td><td>2026-05-11</td><td>RP-202605-P0-0020</td></tr><tr><td>local_run_log</td><td>local</td><td>TSMC RP-202605-P0-0020 valuation run log</td><td><code>targets/TSMC/runs/2026-05-11_rp_202605_p0_0020_valuation_run.md</code></td><td>2026-05-11</td><td>2026-05-11</td><td>RP-202605-P0-0020</td></tr><tr><td>local_report</td><td>local</td><td>Cadence EDA/system design target 初回ベースライン確認レポート</td><td><code>targets/CADENCE/reports/quarterly/2026-Q1_initial_baseline.md</code></td><td>2026-05-10</td><td>2026-05-10</td><td>Phase 7</td></tr><tr><td>primary</td><td>Broadcom Inc.</td><td>Broadcom Inc. Announces First Quarter Fiscal Year 2026 Financial Results</td><td>https://investors.broadcom.com/news-releases/news-release-details/broadcom-inc-announces-first-quarter-fiscal-year-2026-financial</td><td>2026-03-04</td><td>2026-05-10</td><td>Phase 7</td></tr><tr><td>sec_api</td><td>SEC</td><td>Broadcom Inc. submissions JSON</td><td>https://data.sec.gov/submissions/CIK0001730168.json</td><td>2026-05-11</td><td>2026-05-11</td><td>RP-202605-P0-0005</td></tr><tr><td>sec_filing</td><td>Broadcom Inc.</td><td>Form 10-Q, quarter ended February 1, 2026</td><td>https://www.sec.gov/Archives/edgar/data/1730168/000173016826000016/avgo-20260201.htm</td><td>2026-03-11</td><td>2026-05-11</td><td>RP-202605-P0-0005 / RP-202605-P0-0006</td></tr><tr><td>sec_xbrl_json</td><td>SEC</td><td>Broadcom Inc. companyfacts JSON</td><td>https://data.sec.gov/api/xbrl/companyfacts/CIK0001730168.json</td><td>n/a</td><td>2026-05-11</td><td>RP-202605-P0-0006</td></tr><tr><td>market_data</td><td>Stooq</td><td>AVGO.US latest quote CSV</td><td>https://stooq.com/q/l/?s=avgo.us&amp;f=sd2t2ohlcv&amp;h&amp;e=csv</td><td>2026-05-08</td><td>2026-05-11</td><td>RP-202605-P0-0006</td></tr><tr><td>primary</td><td>Arista Networks, Inc.</td><td>Arista Networks, Inc. Reports First Quarter 2026 Financial Results</td><td>https://investors.arista.com/Communications/Press-Releases-and-Events/Press-Release-Detail/2026/Arista-Networks-Inc--Reports-First-Quarter-2026-Financial-Results/</td><td>2026-05-05</td><td>2026-05-10</td><td>Phase 7</td></tr><tr><td>primary</td><td>Astera Labs, Inc.</td><td>Astera Labs Reports First Quarter 2026 Financial Results</td><td>https://ir.asteralabs.com/news-releases/news-release-details/astera-labs-reports-first-quarter-2026-financial-results</td><td>2026-05-05</td><td>2026-05-10</td><td>Phase 7</td></tr><tr><td>sec_filing</td><td>Astera Labs, Inc.</td><td>Form 10-Q, quarter ended March 31, 2026</td><td>https://www.sec.gov/Archives/edgar/data/1736297/000173629726000020/alab-20260331.htm</td><td>2026-05-06</td><td>2026-05-11</td><td>RP-202605-P0-0003 / RP-202605-P0-0004</td></tr><tr><td>sec_filing</td><td>Astera Labs, Inc.</td><td>Form 10-K, fiscal year ended December 31, 2025</td><td>https://www.sec.gov/Archives/edgar/data/1736297/000173629726000010/alab-20251231.htm</td><td>2026-02-20</td><td>2026-05-11</td><td>RP-202605-P0-0003 needs_review_not_used</td></tr><tr><td>market_data</td><td>Stooq</td><td>ALAB.US latest quote CSV</td><td>https://stooq.com/q/l/?s=alab.us&amp;f=sd2t2ohlcv&amp;h&amp;e=csv</td><td>2026-05-08</td><td>2026-05-11</td><td>RP-202605-P0-0004</td></tr><tr><td>local_source_map</td><td>local</td><td>ASTERA RP-202605-P0-0009 score readiness source map</td><td><code>targets/ASTERA/evidence/verified/RP-202605-P0-0009_micron_diversification_score_readiness_source_map.md</code></td><td>2026-05-11</td><td>2026-05-11</td><td>RP-202605-P0-0009</td></tr><tr><td>local_run_log</td><td>local</td><td>ASTERA RP-202605-P0-0009 score readiness run log</td><td><code>targets/ASTERA/runs/2026-05-11_rp_202605_p0_0009_micron_diversification_score_readiness_run.md</code></td><td>2026-05-11</td><td>2026-05-11</td><td>RP-202605-P0-0009</td></tr><tr><td>local_source_map</td><td>local</td><td>ASTERA RP-202605-P0-0027 product / AI connectivity revenue source map</td><td><code>targets/ASTERA/evidence/verified/RP-202605-P0-0027_product_or_ai_connectivity_revenue_source_map.md</code></td><td>2026-05-11</td><td>2026-05-11</td><td>RP-202605-P0-0027</td></tr><tr><td>local_source_map</td><td>local</td><td>ARISTA RP-202605-P0-0007 score readiness source map</td><td><code>targets/ARISTA/evidence/verified/RP-202605-P0-0007_micron_diversification_score_readiness_source_map.md</code></td><td>2026-05-11</td><td>2026-05-11</td><td>RP-202605-P0-0007</td></tr><tr><td>local_run_log</td><td>local</td><td>ARISTA RP-202605-P0-0007 score readiness run log</td><td><code>targets/ARISTA/runs/2026-05-11_rp_202605_p0_0007_micron_diversification_score_readiness_run.md</code></td><td>2026-05-11</td><td>2026-05-11</td><td>RP-202605-P0-0007</td></tr><tr><td>local_source_map</td><td>local</td><td>ARISTA RP-202605-P0-0026 AI networking revenue source map</td><td><code>targets/ARISTA/evidence/verified/RP-202605-P0-0026_ai_networking_revenue_source_map.md</code></td><td>2026-05-11</td><td>2026-05-11</td><td>RP-202605-P0-0026</td></tr><tr><td>local_source_map</td><td>local</td><td>BROADCOM RP-202605-P0-0010 score readiness source map</td><td><code>targets/BROADCOM/evidence/verified/RP-202605-P0-0010_micron_diversification_score_readiness_source_map.md</code></td><td>2026-05-11</td><td>2026-05-11</td><td>RP-202605-P0-0010</td></tr><tr><td>local_run_log</td><td>local</td><td>BROADCOM RP-202605-P0-0010 score readiness run log</td><td><code>targets/BROADCOM/runs/2026-05-11_rp_202605_p0_0010_micron_diversification_score_readiness_run.md</code></td><td>2026-05-11</td><td>2026-05-11</td><td>RP-202605-P0-0010</td></tr><tr><td>primary</td><td>ASML Holding N.V.</td><td>ASML reports EUR 8.8 billion total net sales and EUR 2.8 billion net income in Q1 2026</td><td>https://www.asml.com/en/news/press-releases/2026/q1-2026-financial-results</td><td>2026-04-15</td><td>2026-05-10</td><td>Phase 7</td></tr><tr><td>local_source_map</td><td>local</td><td>ASML RP-202605-P0-0008 valuation source map</td><td><code>targets/ASML/evidence/verified/RP-202605-P0-0008_valuation_source_map.md</code></td><td>2026-05-11</td><td>2026-05-11</td><td>RP-202605-P0-0008</td></tr><tr><td>primary</td><td>TSMC</td><td>1Q26 Earnings Release</td><td>https://investor.tsmc.com/english/encrypt/files/encrypt_file/reports/2026-04/e85216eea8dccd8ca75d7e040e8d57be3ccd618b/1Q26%20EarningsRelease.pdf</td><td>2026-04-16</td><td>2026-05-10</td><td>Phase 7</td></tr><tr><td>primary</td><td>TSMC</td><td>1Q26 Presentation</td><td>https://investor.tsmc.com/english/encrypt/files/encrypt_file/reports/2026-04/a7e3abe65a3fbc342aa55f9f53a5490dd621c1ac/1Q26%20Presentation%20%28E%29.pdf</td><td>2026-04-16</td><td>2026-05-10</td><td>Phase 7</td></tr><tr><td>primary</td><td>Synopsys, Inc.</td><td>Synopsys Posts Financial Results for First Quarter Fiscal Year 2026</td><td>https://news.synopsys.com/2026-02-25-Synopsys-Posts-Financial-Results-for-First-Quarter-Fiscal-Year-2026</td><td>2026-02-25</td><td>2026-05-10</td><td>Phase 7</td></tr><tr><td>primary</td><td>Cadence Design Systems, Inc.</td><td>Cadence Reports First Quarter 2026 Financial Results</td><td>https://investor.cadence.com/news/news-details/2026/Cadence-Reports-First-Quarter-2026-Financial-Results/default.aspx</td><td>2026-04-27</td><td>2026-05-10</td><td>Phase 7</td></tr></tbody></table>
+  </div>
+</details>
+
+  <nav class="toc" aria-label="目次">
+    <strong>目次</strong>
+    <a href="#初期結論">初期結論</a><a href="#弱気材料を先に確認">弱気材料を先に確認</a><a href="#強気材料">強気材料</a><a href="#初期portfolio-universe">初期portfolio universe</a><a href="#1-phase-7-target追加後のportfolio更新案">1 Phase 7 target追加後のportfolio更新案</a><a href="#初期比較軸">初期比較軸</a><a href="#相対魅力の初期判定">相対魅力の初期判定</a><a href="#分散候補と撤退候補">分散候補と撤退候補</a><a href="#次回確認事項">次回確認事項</a><a href="#品質ゲート">品質ゲート</a><a href="#出典">出典</a>
+  </nav>
+
+  <article class="report" data-report-path="portfolio/reports/2026-05_portfolio.md">
+<h1 id="aiインフラ銘柄-portfolio横断比較-初期レポート">AIインフラ銘柄 portfolio横断比較 初期レポート</h1>
+<p>対象期間：2026-05 作成日：2026-05-11 主対象：Micron Technology（MU）</p>
+<p>注記：これは投資助言ではなく、Micron集中投資とAIインフラ関連銘柄を比較するための初期観測レポートである。Phase 7でSK hynix、Samsung、SanDisk、Broadcom、Arista、Astera Labs、ASML、TSMC、Synopsys、Cadenceの公式一次情報入口と初回target baselineを追加したが、portfolio横断の相対採点はまだ未実施である。</p>
+<h2 id="初期結論">1. 初期結論</h2>
+<ul><li>Micron単体の観測材料：月次市況ではDRAM、RDIMM、NAND、enterprise SSDが上昇または逼迫方向。四半期初回ベースラインではFY2026 Q2売上、粗利率、FY2026 Q3ガイダンス、HBM4/SOCAMM2/Gen6 SSD量産をMicron公式情報で概ね確認済み。</li><li>portfolio横断の結論：現時点ではMicron集中の相対魅力が上がったか下がったかは未判定。理由は、競合・隣接10社の初回baselineはそろったが、同一基準の27点採点、バリュエーション、CapEx/FCF比較をまだ実施していないため。顧客集中はBroadcom、Arista、Astera、valuation入力snapshotはMU、Arista、Astera、Broadcom、ASMLで確認済み。ただしMU valuationはpeer共通basis未固定、MUのHBM顧客側名指し採用は未確認、HBM売上金額は未開示である。Samsung valuation_metricsはRP-202605-P0-0014で価格・株式数候補、SanDisk valuation_metricsはRP-202605-P0-0015でvaluation candidate、SKHYNIX valuation_metricsはRP-202605-P0-0016で財務・株式数候補、Synopsys customer concentrationはRP-202605-P0-0017でreview済みだが、EV、倍率、peer共通basisまたは顧客集中注記本文が不足するため採点には使わない。</li><li>Phase 7更新：<code>targets/SKHYNIX</code>、<code>targets/SAMSUNG</code>、<code>targets/SANDISK</code>、<code>targets/BROADCOM</code>、<code>targets/ARISTA</code>、<code>targets/ASTERA</code>、<code>targets/ASML</code>、<code>targets/TSMC</code>、<code>targets/SYNOPSYS</code>、<code>targets/CADENCE</code>のtarget構成、source_log、初回baseline、HTMLビューを追加した。portfolio CSVでは10社を<code>baseline_ready</code>、<code>source_status: partially_verified</code>へ進めたが、scoreと相対魅力は未採点のまま維持する。</li><li>分散候補：未判定。候補リストは作るが、数値比較・バリュエーション・リスク比較は次回以降。</li><li>撤退候補：未判定。Micronに即時撤退を示す強制警戒条件は既存レポート上は確認されていないが、CapEx増加、競争、将来供給過剰は重要監視対象。</li><li>source_status：<code>partially_verified</code>。Micron材料は一部確認済みで、MU valuation_metricsは <code>RP-202605-P0-0013</code> で入力snapshot取得済み、HBM顧客側名指し採用は <code>RP-202605-P0-0021</code> で未確認、HBM revenueは <code>RP-202605-P0-0022</code> で金額未開示と確認済み。ARISTAの顧客集中とvaluation入力snapshot、ASTERAの顧客集中とvaluation入力snapshot、BROADCOMの顧客集中とvaluation入力snapshot、ASMLのvaluation入力snapshotも一次情報中心で追加確認済み。ARISTAのscore readinessは <code>RP-202605-P0-0007</code>、AI networking revenueは <code>RP-202605-P0-0026</code>、ASTERAのscore readinessは <code>RP-202605-P0-0009</code>、product / AI connectivity revenueは <code>RP-202605-P0-0027</code>、BROADCOMのscore readinessは <code>RP-202605-P0-0010</code> でreview済みだが、AI networking / connectivity revenueの定量内訳、company-defined FCF、CapEx同一基準比較、AR / inventory quality、end customer mapping、software renewal quality、inventory quality、year five以降のdebt maturity、peer同一基準比較が残るため <code>not_scoreable</code> / <code>open</code> を維持する。CADENCE、SAMSUNG、SANDISK、SKHYNIX、SYNOPSYS、TSMCもreview済みだが、顧客集中注記本文、EV、倍率、peer共通basis、HBM顧客側採用、供給規律入力が不足するため <code>needs_research</code> / <code>open</code> を維持する。ただしportfolio横断判断に必要な競合値はまだ大きく不足する。</li></ul>
+<h2 id="弱気材料を先に確認">2. 弱気材料を先に確認</h2>
+<ul><li>弱気材料1：MicronのCapExが大きい。FY2026のnet PP&amp;E capexは250億ドル超、FY2027もHBM/DRAM関連投資で大きく増える見込み。将来の供給過剰リスクをportfolio比較の中心リスクに置く。</li><li>弱気材料2：月次市況では短期供給不足が確認される一方、価格急騰はPC・スマートフォン側の需要抑制や、CSP側の投資効率悪化につながる可能性がある。</li><li>弱気材料3：MicronのHBM強気シナリオはまだ顧客側一次情報で完全には裏付かない。NVIDIA/CSP側一次情報ではMicron HBM/HBM4/HBM4Eの名指し採用を確認できず、HBM売上金額も未開示である。Micron側自己発表と顧客側採用確認、CMBU売上とHBM単独売上は分けて扱う。</li><li>弱気材料4：Micron公式情報では、HBM需要が弱まった場合にHBM向け能力が通常DRAMへ戻り、DRAM供給増・価格下押しにつながるリスクが説明されている。</li><li>弱気材料5：中国CACによるMicron製品購入制限、台湾DRAM生産集中、関税・輸出規制・貿易障壁は、Micron固有リスクとして残る。</li><li>弱気材料6：BroadcomはQ1 FY2026の1社semiconductor distributor向け直接売上42%、distributor売上55%、上位5エンド顧客約50%を確認済みで、AI ASIC / networking分散候補として強い顧客集中リスクを持つ。さらに2026-05-08 valuation snapshotはEV/Sales annualized Q1 27.8821x、GAAP P/E annualized Q1 71.6667x、derived FCF yield 1.5244%で、AI成長を相当織り込んでいる可能性がある。MU valuation snapshotも2026-05-08終値$746.81、EV/Sales annualized Q2 8.7562x、GAAP P/E 15.4683x、adjusted FCF yield 3.2766%で、市況上振れを含む可能性があるため割安判定へ進めない。RP-202605-P0-0010でRPO、contract liabilities、inventory、working capital、debt maturity through year fourを部分確認したが、AI revenue customer/product mix、software renewal quality、inventory quality、year five以降のdebt maturity、peer同一基準比較が未確認のため <code>not_scoreable</code> 維持。ASML、TSMC、Synopsys、Cadence、Samsung、SanDisk、SK hynix、Arista、Asteraもそれぞれ未確認の顧客集中、valuation、AI revenue mix、FCF/CapEx、HBM採用、供給規律入力が残る。隣接候補の過大valuationとMicron自身の市況ピーク倍率を同時に見落とさない。</li></ul>
+<h2 id="強気材料">3. 強気材料</h2>
+<ul><li>強気材料1：DRAM、NAND、RDIMM、enterprise SSDは、既存月次レポート上では上昇または逼迫方向。AIインフラがメモリ階層全体を制約にするというMicron仮説を補強する。</li><li>強気材料2：Micron初回ベースラインでは、FY2026 Q2売上238.60億ドル、Non-GAAP粗利率74.9%、FY2026 Q3売上ガイダンス335億ドル±7.5億ドル、粗利率約81%が確認されている。</li><li>強気材料3：MicronはHBM4 36GB 12H、SOCAMM2、PCIe Gen6 9650 SSDをNVIDIA Vera Rubin世代向けに設計された製品として量産していると自社発表した。</li><li>強気材料4：AI inference、agentic AI、KV cache、vector database、enterprise SSD需要は、既存Micron月次・四半期レポートで継続確認対象として整理されている。</li><li>強気材料5：TrendForce由来の既存月次レポートでは、上位9社CSPの2026年CapExが約8,300億ドル、前年比79%増とされ、AIインフラ投資が長期戦略である可能性を示している。</li></ul>
+<h2 id="初期portfolio-universe">4. 初期portfolio universe</h2>
+<table><thead><tr><th>区分</th><th>候補</th><th>target_dir</th><th>monitoring_status</th><th>初期扱い</th><th>確認状況</th></tr></thead><tbody><tr><td>主対象</td><td>Micron Technology（MU）</td><td><code>targets/MU</code></td><td><code>active_target</code></td><td>集中投資仮説の中心</td><td>月次・四半期レポートで部分確認済み</td></tr><tr><td>メモリ競合</td><td>SK hynix</td><td><code>targets/SKHYNIX</code></td><td><code>baseline_ready</code></td><td>HBM / server DRAM / eSSD比較候補</td><td>IR、Listing、Earnings入口確認済み。RP-202605-P0-0016で財務・株式数候補を部分確認したがneeds_research/open維持</td></tr><tr><td>メモリ競合</td><td>Samsung</td><td><code>targets/SAMSUNG</code></td><td><code>baseline_ready</code></td><td>HBM4 / SOCAMM2 / NAND比較候補</td><td>IR、Listing、1Q 2026 presentationを初回確認済み。RP-202605-P0-0014で価格・株式数候補を部分確認したがneeds_research/open維持</td></tr><tr><td>NAND / SSD</td><td>SanDisk</td><td><code>targets/SANDISK</code></td><td><code>baseline_ready</code></td><td>datacenter SSD相対比較候補</td><td>IR、ticker、Q3 FY2026 resultsを初回確認済み。RP-202605-P0-0015でvaluation candidateを部分確認したがneeds_research/open維持</td></tr><tr><td>ASIC / networking</td><td>Broadcom</td><td><code>targets/BROADCOM</code></td><td><code>baseline_ready</code></td><td>AI ASIC / networking / infrastructure software分散候補</td><td>Q1 FY2026公式リリースから売上、AI revenue、segment revenue、Q2 guidance、OCF、CapEx、FCFを初回確認。SEC 10-QでQ1 FY2026の1社distributor直接売上42%、distributor売上55%、上位5エンド顧客約50%、valuation snapshotを確認</td></tr><tr><td>networking</td><td>Arista</td><td><code>targets/ARISTA</code></td><td><code>baseline_ready</code></td><td>AI cluster networking分散候補</td><td>Q1 2026公式リリースから売上、gross margin、operating margin、EPS、Q2 outlookを初回確認</td></tr><tr><td>connectivity</td><td>Astera Labs</td><td><code>targets/ASTERA</code></td><td><code>baseline_ready</code></td><td>AI connectivity分散候補</td><td>Q1 2026公式リリースから売上、gross margin、operating margin、cash flow、inventory、Q2 gross margin outlookを初回確認。SEC 10-Qで2026年Q1の10%以上顧客5社合計売上90%、売掛金91%、valuation snapshotを確認</td></tr><tr><td>equipment</td><td>ASML</td><td><code>targets/ASML</code></td><td><code>baseline_ready</code></td><td>半導体装置分散候補</td><td>Q1 2026公式リリースから売上、gross margin、net income、cash、Q2/2026 outlook、AI infrastructure関連コメントを初回確認。RP-202605-P0-0008でvaluation入力snapshot、cash/debt、net cash、OCF、PPE purchasesも確認</td></tr><tr><td>foundry</td><td>TSMC</td><td><code>targets/TSMC</code></td><td><code>baseline_ready</code></td><td>AI半導体製造基盤候補</td><td>1Q26公式資料から売上、margin、technology mix、HPC mix、cash flow、CapEx、2Q26/2026 outlookを初回確認</td></tr><tr><td>EDA</td><td>Synopsys</td><td><code>targets/SYNOPSYS</code></td><td><code>baseline_ready</code></td><td>EDA分散候補</td><td>Q1 FY2026公式リリースから売上、EPS、gross margin、cash、debt、Q2/FY2026 guidance、AI R&amp;Dコメントを初回確認。RP-202605-P0-0017でcustomer concentrationをreview済みだが、顧客集中注記本文がなくneeds_research/open維持</td></tr><tr><td>EDA</td><td>Cadence</td><td><code>targets/CADENCE</code></td><td><code>baseline_ready</code></td><td>EDA分散候補</td><td>Q1 2026公式リリースから売上、operating margin、EPS、cash flow、地域別/製品別mix、規制リスクを初回確認。RP-202605-P0-0011とRP-202605-P0-0012で顧客集中とvaluationをreview済みだが、どちらもneeds_research維持</td></tr></tbody></table>
+<p>注記：<code>target_dir</code>はPhase 7で個別targetを追加した後にportfolioが読み取り専用で参照するローカルパスであり、企業側の一次情報ではない。現時点で<code>active_target</code>はMicron、<code>baseline_ready</code>はSK hynix、Samsung、SanDisk、Broadcom、Arista、Astera Labs、ASML、TSMC、Synopsys、Cadence。全候補でtickerと初回baselineは登録済みだが、score、相対魅力、分散価値、撤退候補妥当性は確定させない。</p>
+<h2 id="1-phase-7-target追加後のportfolio更新案">4.1 Phase 7 target追加後のportfolio更新案</h2>
+<p>競合target追加後にportfolio側で必要な更新は、個別targetの原本を上書きせず、読み取り専用の集約に限定する。</p>
+<table><thead><tr><th>更新対象</th><th>更新方針</th><th>needs_researchを維持する条件</th></tr></thead><tbody><tr><td><code>target_dir</code></td><td>追加済みtargetのローカル参照先を保持する。パス命名を変える場合はCSVだけで吸収する。</td><td>target未作成、またはtarget名が確定していない場合</td></tr><tr><td><code>monitoring_status</code></td><td>target雛形作成時に<code>target_initialized</code>、初回baseline作成後に<code>baseline_ready</code>、portfolio反映後に<code>portfolio_ready</code>へ進める。</td><td>targetがあっても一次情報レポートが未作成の場合</td></tr><tr><td><code>ticker</code></td><td>個別targetの<code>target.yaml</code>に記録された市場・tickerを転記する。</td><td>上場単位、ADR、普通株、親会社単位が未確認の場合</td></tr><tr><td><code>relative_attractiveness_vs_mu</code></td><td>競合の初回baselineとMUの同時期レポートを同じ比較軸で読んだ後に更新する。</td><td>HBM、粗利、CapEx、在庫、顧客構成、valuationのいずれかが不足する場合</td></tr><tr><td><code>diversification_value</code></td><td>memory、networking、foundry、EDAなどの収益ドライバー差を確認してから更新する。</td><td>収益ドライバーと相関リスクが未確認の場合</td></tr><tr><td><code>exit_candidate_relevance</code></td><td>MU縮小時の受け皿候補かを、流動性、バリュエーション、事業リスク込みで評価する。</td><td>一次情報と価格指標が揃わない場合</td></tr><tr><td><code>score_0_27</code> / <code>judgement</code></td><td>Phase 7 targetの初回baselineが<code>partially_verified</code>以上になってから採点する。</td><td><code>research_status: needs_research</code>または<code>source_status: needs_review</code>のままの場合</td></tr></tbody></table>
+<p>運用順序は、SK hynix、Samsung、SanDisk、Broadcom、Arista、Astera Labs、ASML、TSMC、Synopsys、Cadenceの初回baselineまで追加済み。次は同一基準KPI抽出、27点採点、バリュエーション比較、Micron相対魅力の更新に進む。弱気材料は各候補で強気材料より先に確認し、相対魅力の上方修正は一次情報と確認日が揃うまで行わない。</p>
+<h2 id="初期比較軸">5. 初期比較軸</h2>
+<table><thead><tr><th>比較軸</th><th>Micronの現在地</th><th>他候補の確認状態</th><th>次回確認</th></tr></thead><tbody><tr><td>AI需要感応度</td><td>HBM / DRAM / NAND / eSSD / SOCAMM2で高い</td><td>未確認</td><td>各社のAI売上比率、受注、backlog、ガイダンス</td></tr><tr><td>価格決定力</td><td>DRAM/NAND価格上昇局面では強い</td><td>未確認</td><td>ASP、契約期間、顧客集中、値上げ継続性</td></tr><tr><td>供給規律</td><td>CapEx増加により中期リスクあり</td><td>未確認</td><td>各社CapEx、長期契約、在庫、稼働率</td></tr><tr><td>競争優位</td><td>Micron公式情報では製品進捗確認済み</td><td>未確認</td><td>HBM4/HBM4E採用配分、eSSD share、SOCAMM2 design wins</td></tr><tr><td>地政学・規制</td><td>中国CAC、台湾集中、関税・輸出規制リスクあり</td><td>未確認</td><td>各候補の地域別売上、製造拠点、規制影響</td></tr><tr><td>バリュエーション</td><td>Micronは未採点</td><td>Arista / Astera / Broadcom / ASMLは入力snapshot確認済み。他候補は未確認が多く、相対採点は未実施</td><td>売上成長、粗利、FCF、PER/EV系指標</td></tr><tr><td>portfolio分散効果</td><td>Micron単体はメモリサイクル感応度が高い</td><td>未確認</td><td>memory / networking / foundry / EDA間の相関とリスク</td></tr></tbody></table>
+<h2 id="相対魅力の初期判定">6. 相対魅力の初期判定</h2>
+<table><thead><tr><th>対象</th><th>初期判定</th><th>理由</th><th>次回までの扱い</th></tr></thead><tbody><tr><td>MU</td><td>UNRATED</td><td>単体材料は強いが、valuation peer basis、HBM顧客側名指し採用、HBM売上金額、27点スコアと競合比較が未完了</td><td>主対象として継続監視</td></tr><tr><td>SK hynix</td><td>UNRATED</td><td>IR、Listing、Earnings入口は確認済み。RP-202605-P0-0016でFY2025 revenue、EPS、cash/investments、debt、OCF、CapEx、FCF candidate、2025-12-31 sharesを部分確認し、RP-202605-P0-0023から0025でHBM outperformance / HBM4-HBM4E adoption / supply overbuild riskをreview済みだが、株価、market cap、EV、倍率、顧客側名指し採用、契約、出荷量、歩留まり、同一期間ASP/在庫/FCFが不足するため採点不可</td><td>HBM / server DRAM / eSSD比較対象</td></tr><tr><td>Samsung</td><td>UNRATED</td><td>1Q 2026 presentationでMemory/DSとAI memoryコメントを確認。RP-202605-P0-0014で2026-05-11 common/preferred/GDR price candidatesと2025Q4 share countsを部分確認したが、debt、OCF/FCF/CapEx、EV、P/E、EV/Sales、FCF yieldまたはEV/FCF、common/preferred/GDR扱いが不足するため採点不可。相対採点は未実施</td><td>Micron相対採用リスクの比較対象</td></tr><tr><td>SanDisk</td><td>UNRATED</td><td>Q3 FY2026 resultsでDatacenter/NAND関連の強い数値を確認。RP-202605-P0-0015でvaluation candidateを部分確認したが、peer共通basis未固定とreview-required HTML不使用のため採点不可。相対採点は未実施</td><td>NAND / eSSD分散候補</td></tr><tr><td>Broadcom</td><td>UNRATED</td><td>Q1 FY2026公式リリースでAI revenue、Q2 guidance、segment revenue、FCFを初回確認。顧客集中はQ1 FY2026の1社distributor直接売上42%、distributor売上55%、上位5エンド顧客約50%をSEC 10-Qで確認済み。valuation snapshotは2026-05-08終値$430.00、diluted-basis EV/Sales annualized Q1 27.8821x、GAAP P/E annualized Q1 71.6667xで高い。RP-202605-P0-0010でRPO、contract liabilities、inventory、working capital、debt maturity through year fourを部分確認したが、AI revenue内訳、software renewal quality、inventory quality、year five以降のdebt maturity、peer同一基準比較は未確認</td><td>ASIC / networking / software分散候補</td></tr><tr><td>Arista</td><td>UNRATED</td><td>Q1 2026公式リリースで売上、margin、EPS、Q2 outlookを初回確認。FY2025の2大エンド顧客比率16%/26%、上位2 reseller売掛金集中52%、valuation入力snapshot、OCF、PPE purchasesも確認済み。score readinessとAI networking revenueはreview済みだが、AI networking単独売上、AI/Cloud titan別売上、company-defined FCF、CapEx同一基準比較、gross margin低下要因は未確認のため <code>not_scoreable</code> / <code>open</code> 維持</td><td>networking分散候補</td></tr><tr><td>Astera Labs</td><td>UNRATED</td><td>Q1 2026公式リリースで売上、margin、cash flow、inventory、Q2 gross margin outlookを初回確認。顧客集中は2026年Q1の10%以上顧客5社合計売上90%、売掛金91%をSEC 10-Qで確認済み。valuation snapshotは2026-05-08終値$199.79、diluted-basis EV/Sales annualized Q1 28.3830xで高い。score readinessとproduct / AI connectivity revenueはreview済みで、Q1全社売上とQ2 revenue guidanceは確認したが、AR/inventoryの質、製品別売上、顧客別採用売上、顧客名とend customer対応は未確認のため <code>not_scoreable</code> / <code>open</code> 維持</td><td>connectivity分散候補</td></tr><tr><td>ASML</td><td>UNRATED</td><td>Q1 2026公式リリースで売上、margin、net income、cash、outlook、AI infrastructure関連コメントを初回確認。valuation入力snapshotは2026-05-08 Euronext終値EUR 1,319.40、EV/Sales annualized Q1 14.3501x、annualized Q1 P/E 46.1329x。order intake定量、backlog、China exposure、company-defined FCF、peer同一基準比較は未確認</td><td>equipment分散候補</td></tr><tr><td>TSMC</td><td>UNRATED</td><td>1Q26公式資料で売上、margin、technology mix、HPC mix、FCF、CapEx、2Q26/2026 outlookを初回確認。customer concentrationはRP-202605-P0-0019、valuation readinessはRP-202605-P0-0020でreview済みだが、顧客集中注記本文、share count、market price、EV、倍率定義がなく採点不可。advanced packaging、地政学も未確認</td><td>foundry分散候補</td></tr><tr><td>Synopsys</td><td>UNRATED</td><td>Q1 FY2026公式リリースで売上、EPS、gross margin、cash、debt、guidance、AI R&amp;Dコメントを初回確認。customer concentrationはRP-202605-P0-0017でreview済みだが、顧客集中注記本文がローカル原本になく、10%超顧客の有無も不明のため採点不可。Ansys統合、規制、valuationも未確認</td><td>EDA分散候補</td></tr><tr><td>Cadence</td><td>UNRATED</td><td>Q1 2026公式リリースで売上、operating margin、EPS、cash flow、地域別/製品別mixを初回確認。customer concentrationとvaluation readinessはreview済みだが、顧客集中注記本文、share count、market price、debt、EV、倍率定義が不足するため採点不可。DOJ/BIS settlement、China露出、RPO/ARRも未確認</td><td>EDA分散候補</td></tr></tbody></table>
+<h2 id="分散候補と撤退候補">7. 分散候補と撤退候補</h2>
+<h3 id="分散候補">分散候補</h3>
+<ul><li>現時点では競合・隣接10社の初回baselineがそろい、Broadcom、Arista、Asteraの顧客集中リスク、Arista、Astera、Broadcomのvaluation入力snapshotを追加確認した段階。Broadcom、Arista、Astera Labs、ASML、TSMC、Synopsys、Cadenceは、Micronのメモリサイクルリスクを分散できる可能性があるが、相対採点は未実施。</li><li>SanDiskはNAND / enterprise SSDへの分散候補になり得るが、Micronと同じメモリサイクル要因も強く、真の分散になるかは未確認。</li><li>SK hynixとSamsungはMicronの相対優位確認には必須だが、同じメモリサイクルへの集中を強める可能性がある。</li></ul>
+<h3 id="撤退候補">撤退候補</h3>
+<ul><li>現時点では撤退候補を指定しない。</li><li>Micronの撤退検討条件は、DRAM/HBM/NAND価格下落、CSP CapEx下方修正、在庫増加、ASP下落、FCF悪化、HBM採用劣後が同時に出るかで判断する。</li><li>他候補は未確認のため、撤退候補ではなく「未評価」とする。</li></ul>
+<h2 id="次回確認事項">8. 次回確認事項</h2>
+<ul><li>SK hynix、Samsung、SanDiskの直近決算から、HBM、server DRAM、SOCAMM2、enterprise SSD、NAND、CapEx、在庫、粗利率を同じ表で比較する。</li><li>Broadcom、Arista、Astera Labsの初回baselineを起点に、AI関連売上内訳、backlog、Asteraの顧客名とend customer対応、粗利低下要因、FCF、CapEx、software renewal quality、inventory quality、peer同一基準valuationを確認する。Broadcom、Arista、Asteraの顧客集中、Arista、Astera、Broadcomのvaluation入力snapshotは取得済み。Aristaは <code>RP-202605-P0-0007</code> と <code>RP-202605-P0-0026</code>、Asteraは <code>RP-202605-P0-0009</code> と <code>RP-202605-P0-0027</code>、Broadcomは <code>RP-202605-P0-0010</code> でreview済みopen。次はBroadcomのAI revenue customer/product mix、Arista/AsteraのFCF/CapEx同一基準比較、AsteraのAR/inventory qualityとend customer mapping、各社のpeer同一基準比較を優先する。</li><li>ASML、TSMC、Synopsys、Cadenceの初回baselineを起点に、AI関連売上、backlog/RPO、粗利、FCF、CapEx、規制影響、バリュエーションまたはpeer同一基準比較を確認する。ASMLのvaluation入力snapshotは確認済みだが、相対魅力は確定しない。TSMCはRP-202605-P0-0019でcustomer concentration、RP-202605-P0-0020でvaluation readinessをreview済みだが、顧客集中注記本文、share count、market price、EV、倍率定義が不足するためopenのまま維持する。SynopsysはRP-202605-P0-0017でcustomer concentrationをreview済みだが、顧客集中注記本文がないためopenのまま維持する。CadenceはRP-202605-P0-0012でvaluation readinessをreview済みだが、share count、market price、debt、EV、倍率定義が不足するためopenのまま維持する。SamsungはRP-202605-P0-0014、SanDiskはRP-202605-P0-0015、SKHYNIXはRP-202605-P0-0016でvaluation_metricsの候補入力をreview済みだが、EV、倍率、peer共通basisが不足するためopenのまま維持する。</li><li>MicronのFY2026 Q3決算で、粗利率約81%ガイダンスの達成、inventory、ASP、FCF、CapExを確認する。</li><li>HBM4/HBM4Eの顧客別配分、Vera Rubin世代でのMicron / SK hynix / Samsungの相対採用を確認する。MicronについてはNVIDIA/CSP側の名指し採用、HBM売上金額、peer同一基準valuationを継続確認する。</li><li>TrendForce以外のOmdia、IDC、DRAMeXchange等でDRAM/NAND/HBM/eSSD市況を確認する。</li><li>portfolio HTML生成時は、Micron集中、分散候補、未評価候補、撤退検討候補を一画面で比較できるようにする。</li></ul>
+<h2 id="品質ゲート">9. 品質ゲート</h2>
+<ul><li>弱気材料を先に確認したか：はい。</li><li>競合・隣接10社の追加公式ソース確認範囲を明記したか：はい。</li><li>競合値を未確認として扱ったか：はい。</li><li>重要主張にURL、発表日、確認日を残したか：既存レポート由来の出典を下表に記載。</li><li>不明な点を不明と書いたか：はい。</li><li>投資助言ではなく判断材料として書いたか：はい。</li></ul>
+<h2 id="出典">10. 出典</h2>
+<p>この初期portfolioレポートは、以下のローカルMarkdownを入力にした。URL、発表日、確認日は入力レポート内の出典表に基づく。</p>
+<table><thead><tr><th>種別</th><th>発行元</th><th>タイトル</th><th>URL</th><th>発表日</th><th>確認日</th><th>入力レポート</th></tr></thead><tbody><tr><td>local_report</td><td>local</td><td>Micron集中投資 月次市況確認</td><td><code>targets/MU/reports/monthly/2026-05_monthly.md</code></td><td>2026-05-10</td><td>2026-05-10</td><td>月次</td></tr><tr><td>local_report</td><td>local</td><td>Micron集中投資 初回ベースライン検証レポート</td><td><code>targets/MU/reports/quarterly/FY2026-Q2_initial_baseline.md</code></td><td>2026-05-10</td><td>2026-05-10</td><td>四半期</td></tr><tr><td>market_data</td><td>TrendForce</td><td>AI Server Demand to Drive Memory Contract Price Increases in 2Q26 as CSPs Secure Supply via Long-Term Agreements</td><td>https://www.trendforce.com/presscenter/news/20260331-12995.html</td><td>2026-03-31</td><td>2026-05-10</td><td>月次</td></tr><tr><td>market_data</td><td>TrendForce</td><td>North American AI Data Center Expansion Drives 2026 CapEx of Top Nine CSPs to US$830 Billion, Says TrendForce</td><td>https://www.trendforce.com/presscenter/news/20260506-13033.html</td><td>2026-05-06</td><td>2026-05-10</td><td>月次</td></tr><tr><td>primary</td><td>Micron IR</td><td>Micron Technology, Inc. Reports Results for the Second Quarter of Fiscal 2026</td><td>https://investors.micron.com/news-releases/news-release-details/micron-technology-inc-reports-results-second-quarter-fiscal-2026</td><td>2026-03-18</td><td>2026-05-10</td><td>月次 / 四半期</td></tr><tr><td>primary</td><td>Micron IR</td><td>Fiscal Q2 2026 Earnings Call Prepared Remarks</td><td>https://investors.micron.com/static-files/e089f8c0-065d-47b8-9d02-bfa863cdb357</td><td>2026-03-18</td><td>2026-05-10</td><td>四半期</td></tr><tr><td>primary</td><td>SEC</td><td>Micron FY2026 Q2 Form 10-Q</td><td>https://www.sec.gov/Archives/edgar/data/723125/000072312526000006/mu-20260226.htm</td><td>2026-03-19</td><td>2026-05-10</td><td>四半期</td></tr><tr><td>primary</td><td>Micron IR</td><td>Micron in High-Volume Production of HBM4 Designed for NVIDIA Vera Rubin, PCIe Gen6 SSD and SOCAMM2</td><td>https://investors.micron.com/news-releases/news-release-details/micron-high-volume-production-hbm4-designed-nvidia-vera-rubin</td><td>2026-03-16</td><td>2026-05-10</td><td>四半期</td></tr><tr><td>primary</td><td>Samsung Semiconductor Newsroom</td><td>Samsung Electronics Announces First Quarter 2026 Results</td><td>https://news.samsungsemiconductor.com/global/samsung-electronics-announces-first-quarter-2026-results/</td><td>2026-04-30</td><td>2026-05-10</td><td>月次</td></tr><tr><td>primary</td><td>SK hynix / PR Newswire</td><td>SK hynix Announces 1Q26 Financial Results</td><td>https://www.prnewswire.com/news-releases/sk-hynix-announces-1q26-financial-results-302750959.html</td><td>2026-04-22</td><td>2026-05-10</td><td>月次</td></tr><tr><td>primary</td><td>SanDisk / Nasdaq</td><td>Sandisk Reports Fiscal Third Quarter 2026 Financial Results</td><td>https://www.nasdaq.com/press-release/sandisk-reports-fiscal-third-quarter-2026-financial-results-2026-04-30</td><td>2026-04-30</td><td>2026-05-10</td><td>月次</td></tr><tr><td>local_report</td><td>local</td><td>SK hynix競合target 初回ベースライン確認レポート</td><td><code>targets/SKHYNIX/reports/quarterly/2026-05_initial_baseline.md</code></td><td>2026-05-10</td><td>2026-05-10</td><td>Phase 7</td></tr><tr><td>local_source_map</td><td>local</td><td>SKHYNIX RP-202605-P0-0016 valuation source map</td><td><code>targets/SKHYNIX/evidence/verified/RP-202605-P0-0016_valuation_source_map.md</code></td><td>2026-05-11</td><td>2026-05-11</td><td>RP-202605-P0-0016</td></tr><tr><td>local_run_log</td><td>local</td><td>SKHYNIX RP-202605-P0-0016 valuation run log</td><td><code>targets/SKHYNIX/runs/2026-05-11_rp_202605_p0_0016_valuation_run.md</code></td><td>2026-05-11</td><td>2026-05-11</td><td>RP-202605-P0-0016</td></tr><tr><td>local_source_map</td><td>local</td><td>SKHYNIX RP-202605-P0-0023 HBM outperformance source map</td><td><code>targets/SKHYNIX/evidence/verified/RP-202605-P0-0023_hbm_outperformance_vs_mu_source_map.md</code></td><td>2026-05-11</td><td>2026-05-11</td><td>RP-202605-P0-0023</td></tr><tr><td>local_source_map</td><td>local</td><td>SKHYNIX RP-202605-P0-0024 HBM4/HBM4E adoption source map</td><td><code>targets/SKHYNIX/evidence/verified/RP-202605-P0-0024_hbm4_hbm4e_adoption_source_map.md</code></td><td>2026-05-11</td><td>2026-05-11</td><td>RP-202605-P0-0024</td></tr><tr><td>local_source_map</td><td>local</td><td>SKHYNIX RP-202605-P0-0025 supply overbuild risk source map</td><td><code>targets/SKHYNIX/evidence/verified/RP-202605-P0-0025_supply_overbuild_risk_source_map.md</code></td><td>2026-05-11</td><td>2026-05-11</td><td>RP-202605-P0-0025</td></tr><tr><td>local_report</td><td>local</td><td>Samsung競合target 初回ベースライン確認レポート</td><td><code>targets/SAMSUNG/reports/quarterly/2026-05_initial_baseline.md</code></td><td>2026-05-10</td><td>2026-05-10</td><td>Phase 7</td></tr><tr><td>local_source_map</td><td>local</td><td>SAMSUNG RP-202605-P0-0014 valuation source map</td><td><code>targets/SAMSUNG/evidence/verified/RP-202605-P0-0014_valuation_source_map.md</code></td><td>2026-05-11</td><td>2026-05-11</td><td>RP-202605-P0-0014</td></tr><tr><td>local_run_log</td><td>local</td><td>SAMSUNG RP-202605-P0-0014 valuation run log</td><td><code>targets/SAMSUNG/runs/2026-05-11_rp_202605_p0_0014_valuation_run.md</code></td><td>2026-05-11</td><td>2026-05-11</td><td>RP-202605-P0-0014</td></tr><tr><td>local_report</td><td>local</td><td>SanDisk競合target 初回ベースライン確認レポート</td><td><code>targets/SANDISK/reports/quarterly/2026-05_initial_baseline.md</code></td><td>2026-05-10</td><td>2026-05-10</td><td>Phase 7</td></tr><tr><td>local_source_map</td><td>local</td><td>SANDISK RP-202605-P0-0015 valuation source map</td><td><code>targets/SANDISK/evidence/verified/RP-202605-P0-0015_valuation_source_map.md</code></td><td>2026-05-11</td><td>2026-05-11</td><td>RP-202605-P0-0015</td></tr><tr><td>local_run_log</td><td>local</td><td>SANDISK RP-202605-P0-0015 valuation run log</td><td><code>targets/SANDISK/runs/2026-05-11_rp_202605_p0_0015_valuation_run.md</code></td><td>2026-05-11</td><td>2026-05-11</td><td>RP-202605-P0-0015</td></tr><tr><td>local_source_map</td><td>local</td><td>MU RP-202605-P0-0013 valuation source map</td><td><code>targets/MU/evidence/verified/RP-202605-P0-0013_valuation_source_map.md</code></td><td>2026-05-11</td><td>2026-05-11</td><td>RP-202605-P0-0013</td></tr><tr><td>local_run_log</td><td>local</td><td>MU RP-202605-P0-0013 valuation run log</td><td><code>targets/MU/runs/2026-05-11_rp_202605_p0_0013_valuation_run.md</code></td><td>2026-05-11</td><td>2026-05-11</td><td>RP-202605-P0-0013</td></tr><tr><td>local_source_map</td><td>local</td><td>MU RP-202605-P0-0021 HBM customer named by NVIDIA source map</td><td><code>targets/MU/evidence/verified/RP-202605-P0-0021_hbm_customer_named_by_nvidia_source_map.md</code></td><td>2026-05-11</td><td>2026-05-11</td><td>RP-202605-P0-0021</td></tr><tr><td>local_run_log</td><td>local</td><td>MU RP-202605-P0-0021 HBM customer named by NVIDIA run log</td><td><code>targets/MU/runs/2026-05-11_rp_202605_p0_0021_hbm_customer_named_by_nvidia_run.md</code></td><td>2026-05-11</td><td>2026-05-11</td><td>RP-202605-P0-0021</td></tr><tr><td>local_source_map</td><td>local</td><td>MU RP-202605-P0-0022 HBM revenue source map</td><td><code>targets/MU/evidence/verified/RP-202605-P0-0022_hbm_revenue_source_map.md</code></td><td>2026-05-11</td><td>2026-05-11</td><td>RP-202605-P0-0022</td></tr><tr><td>local_run_log</td><td>local</td><td>MU RP-202605-P0-0022 HBM revenue run log</td><td><code>targets/MU/runs/2026-05-11_rp_202605_p0_0022_hbm_revenue_run.md</code></td><td>2026-05-11</td><td>2026-05-11</td><td>RP-202605-P0-0022</td></tr><tr><td>local_report</td><td>local</td><td>Broadcom隣接target 初回ベースライン確認レポート</td><td><code>targets/BROADCOM/reports/quarterly/2026-05_initial_baseline.md</code></td><td>2026-05-11</td><td>2026-05-11</td><td>Phase 7 / RP-202605-P0-0005 / RP-202605-P0-0006</td></tr><tr><td>local_report</td><td>local</td><td>Arista隣接target 初回ベースライン確認レポート</td><td><code>targets/ARISTA/reports/quarterly/2026-Q1_initial_baseline.md</code></td><td>2026-05-10</td><td>2026-05-10</td><td>Phase 7</td></tr><tr><td>local_report</td><td>local</td><td>Astera Labs隣接target 初回ベースライン確認レポート</td><td><code>targets/ASTERA/reports/quarterly/2026-Q1_initial_baseline.md</code></td><td>2026-05-10</td><td>2026-05-10</td><td>Phase 7</td></tr><tr><td>local_report</td><td>local</td><td>ASML隣接target 初回ベースライン確認レポート</td><td><code>targets/ASML/reports/quarterly/2026-Q1_initial_baseline.md</code></td><td>2026-05-10</td><td>2026-05-10</td><td>Phase 7</td></tr><tr><td>local_report</td><td>local</td><td>TSMC上流・半導体基盤target 初回ベースライン確認レポート</td><td><code>targets/TSMC/reports/quarterly/2026-Q1_initial_baseline.md</code></td><td>2026-05-10</td><td>2026-05-10</td><td>Phase 7</td></tr><tr><td>local_report</td><td>local</td><td>Synopsys隣接target 初回ベースライン確認レポート</td><td><code>targets/SYNOPSYS/reports/quarterly/2026-Q1_initial_baseline.md</code></td><td>2026-05-10</td><td>2026-05-10</td><td>Phase 7</td></tr><tr><td>local_source_map</td><td>local</td><td>SYNOPSYS RP-202605-P0-0017 customer concentration source map</td><td><code>targets/SYNOPSYS/evidence/verified/RP-202605-P0-0017_customer_concentration_source_map.md</code></td><td>2026-05-11</td><td>2026-05-11</td><td>RP-202605-P0-0017</td></tr><tr><td>local_run_log</td><td>local</td><td>SYNOPSYS RP-202605-P0-0017 customer concentration run log</td><td><code>targets/SYNOPSYS/runs/2026-05-11_rp_202605_p0_0017_customer_concentration_run.md</code></td><td>2026-05-11</td><td>2026-05-11</td><td>RP-202605-P0-0017</td></tr><tr><td>local_source_map</td><td>local</td><td>TSMC RP-202605-P0-0019 customer concentration source map</td><td><code>targets/TSMC/evidence/verified/RP-202605-P0-0019_customer_concentration_source_map.md</code></td><td>2026-05-11</td><td>2026-05-11</td><td>RP-202605-P0-0019</td></tr><tr><td>local_run_log</td><td>local</td><td>TSMC RP-202605-P0-0019 customer concentration run log</td><td><code>targets/TSMC/runs/2026-05-11_rp_202605_p0_0019_customer_concentration_run.md</code></td><td>2026-05-11</td><td>2026-05-11</td><td>RP-202605-P0-0019</td></tr><tr><td>local_source_map</td><td>local</td><td>TSMC RP-202605-P0-0020 valuation source map</td><td><code>targets/TSMC/evidence/verified/RP-202605-P0-0020_valuation_source_map.md</code></td><td>2026-05-11</td><td>2026-05-11</td><td>RP-202605-P0-0020</td></tr><tr><td>local_run_log</td><td>local</td><td>TSMC RP-202605-P0-0020 valuation run log</td><td><code>targets/TSMC/runs/2026-05-11_rp_202605_p0_0020_valuation_run.md</code></td><td>2026-05-11</td><td>2026-05-11</td><td>RP-202605-P0-0020</td></tr><tr><td>local_report</td><td>local</td><td>Cadence EDA/system design target 初回ベースライン確認レポート</td><td><code>targets/CADENCE/reports/quarterly/2026-Q1_initial_baseline.md</code></td><td>2026-05-10</td><td>2026-05-10</td><td>Phase 7</td></tr><tr><td>primary</td><td>Broadcom Inc.</td><td>Broadcom Inc. Announces First Quarter Fiscal Year 2026 Financial Results</td><td>https://investors.broadcom.com/news-releases/news-release-details/broadcom-inc-announces-first-quarter-fiscal-year-2026-financial</td><td>2026-03-04</td><td>2026-05-10</td><td>Phase 7</td></tr><tr><td>sec_api</td><td>SEC</td><td>Broadcom Inc. submissions JSON</td><td>https://data.sec.gov/submissions/CIK0001730168.json</td><td>2026-05-11</td><td>2026-05-11</td><td>RP-202605-P0-0005</td></tr><tr><td>sec_filing</td><td>Broadcom Inc.</td><td>Form 10-Q, quarter ended February 1, 2026</td><td>https://www.sec.gov/Archives/edgar/data/1730168/000173016826000016/avgo-20260201.htm</td><td>2026-03-11</td><td>2026-05-11</td><td>RP-202605-P0-0005 / RP-202605-P0-0006</td></tr><tr><td>sec_xbrl_json</td><td>SEC</td><td>Broadcom Inc. companyfacts JSON</td><td>https://data.sec.gov/api/xbrl/companyfacts/CIK0001730168.json</td><td>n/a</td><td>2026-05-11</td><td>RP-202605-P0-0006</td></tr><tr><td>market_data</td><td>Stooq</td><td>AVGO.US latest quote CSV</td><td>https://stooq.com/q/l/?s=avgo.us&amp;f=sd2t2ohlcv&amp;h&amp;e=csv</td><td>2026-05-08</td><td>2026-05-11</td><td>RP-202605-P0-0006</td></tr><tr><td>primary</td><td>Arista Networks, Inc.</td><td>Arista Networks, Inc. Reports First Quarter 2026 Financial Results</td><td>https://investors.arista.com/Communications/Press-Releases-and-Events/Press-Release-Detail/2026/Arista-Networks-Inc--Reports-First-Quarter-2026-Financial-Results/</td><td>2026-05-05</td><td>2026-05-10</td><td>Phase 7</td></tr><tr><td>primary</td><td>Astera Labs, Inc.</td><td>Astera Labs Reports First Quarter 2026 Financial Results</td><td>https://ir.asteralabs.com/news-releases/news-release-details/astera-labs-reports-first-quarter-2026-financial-results</td><td>2026-05-05</td><td>2026-05-10</td><td>Phase 7</td></tr><tr><td>sec_filing</td><td>Astera Labs, Inc.</td><td>Form 10-Q, quarter ended March 31, 2026</td><td>https://www.sec.gov/Archives/edgar/data/1736297/000173629726000020/alab-20260331.htm</td><td>2026-05-06</td><td>2026-05-11</td><td>RP-202605-P0-0003 / RP-202605-P0-0004</td></tr><tr><td>sec_filing</td><td>Astera Labs, Inc.</td><td>Form 10-K, fiscal year ended December 31, 2025</td><td>https://www.sec.gov/Archives/edgar/data/1736297/000173629726000010/alab-20251231.htm</td><td>2026-02-20</td><td>2026-05-11</td><td>RP-202605-P0-0003 needs_review_not_used</td></tr><tr><td>market_data</td><td>Stooq</td><td>ALAB.US latest quote CSV</td><td>https://stooq.com/q/l/?s=alab.us&amp;f=sd2t2ohlcv&amp;h&amp;e=csv</td><td>2026-05-08</td><td>2026-05-11</td><td>RP-202605-P0-0004</td></tr><tr><td>local_source_map</td><td>local</td><td>ASTERA RP-202605-P0-0009 score readiness source map</td><td><code>targets/ASTERA/evidence/verified/RP-202605-P0-0009_micron_diversification_score_readiness_source_map.md</code></td><td>2026-05-11</td><td>2026-05-11</td><td>RP-202605-P0-0009</td></tr><tr><td>local_run_log</td><td>local</td><td>ASTERA RP-202605-P0-0009 score readiness run log</td><td><code>targets/ASTERA/runs/2026-05-11_rp_202605_p0_0009_micron_diversification_score_readiness_run.md</code></td><td>2026-05-11</td><td>2026-05-11</td><td>RP-202605-P0-0009</td></tr><tr><td>local_source_map</td><td>local</td><td>ASTERA RP-202605-P0-0027 product / AI connectivity revenue source map</td><td><code>targets/ASTERA/evidence/verified/RP-202605-P0-0027_product_or_ai_connectivity_revenue_source_map.md</code></td><td>2026-05-11</td><td>2026-05-11</td><td>RP-202605-P0-0027</td></tr><tr><td>local_source_map</td><td>local</td><td>ARISTA RP-202605-P0-0007 score readiness source map</td><td><code>targets/ARISTA/evidence/verified/RP-202605-P0-0007_micron_diversification_score_readiness_source_map.md</code></td><td>2026-05-11</td><td>2026-05-11</td><td>RP-202605-P0-0007</td></tr><tr><td>local_run_log</td><td>local</td><td>ARISTA RP-202605-P0-0007 score readiness run log</td><td><code>targets/ARISTA/runs/2026-05-11_rp_202605_p0_0007_micron_diversification_score_readiness_run.md</code></td><td>2026-05-11</td><td>2026-05-11</td><td>RP-202605-P0-0007</td></tr><tr><td>local_source_map</td><td>local</td><td>ARISTA RP-202605-P0-0026 AI networking revenue source map</td><td><code>targets/ARISTA/evidence/verified/RP-202605-P0-0026_ai_networking_revenue_source_map.md</code></td><td>2026-05-11</td><td>2026-05-11</td><td>RP-202605-P0-0026</td></tr><tr><td>local_source_map</td><td>local</td><td>BROADCOM RP-202605-P0-0010 score readiness source map</td><td><code>targets/BROADCOM/evidence/verified/RP-202605-P0-0010_micron_diversification_score_readiness_source_map.md</code></td><td>2026-05-11</td><td>2026-05-11</td><td>RP-202605-P0-0010</td></tr><tr><td>local_run_log</td><td>local</td><td>BROADCOM RP-202605-P0-0010 score readiness run log</td><td><code>targets/BROADCOM/runs/2026-05-11_rp_202605_p0_0010_micron_diversification_score_readiness_run.md</code></td><td>2026-05-11</td><td>2026-05-11</td><td>RP-202605-P0-0010</td></tr><tr><td>primary</td><td>ASML Holding N.V.</td><td>ASML reports EUR 8.8 billion total net sales and EUR 2.8 billion net income in Q1 2026</td><td>https://www.asml.com/en/news/press-releases/2026/q1-2026-financial-results</td><td>2026-04-15</td><td>2026-05-10</td><td>Phase 7</td></tr><tr><td>local_source_map</td><td>local</td><td>ASML RP-202605-P0-0008 valuation source map</td><td><code>targets/ASML/evidence/verified/RP-202605-P0-0008_valuation_source_map.md</code></td><td>2026-05-11</td><td>2026-05-11</td><td>RP-202605-P0-0008</td></tr><tr><td>primary</td><td>TSMC</td><td>1Q26 Earnings Release</td><td>https://investor.tsmc.com/english/encrypt/files/encrypt_file/reports/2026-04/e85216eea8dccd8ca75d7e040e8d57be3ccd618b/1Q26%20EarningsRelease.pdf</td><td>2026-04-16</td><td>2026-05-10</td><td>Phase 7</td></tr><tr><td>primary</td><td>TSMC</td><td>1Q26 Presentation</td><td>https://investor.tsmc.com/english/encrypt/files/encrypt_file/reports/2026-04/a7e3abe65a3fbc342aa55f9f53a5490dd621c1ac/1Q26%20Presentation%20%28E%29.pdf</td><td>2026-04-16</td><td>2026-05-10</td><td>Phase 7</td></tr><tr><td>primary</td><td>Synopsys, Inc.</td><td>Synopsys Posts Financial Results for First Quarter Fiscal Year 2026</td><td>https://news.synopsys.com/2026-02-25-Synopsys-Posts-Financial-Results-for-First-Quarter-Fiscal-Year-2026</td><td>2026-02-25</td><td>2026-05-10</td><td>Phase 7</td></tr><tr><td>primary</td><td>Cadence Design Systems, Inc.</td><td>Cadence Reports First Quarter 2026 Financial Results</td><td>https://investor.cadence.com/news/news-details/2026/Cadence-Reports-First-Quarter-2026-Financial-Results/default.aspx</td><td>2026-04-27</td><td>2026-05-10</td><td>Phase 7</td></tr></tbody></table>
+  </article>
+</main>
+
+<script>
+document.querySelectorAll("[data-copy]").forEach((button) => {
+  button.addEventListener("click", async () => {
+    const label = button.getAttribute("data-copy-label") || "text";
+    const text = button.getAttribute("data-copy") || "";
+    try {
+      await navigator.clipboard.writeText(text);
+      const original = button.textContent;
+      button.textContent = "コピー完了: " + label;
+      setTimeout(() => { button.textContent = original; }, 1200);
+    } catch (error) {
+      const fallback = document.querySelector("[data-copy-fallback]");
+      if (fallback) {
+        const textarea = fallback.querySelector("textarea");
+        fallback.open = true;
+        if (textarea) {
+          textarea.value = text;
+          textarea.focus();
+          textarea.select();
+        }
+      }
+      button.textContent = "コピー失敗";
+    }
+  });
+});
+</script>
+</body>
+</html>

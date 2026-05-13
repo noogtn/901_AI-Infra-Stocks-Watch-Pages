@@ -1,0 +1,427 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Portfolio Views Index</title>
+<style>
+
+:root {
+  color-scheme: light;
+  --ink: #20201d;
+  --muted: #66645e;
+  --line: #d8d4c8;
+  --paper: #fbfaf6;
+  --panel: #ffffff;
+  --accent: #7a1f17;
+  --accent-2: #1f6849;
+  --warn: #8a5a00;
+  --soft: #efeadf;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  line-height: 1.55;
+}
+a { color: inherit; }
+.skipLink {
+  position: absolute;
+  left: 12px;
+  top: -48px;
+  background: var(--ink);
+  color: #fff;
+  padding: 8px 10px;
+  z-index: 10;
+}
+.skipLink:focus { top: 12px; }
+.topbar {
+  display: flex;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 28px clamp(16px, 4vw, 48px);
+  border-bottom: 1px solid var(--line);
+  background: #f4efe5;
+}
+.eyebrow, .meta, .generated span, .heroCard span, .summaryBand span, .sectionHead p, .path {
+  color: var(--muted);
+  font-size: 14px;
+}
+h1 {
+  margin: 0;
+  font-size: clamp(1.65rem, 3vw, 2.5rem);
+  line-height: 1.1;
+}
+.generated {
+  min-width: 190px;
+  align-self: start;
+  border-left: 3px solid var(--accent);
+  padding-left: 12px;
+}
+.generated strong { display: block; overflow-wrap: anywhere; }
+main {
+  width: min(1120px, calc(100% - 32px));
+  margin: 24px auto 56px;
+}
+.notice, .summaryBand article, .heroCard, .viewCard, .sourceDrawer {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+.notice {
+  padding: 14px 16px;
+  margin-bottom: 16px;
+}
+.notice p { margin: 4px 0 0; }
+.heroGrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+.heroCard {
+  display: block;
+  min-height: 148px;
+  padding: 16px;
+  text-decoration: none;
+}
+.heroCard:hover { border-color: var(--accent); }
+.heroCard strong {
+  display: block;
+  margin-top: 10px;
+  font-size: 1.05rem;
+  overflow-wrap: anywhere;
+}
+.heroCard p { margin: 12px 0 0; color: var(--muted); }
+.heroCard.muted { color: var(--muted); }
+.actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin: 16px 0;
+}
+button {
+  border: 1px solid var(--ink);
+  background: var(--ink);
+  color: #fff;
+  border-radius: 6px;
+  padding: 9px 12px;
+  font: inherit;
+}
+.copyFallback {
+  margin-bottom: 16px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 10px 12px;
+  background: var(--panel);
+}
+textarea {
+  width: 100%;
+  min-height: 140px;
+  margin-top: 10px;
+  font: 14px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+.summaryBand {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin: 18px 0 24px;
+}
+.summaryBand article { padding: 14px 16px; }
+.summaryBand strong { display: block; font-size: 1.15rem; overflow-wrap: anywhere; }
+.sourceDrawer {
+  padding: 12px 14px;
+  margin-bottom: 24px;
+}
+.sourceDrawer summary { cursor: pointer; font-weight: 700; }
+.sourceDrawer ul { padding-left: 20px; }
+.sourceDrawer li { margin: 6px 0; overflow-wrap: anywhere; }
+.sectionHead {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: end;
+  margin-bottom: 12px;
+}
+.sectionHead h2 { margin: 0; }
+.sectionHead p { margin: 0; max-width: 520px; }
+.cards {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+.viewCard { padding: 16px; }
+.cardTop {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  align-items: center;
+}
+.pill, .status {
+  display: inline-flex;
+  align-items: center;
+  min-height: 26px;
+  border-radius: 999px;
+  padding: 3px 9px;
+  font-size: 13px;
+  border: 1px solid var(--line);
+}
+.pill { background: var(--soft); }
+.status { color: var(--muted); }
+.status.ok, .status.verified, .status.partially_verified { color: var(--accent-2); border-color: #9bbfac; }
+.status.needs_review, .status.draft, .status.unknown { color: var(--warn); border-color: #d8bd79; }
+.viewCard h3 { margin: 12px 0; line-height: 1.25; }
+dl {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin: 0;
+}
+dt { color: var(--muted); font-size: 12px; }
+dd { margin: 0; overflow-wrap: anywhere; }
+.path { overflow-wrap: anywhere; }
+@media (max-width: 720px) {
+  .topbar, .sectionHead { display: block; }
+  .generated { margin-top: 16px; }
+  .heroGrid, .summaryBand, .cards, dl { grid-template-columns: 1fr; }
+  main { width: min(100% - 24px, 1120px); margin-top: 16px; }
+  .heroCard { min-height: 116px; }
+}
+
+</style>
+
+<style>
+.pagesPublicNotice {
+  margin: 0;
+  padding: 10px 14px;
+  border-bottom: 1px solid #d7dee8;
+  background: #f6f8fb;
+  color: #243040;
+  font: 13px/1.55 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+.pagesPublicNotice strong {
+  display: inline-block;
+  margin-right: 8px;
+}
+.pagesPublicNotice small {
+  display: block;
+  margin-top: 2px;
+  color: #5b677a;
+  overflow-wrap: anywhere;
+}
+@media (max-width: 480px) {
+  .pagesPublicNotice {
+    padding: 9px 10px;
+  }
+  .pagesPublicNotice strong {
+    display: block;
+    margin: 0 0 2px;
+  }
+}
+</style>
+</head>
+<body>
+<aside class="pagesPublicNotice" role="note">
+  <strong>GitHub Pages public view</strong>
+  <span>このHTMLはGitHub Pagesでpublic配信される前提の閲覧用生成物です。個人情報・非公開メモ・認証情報を含めないでください。</span>
+  <small>source: portfolio/views/index.html / staged: 2026-05-13T22:05:31.239Z</small>
+</aside>
+
+<a class="skipLink" href="#main">本文へ移動</a>
+<header class="topbar">
+  <div>
+    <p class="eyebrow">AI Infra Stocks Watch</p>
+    <h1>Portfolio Views Index</h1>
+    <p class="meta">portfolio: portfolio / latest period: 2026-05</p>
+  </div>
+  <div class="generated">
+    <span>生成日時</span>
+    <strong>2026-05-12T22:24:35.566Z</strong>
+  </div>
+</header>
+
+<main id="main">
+  <section class="notice" aria-label="閲覧用生成物の注意">
+    <strong>閲覧用生成物</strong>
+    <p>このHTMLはMarkdown、CSV、JSON原本から作る入口ページです。HTMLを手編集せず、個人情報、非公開メモ、認証情報を含めないでください。</p>
+    <p>portfolio index state: judgement: UNRATED / source_status: generated_view / score: 採点保留</p>
+  </section>
+
+  <section class="heroGrid" aria-label="最新ビュー">
+    <a class="heroCard" href="2026-05_portfolio.html">
+      <span>最新portfolio横断</span>
+      <strong>AIインフラ銘柄 portfolio横断比較 初期レポート</strong>
+      <p>2026-05 / partially_verified</p>
+    </a>
+    <a class="heroCard" href="2026-05_kpi_matrix.html">
+      <span>最新KPI matrix</span>
+      <strong>AIインフラ銘柄 portfolio横断KPIマトリクス</strong>
+      <p>2026-05 / partially_verified</p>
+    </a>
+    <a class="heroCard" href="2026-05_research_backlog.html">
+      <span>最新research backlog</span>
+      <strong>AIインフラ銘柄 portfolio取得バックログ</strong>
+      <p>2026-05 / partially_verified</p>
+    </a>
+    <a class="heroCard" href="2026-05_p0_research_packets.html">
+      <span>最新P0 packets</span>
+      <strong>AIインフラ銘柄 P0 research packets</strong>
+      <p>2026-05 / partially_verified</p>
+    </a>
+  </section>
+
+  <section class="actions" aria-label="コピー操作">
+    <button type="button" data-copy-label="latest links" data-copy="# Portfolio latest links
+- Portfolio横断: [AIインフラ銘柄 portfolio横断比較 初期レポート](2026-05_portfolio.html)
+- KPI matrix: [AIインフラ銘柄 portfolio横断KPIマトリクス](2026-05_kpi_matrix.html)
+- Research backlog: [AIインフラ銘柄 portfolio取得バックログ](2026-05_research_backlog.html)
+- P0 research packets: [AIインフラ銘柄 P0 research packets](2026-05_p0_research_packets.html)">Copy latest links</button>
+    <button type="button" data-copy-label="next prompt" data-copy="# 次回portfolio確認プロンプト
+対象期間: 2026-05
+
+確認するHTML:
+- portfolio横断: 2026-05_portfolio.html
+- KPI matrix: 2026-05_kpi_matrix.html
+- research backlog: 2026-05_research_backlog.html
+- P0 research packets: 2026-05_p0_research_packets.html
+
+方針:
+- HTMLは閲覧用生成物として扱い、Markdown/CSV/JSON原本を確認してから更新する
+- P0 open中は採点列を確定値へ進めない
+- 弱気材料と未確認事項を先に確認する">Copy next prompt</button>
+    <button type="button" data-copy-label="source files" data-copy="# Portfolio source files
+- Portfolio横断: 2026-05_portfolio.html
+  - html: 2026-05_portfolio.html
+  - markdown: portfolio/reports/2026-05_portfolio.md
+  - source_status: partially_verified
+  - judgement: UNRATED
+- KPI matrix: 2026-05_kpi_matrix.html
+  - html: 2026-05_kpi_matrix.html
+  - markdown: portfolio/reports/2026-05_kpi_matrix.md
+  - source_status: partially_verified
+  - judgement: UNRATED
+- Research backlog: 2026-05_research_backlog.html
+  - html: 2026-05_research_backlog.html
+  - markdown: portfolio/reports/2026-05_research_backlog.md
+  - source_status: partially_verified
+  - judgement: UNRATED
+- P0 research packets: 2026-05_p0_research_packets.html
+  - html: 2026-05_p0_research_packets.html
+  - markdown: portfolio/reports/2026-05_p0_research_packets.md
+  - source_status: partially_verified
+  - judgement: UNRATED">Copy source files</button>
+  </section>
+  <details class="copyFallback" data-copy-fallback>
+    <summary>Copy fallback</summary>
+    <textarea readonly aria-label="コピー対象Markdown"></textarea>
+  </details>
+
+  <section class="summaryBand" aria-label="生成サマリー">
+    <article><span>HTML views</span><strong>4</strong></article>
+    <article><span>Periods</span><strong>1</strong></article>
+    <article><span>Score state</span><strong>採点保留</strong></article>
+  </section>
+
+  <details class="sourceDrawer">
+    <summary>Source drawer</summary>
+    <p>このindexは横断比較本文ではなく、portfolio watchlist確認用の閲覧入口です。判断内容は対応するMarkdown、CSV、JSON原本を確認してください。</p>
+    <ul>
+      <li>Portfolio横断: <a href="2026-05_portfolio.html">2026-05_portfolio.html</a> / portfolio/reports/2026-05_portfolio.md</li>
+      <li>KPI matrix: <a href="2026-05_kpi_matrix.html">2026-05_kpi_matrix.html</a> / portfolio/reports/2026-05_kpi_matrix.md</li>
+      <li>Research backlog: <a href="2026-05_research_backlog.html">2026-05_research_backlog.html</a> / portfolio/reports/2026-05_research_backlog.md</li>
+      <li>P0 research packets: <a href="2026-05_p0_research_packets.html">2026-05_p0_research_packets.html</a> / portfolio/reports/2026-05_p0_research_packets.md</li>
+    </ul>
+    <p class="path">Index path: portfolio/views/index.html</p>
+  </details>
+
+  <section class="viewList" aria-label="レポート一覧">
+    <div class="sectionHead">
+      <h2>レポート一覧</h2>
+      <p>portfolio横断比較、watchlist、score状態、source_statusを確認し、必要なビューへ移動します。</p>
+    </div>
+    <div class="cards">
+      <article class="viewCard">
+        <div class="cardTop">
+          <span class="pill">Portfolio横断</span>
+          <span class="status partially_verified">partially_verified</span>
+        </div>
+        <h3><a href="2026-05_portfolio.html">AIインフラ銘柄 portfolio横断比較 初期レポート</a></h3>
+        <dl>
+          <div><dt>period</dt><dd>2026-05</dd></div>
+          <div><dt>date</dt><dd>2026-05-11</dd></div>
+          <div><dt>judgement</dt><dd>UNRATED</dd></div>
+        </dl>
+        <p class="path">2026-05_portfolio.html / portfolio/reports/2026-05_portfolio.md</p>
+      </article>
+      <article class="viewCard">
+        <div class="cardTop">
+          <span class="pill">KPI matrix</span>
+          <span class="status partially_verified">partially_verified</span>
+        </div>
+        <h3><a href="2026-05_kpi_matrix.html">AIインフラ銘柄 portfolio横断KPIマトリクス</a></h3>
+        <dl>
+          <div><dt>period</dt><dd>2026-05</dd></div>
+          <div><dt>date</dt><dd>2026-05-11</dd></div>
+          <div><dt>judgement</dt><dd>UNRATED</dd></div>
+        </dl>
+        <p class="path">2026-05_kpi_matrix.html / portfolio/reports/2026-05_kpi_matrix.md</p>
+      </article>
+      <article class="viewCard">
+        <div class="cardTop">
+          <span class="pill">Research backlog</span>
+          <span class="status partially_verified">partially_verified</span>
+        </div>
+        <h3><a href="2026-05_research_backlog.html">AIインフラ銘柄 portfolio取得バックログ</a></h3>
+        <dl>
+          <div><dt>period</dt><dd>2026-05</dd></div>
+          <div><dt>date</dt><dd>2026-05-11</dd></div>
+          <div><dt>judgement</dt><dd>UNRATED</dd></div>
+        </dl>
+        <p class="path">2026-05_research_backlog.html / portfolio/reports/2026-05_research_backlog.md</p>
+      </article>
+      <article class="viewCard">
+        <div class="cardTop">
+          <span class="pill">P0 research packets</span>
+          <span class="status partially_verified">partially_verified</span>
+        </div>
+        <h3><a href="2026-05_p0_research_packets.html">AIインフラ銘柄 P0 research packets</a></h3>
+        <dl>
+          <div><dt>period</dt><dd>2026-05</dd></div>
+          <div><dt>date</dt><dd>2026-05-12</dd></div>
+          <div><dt>judgement</dt><dd>UNRATED</dd></div>
+        </dl>
+        <p class="path">2026-05_p0_research_packets.html / portfolio/reports/2026-05_p0_research_packets.md</p>
+      </article>
+    </div>
+  </section>
+</main>
+
+<script>
+document.querySelectorAll("[data-copy]").forEach((button) => {
+  button.addEventListener("click", async () => {
+    const label = button.getAttribute("data-copy-label") || "text";
+    const text = button.getAttribute("data-copy") || "";
+    try {
+      await navigator.clipboard.writeText(text);
+      const original = button.textContent;
+      button.textContent = "コピー完了: " + label;
+      setTimeout(() => { button.textContent = original; }, 1200);
+    } catch (error) {
+      const fallback = document.querySelector("[data-copy-fallback]");
+      if (fallback) {
+        const textarea = fallback.querySelector("textarea");
+        fallback.open = true;
+        if (textarea) {
+          textarea.value = text;
+          textarea.focus();
+          textarea.select();
+        }
+      }
+      button.textContent = "コピー失敗";
+    }
+  });
+});
+</script>
+</body>
+</html>

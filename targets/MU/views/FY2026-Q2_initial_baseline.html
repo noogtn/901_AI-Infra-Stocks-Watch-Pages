@@ -1,0 +1,981 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Micron集中投資 初回ベースライン検証レポート</title>
+<style>
+
+:root {
+  color-scheme: light;
+  --bg: #f7f8fa;
+  --panel: #ffffff;
+  --text: #1f2933;
+  --muted: #627080;
+  --line: #d9dee6;
+  --accent: #145c9e;
+  --warn: #a85400;
+  --danger: #a51d2d;
+  --ok: #1f7a4d;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  line-height: 1.65;
+  overflow-wrap: anywhere;
+}
+.skipLink {
+  position: absolute;
+  left: 12px;
+  top: -48px;
+  z-index: 10;
+  background: #fff;
+  border: 2px solid var(--accent);
+  border-radius: 8px;
+  color: var(--accent);
+  padding: 8px 10px;
+}
+.skipLink:focus { top: 12px; }
+.topbar {
+  display: flex;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 28px clamp(16px, 4vw, 48px);
+  background: #ffffff;
+  border-bottom: 1px solid var(--line);
+}
+.eyebrow, .meta { color: var(--muted); margin: 0 0 6px; }
+h1 { margin: 0; font-size: 2rem; line-height: 1.18; letter-spacing: 0; }
+main { max-width: 1180px; margin: 0 auto; padding: 24px clamp(14px, 3vw, 32px) 56px; }
+.statusStack { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; }
+.badge {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 6px 10px;
+  font-weight: 700;
+  background: #fff;
+}
+.judgement.green { color: var(--ok); border-color: #8cc7a8; }
+.judgement.light_green { color: #4d7a1f; border-color: #b6d986; }
+.judgement.yellow { color: #7c6500; border-color: #d8c65a; }
+.judgement.orange { color: var(--warn); border-color: #d79a4a; }
+.judgement.red { color: var(--danger); border-color: #d8818d; }
+.judgement.unrated { color: #475569; border-color: #94a3b8; background: #f8fafc; }
+.source.needs_review { color: var(--danger); border-color: #d8818d; }
+.source.partially_verified, .source.draft { color: var(--warn); border-color: #d79a4a; }
+.source.verified { color: var(--ok); border-color: #8cc7a8; }
+.source.unknown, .source.unrated { color: #475569; border-color: #94a3b8; background: #f8fafc; }
+.statusCards, .summaryCards {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 18px;
+}
+.statusCard, .summaryCard {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-left: 6px solid var(--accent);
+  border-radius: 8px;
+  padding: 14px;
+}
+.statusCard > span, .summaryCard > span {
+  display: block;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 700;
+  margin-bottom: 4px;
+  text-transform: uppercase;
+}
+.statusCard strong, .summaryCard strong {
+  display: block;
+  font-size: 22px;
+  line-height: 1.25;
+}
+.statusCard p, .summaryCard p {
+  color: var(--muted);
+  margin: 8px 0 0;
+}
+.statusCard.green, .summaryCard.ok { border-left-color: var(--ok); }
+.statusCard.light_green { border-left-color: #6f9b2e; }
+.statusCard.yellow { border-left-color: #b69700; }
+.statusCard.orange, .statusCard.draft, .statusCard.partially_verified, .summaryCard.warn { border-left-color: var(--warn); }
+.statusCard.red, .statusCard.needs_review, .summaryCard.danger { border-left-color: var(--danger); }
+.statusCard.warn { border-left-color: var(--warn); }
+.statusCard.unrated, .statusCard.unknown { border-left-color: #64748b; }
+.summaryCard ul {
+  margin: 10px 0 0;
+  padding-left: 20px;
+}
+.summaryCard li { margin: 4px 0; }
+.decisionGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 18px;
+}
+.decisionGrid article {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 14px;
+}
+.decisionGrid span {
+  display: block;
+  color: var(--muted);
+  font-size: 13px;
+  margin-bottom: 4px;
+}
+.decisionGrid strong { font-size: 18px; line-height: 1.35; }
+.toc, .actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  align-items: center;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 12px;
+  margin-bottom: 16px;
+}
+.toc a { color: var(--accent); text-decoration: none; }
+button {
+  border: 1px solid #b9c2cf;
+  border-radius: 8px;
+  background: #fff;
+  color: var(--text);
+  padding: 8px 10px;
+  font: inherit;
+  cursor: pointer;
+  min-height: 44px;
+  touch-action: manipulation;
+}
+button:hover { border-color: var(--accent); color: var(--accent); }
+button:focus-visible,
+a:focus-visible,
+summary:focus-visible {
+  outline: 3px solid #5a8db8;
+  outline-offset: 3px;
+}
+.copyFallback {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  margin: 0 0 18px;
+  padding: 12px;
+}
+.copyFallback summary {
+  cursor: pointer;
+  font-weight: 700;
+}
+.copyFallback p {
+  color: var(--muted);
+  margin: 4px 0 8px;
+}
+.copyFallback textarea {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  font: 13px/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  min-height: 160px;
+  padding: 10px;
+  resize: vertical;
+  width: 100%;
+}
+.report {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 4px 18px 18px;
+}
+.report h1 { font-size: 28px; margin: 18px 0 10px; }
+.report h2 { font-size: 21px; margin: 24px 0 10px; padding-top: 8px; border-top: 1px solid var(--line); }
+.report h3 { font-size: 17px; margin: 18px 0 8px; }
+.report table { border-collapse: collapse; width: 100%; overflow-x: auto; display: block; }
+.report th, .report td { border: 1px solid var(--line); padding: 8px; text-align: left; vertical-align: top; }
+.report code { background: #eef1f5; padding: 2px 4px; border-radius: 4px; }
+.report pre { background: #111827; color: #f7f8fa; padding: 12px; border-radius: 8px; overflow-x: auto; }
+.sectionDetails {
+  border-top: 1px solid var(--line);
+  padding: 6px 0;
+}
+.sectionDetails > summary {
+  cursor: pointer;
+  font-size: 21px;
+  font-weight: 700;
+  padding: 10px 0;
+}
+.sectionDetails.sectionMarket {
+  border: 1px solid var(--line);
+  border-left: 6px solid var(--accent);
+  border-radius: 8px;
+  padding: 8px 12px 12px;
+  background: #fbfdff;
+}
+.sectionDetails.sectionMarket > summary {
+  margin: 0 0 4px;
+}
+.dir {
+  display: inline-block;
+  padding: 1px 6px;
+  border-radius: 999px;
+  font-size: 1em;
+  border: 1px solid transparent;
+}
+.dir.up {
+  color: var(--ok);
+  border-color: #8cc7a8;
+  background: #f0fbf5;
+}
+.dir.down {
+  color: var(--danger);
+  border-color: #d8818d;
+  background: #fff5f6;
+}
+.dir.flat {
+  color: #475569;
+  border-color: #94a3b8;
+  background: #f8fafc;
+}
+.dir.unknown {
+  color: var(--warn);
+  border-color: #d79a4a;
+  background: #fff9f1;
+  font-weight: 600;
+}
+.firstView {
+  display: grid;
+  gap: 14px;
+  margin-bottom: 18px;
+}
+.statusCards {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+.statusCard,
+.summaryCard,
+.decisionGrid article,
+.toc,
+.actions,
+.report,
+.sourceDrawer,
+.riskHighlight,
+.scoreboard {
+  box-shadow: 0 1px 2px rgba(31, 41, 51, 0.04);
+}
+.statusCard strong,
+.decisionGrid strong,
+.summaryCard strong {
+  overflow-wrap: anywhere;
+}
+.statusCard .miniList,
+.sourceDrawer .miniList {
+  margin: 10px 0 0;
+  padding-left: 18px;
+  color: var(--muted);
+  font-size: 14px;
+}
+.forcedCard.ok { border-left-color: var(--ok); }
+.forcedCard.warn { border-left-color: var(--warn); }
+.forcedCard.danger { border-left-color: var(--danger); }
+.sourceMetrics {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+}
+.metricPill {
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: #f8fafc;
+  color: #334155;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 2px 8px;
+}
+.riskHighlight {
+  background: #fffdf8;
+  border: 1px solid #e6d7b4;
+  border-left: 6px solid var(--warn);
+  border-radius: 8px;
+  padding: 14px;
+}
+.riskHighlight > span,
+.scoreboard > span,
+.sourceDrawer > summary span {
+  color: var(--muted);
+  display: block;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+.riskHighlight h2,
+.scoreboard h2 {
+  font-size: 18px;
+  line-height: 1.3;
+  margin: 2px 0 8px;
+}
+.riskHighlight ul {
+  display: grid;
+  gap: 6px;
+  margin: 10px 0 0;
+  padding-left: 20px;
+}
+.riskHighlight li::marker {
+  content: "Risk ";
+  color: var(--warn);
+  font-weight: 800;
+}
+.scoreboard {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 14px;
+}
+.scoreGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 12px;
+}
+.scoreItem {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fbfcfd;
+  min-width: 0;
+  padding: 12px;
+}
+.scoreItem header {
+  align-items: flex-start;
+  display: flex;
+  gap: 8px;
+  justify-content: space-between;
+}
+.scoreItem h3 {
+  font-size: 15px;
+  line-height: 1.35;
+  margin: 0;
+}
+.scoreValue {
+  border: 1px solid #c8d1dc;
+  border-radius: 999px;
+  color: #1f2933;
+  flex: 0 0 auto;
+  font-variant-numeric: tabular-nums;
+  font-weight: 800;
+  padding: 1px 8px;
+}
+.scoreItem p {
+  color: var(--muted);
+  font-size: 14px;
+  margin: 8px 0 0;
+}
+.scoreItem .scoreMeta {
+  color: var(--muted);
+  font-size: 12px;
+  margin-top: 8px;
+}
+.scoreItem.unrated .scoreValue,
+.scoreItem.unknown .scoreValue {
+  background: #fff9f1;
+  border-color: #d79a4a;
+  color: var(--warn);
+}
+.sourceDrawer {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  margin-bottom: 16px;
+  padding: 0;
+}
+.sourceDrawer > summary {
+  cursor: pointer;
+  font-weight: 800;
+  list-style-position: inside;
+  padding: 12px 14px;
+}
+.sourceDrawerBody {
+  border-top: 1px solid var(--line);
+  padding: 12px 14px 14px;
+}
+.sourceList {
+  display: grid;
+  gap: 8px;
+  margin-top: 12px;
+}
+.sourceItem {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 10px;
+}
+.sourceItem.primary {
+  border-left: 5px solid var(--ok);
+}
+.sourceItem.market_data {
+  border-left: 5px solid var(--accent);
+}
+.sourceType {
+  color: var(--muted);
+  display: block;
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+.sourceTitle {
+  display: block;
+  font-weight: 800;
+  line-height: 1.35;
+  margin-top: 2px;
+}
+.sourceMeta {
+  color: var(--muted);
+  font-size: 13px;
+  margin: 4px 0 0;
+}
+.sourceItem a {
+  color: var(--accent);
+}
+.report a {
+  color: var(--accent);
+  overflow-wrap: anywhere;
+}
+.tableScroll {
+  max-width: 100%;
+  overflow-x: auto;
+  overscroll-behavior-inline: contain;
+}
+.tableScroll table {
+  display: table;
+  min-width: 680px;
+  width: 100%;
+}
+@media (max-width: 720px) {
+  .topbar { flex-direction: column; }
+  .statusStack { align-items: flex-start; flex-direction: row; flex-wrap: wrap; }
+  .statusCards, .summaryCards { grid-template-columns: 1fr; }
+  .decisionGrid { grid-template-columns: 1fr; }
+  .scoreGrid { grid-template-columns: 1fr; }
+  .report { padding: 2px 12px 14px; }
+}
+@media (max-width: 420px) {
+  h1 { font-size: 1.45rem; }
+  main { padding-left: 10px; padding-right: 10px; }
+  .topbar { padding: 18px 12px; }
+  .badge,
+  button {
+    width: 100%;
+    justify-content: center;
+  }
+  .actions { align-items: stretch; flex-direction: column; }
+  .decisionGrid strong { font-size: 16px; }
+}
+@media print {
+  @page { margin: 14mm; }
+  body {
+    background: #fff;
+    color: #111;
+    font-size: 11pt;
+  }
+  main {
+    max-width: none;
+    padding: 0;
+  }
+  .topbar {
+    padding: 0 0 12px;
+    border-bottom-color: #999;
+  }
+  .toc, .report, .decisionGrid article, .statusCard, .summaryCard {
+    border-color: #999;
+    box-shadow: none;
+  }
+  .report table {
+    display: table;
+    table-layout: auto;
+    width: 100%;
+    font-size: 9pt;
+  }
+  .report thead {
+    display: table-header-group;
+  }
+  .report tr {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+  .report th, .report td {
+    overflow-wrap: anywhere;
+    word-break: break-word;
+    white-space: normal;
+  }
+  .toc, .statusCards, .summaryCards, .decisionGrid {
+    break-inside: avoid-page;
+  }
+  .report, .sectionDetails {
+    break-inside: auto;
+  }
+  a {
+    color: #111;
+    text-decoration: underline;
+  }
+}
+
+</style>
+
+<style>
+.pagesPublicNotice {
+  margin: 0;
+  padding: 10px 14px;
+  border-bottom: 1px solid #d7dee8;
+  background: #f6f8fb;
+  color: #243040;
+  font: 13px/1.55 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+.pagesPublicNotice strong {
+  display: inline-block;
+  margin-right: 8px;
+}
+.pagesPublicNotice small {
+  display: block;
+  margin-top: 2px;
+  color: #5b677a;
+  overflow-wrap: anywhere;
+}
+@media (max-width: 480px) {
+  .pagesPublicNotice {
+    padding: 9px 10px;
+  }
+  .pagesPublicNotice strong {
+    display: block;
+    margin: 0 0 2px;
+  }
+}
+</style>
+</head>
+<body>
+<aside class="pagesPublicNotice" role="note">
+  <strong>GitHub Pages public view</strong>
+  <span>このHTMLはGitHub Pagesでpublic配信される前提の閲覧用生成物です。個人情報・非公開メモ・認証情報を含めないでください。</span>
+  <small>source: targets/MU/views/FY2026-Q2_initial_baseline.html / staged: 2026-05-13T22:05:31.239Z</small>
+</aside>
+
+<a class="skipLink" href="#main">本文へ移動</a>
+<header class="topbar">
+  <div>
+    <p class="eyebrow">MU Micron Technology</p>
+    <h1>Micron集中投資 初回ベースライン検証レポート</h1>
+    <p class="meta">view: quarterly / date: 2026-05-10 / period: FY2026-Q2_initial_baseline</p>
+  </div>
+  <div class="statusStack">
+    <span class="badge judgement unrated" aria-label="判定 UNRATED">UNRATED</span>
+    <span class="badge source partially_verified" aria-label="出典確認状況 partially_verified">partially_verified</span>
+  </div>
+</header>
+
+<main id="main">
+  <section class="firstView" aria-label="判断用ダッシュボード">
+  <section class="statusCards" aria-label="判定、出典品質、強制警戒条件">
+    <article class="statusCard judgementCard unrated">
+      <span>Judgement</span>
+      <strong>UNRATED</strong>
+      <p>現在の観測判定。色だけでなくラベルと本文で確認します。</p>
+    </article>
+    <article class="statusCard sourceCard partially_verified">
+      <span>Source status</span>
+      <strong>partially_verified</strong>
+      <p>一部は検証済み、未確認項目があります。 出典10件、一次情報10件。</p>
+      <div class="sourceMetrics" aria-label="出典内訳">
+        <span class="metricPill">primary 10</span>
+        <span class="metricPill">other 0</span>
+        <span class="metricPill">unknown 2</span>
+      </div>
+      <ul class="miniList"><li>未検証の初期ベースライン：Micron公式情報でFY2026 Q2売上、Non-GAAP粗利率、FY2026 Q3ガイダンス、FY2026 CapEx、FY2027 CapEx step-up、HBM4/SOCAMM2/Gen6 SSD量産は確認済み。</li><li>一次情報で確認できなかった項目：TrendForce等の外部市況コメント、CSP CapEx総合、競合決算比較、バリュエーション評価。</li><li>次回へ持ち越す確認事項：DRAM/NAND価格方向、SK hynix/SamsungのHBM4/HBM4E進捗、SanDiskのNAND/SSD勢い、CSP AI CapExの上方/下方修正。</li></ul>
+    </article>
+    <article class="statusCard forcedCard ok">
+      <span>Forced alert</span>
+      <strong>該当なし / 監視継続</strong>
+      <p>強制警戒条件の確認結果です。</p>
+      <ul><li>ORANGE以上の警戒条件：現時点の初回ベースライン確認だけでは該当判定しない。CapEx急増は監視対象だが、長期需要・顧客契約の裏付けが見えないとはまだ断定しない。</li><li>全力解除検討条件：未判定。CSP CapEx、DRAM/HBM価格、在庫、FCF、HBM採用劣後を四半期本判定で確認する。</li><li>総合点より優先すべき警戒：FY2027 CapEx拡大と将来供給過剰リスク。</li></ul>
+    </article>
+    <article class="statusCard previousChangeCard _">
+      <span>Previous change</span>
+      <strong>初回のため比較なし。</strong>
+      <p>前回レポートからの判定変化と主要な差分です。</p>
+      <ul class="miniList"><li>最も重要な変化: FY2026 Q2の売上、Non-GAAP粗利率、FY2026 Q3ガイダンス、FY2026/FY2027 CapEx見通し、HBM4/SOCAMM2/Gen6 SSD量産に関するユーザー提供ベースラインは、Micron公式情報で大部分を確認できた。</li></ul>
+    </article>
+    <article class="statusCard unconfirmedCard warn">
+      <span>Unconfirmed</span>
+      <strong>3項目を確認</strong>
+      <p>強気材料として扱わず、次回確認へ回す項目です。</p>
+      <ul class="miniList"><li>未検証の初期ベースライン：Micron公式情報でFY2026 Q2売上、Non-GAAP粗利率、FY2026 Q3ガイダンス、FY2026 CapEx、FY2027 CapEx step-up、HBM4/SOCAMM2/Gen6 SSD量産は確認済み。</li><li>一次情報で確認できなかった項目：TrendForce等の外部市況コメント、CSP CapEx総合、競合決算比較、バリュエーション評価。</li><li>次回へ持ち越す確認事項：DRAM/NAND価格方向、SK hynix/SamsungのHBM4/HBM4E進捗、SanDiskのNAND/SSD勢い、CSP AI CapExの上方/下方修正。</li></ul>
+    </article>
+  </section>
+
+  <section class="decisionGrid">
+    <article>
+      <span>Score</span>
+      <strong>N/A / 27</strong>
+    </article>
+    <article>
+      <span>Conclusion</span>
+      <strong>ユーザー提供の中核ベースラインはMicron公式一次情報で概ね検証できた。ただし、これは初回ベースライン検証であり、外部需要・市況・競合・バリュエーションを含む四半期本判定ではない。</strong>
+    </article>
+    <article>
+      <span>Action</span>
+      <strong>売買推奨ではなく、観測上の次アクションとして、初回ベースラインの検証済み項目を基準点に採用する。週次・月次・四半期の本判定へ進む。</strong>
+    </article>
+  </section>
+
+<section class="riskHighlight" aria-label="弱気材料ファースト">
+    <span>Risk first</span>
+    <h2>弱気材料を先に確認</h2>
+    <p>弱気材料2：FY2027のconstruction-related capexは前年比100億ドル超増加見込みであり、将来の供給過剰リスクを監視する必要がある。これは会社見通しであり、実績値ではない。</p>
+    <ul><li>弱気材料1：CapExが非常に大きい。MicronはFY2026のnet PP&amp;E capexを250億ドル超と見ており、FY2027もHBM/DRAM関連投資で大きく増える見込み。</li><li>弱気材料2：FY2027のconstruction-related capexは前年比100億ドル超増加見込みであり、将来の供給過剰リスクを監視する必要がある。これは会社見通しであり、実績値ではない。</li><li>弱気材料3：10-Qでは、HBM需要が弱まった場合にHBM向け能力が通常DRAMへ戻り、DRAM供給増・価格下押しにつながるリスクが説明されている。</li><li>弱気材料4：中国CACによるMicron製品購入制限、台湾DRAM生産集中、関税・輸出規制・貿易障壁は、10-Q上も継続リスクとして残っている。</li><li>弱気材料5：MicronのFY2026 Q3ガイダンスには、通商・地政学的展開による影響は含まれていない。</li></ul>
+  </section>
+<section class="scoreboard" aria-label="9項目スコアカード">
+    <span>Scoreboard</span>
+    <h2>総合：未採点 / 27</h2>
+    <p>判定スコアの確認結果です。</p>
+    <div class="scoreGrid"><article class="scoreItem unrated">
+    <header>
+      <h3>A. AI需要・CSP CapEx</h3>
+      <span class="scoreValue">未採点 / 3</span>
+    </header>
+    <p>理由は本文を確認。</p>
+    <p class="scoreMeta">前回比: 未抽出 / 重要出典: 本文を確認</p>
+  </article><article class="scoreItem unrated">
+    <header>
+      <h3>B. DRAM / HBM市況</h3>
+      <span class="scoreValue">未採点 / 3</span>
+    </header>
+    <p>理由は本文を確認。</p>
+    <p class="scoreMeta">前回比: 未抽出 / 重要出典: 本文を確認</p>
+  </article><article class="scoreItem unrated">
+    <header>
+      <h3>C. NAND / SSD市況</h3>
+      <span class="scoreValue">未採点 / 3</span>
+    </header>
+    <p>理由は本文を確認。</p>
+    <p class="scoreMeta">前回比: 未抽出 / 重要出典: 本文を確認</p>
+  </article><article class="scoreItem unrated">
+    <header>
+      <h3>D. 対象企業決算・ガイダンス</h3>
+      <span class="scoreValue">未採点 / 3</span>
+    </header>
+    <p>理由は本文を確認。</p>
+    <p class="scoreMeta">前回比: 未抽出 / 重要出典: 本文を確認</p>
+  </article><article class="scoreItem unrated">
+    <header>
+      <h3>E. HBM / SOCAMM2 / AI製品採用</h3>
+      <span class="scoreValue">未採点 / 3</span>
+    </header>
+    <p>理由は本文を確認。</p>
+    <p class="scoreMeta">前回比: 未抽出 / 重要出典: 本文を確認</p>
+  </article><article class="scoreItem unrated">
+    <header>
+      <h3>F. CapExと供給規律</h3>
+      <span class="scoreValue">未採点 / 3</span>
+    </header>
+    <p>理由は本文を確認。</p>
+    <p class="scoreMeta">前回比: 未抽出 / 重要出典: 本文を確認</p>
+  </article><article class="scoreItem unrated">
+    <header>
+      <h3>G. 在庫・キャッシュフロー</h3>
+      <span class="scoreValue">未採点 / 3</span>
+    </header>
+    <p>理由は本文を確認。</p>
+    <p class="scoreMeta">前回比: 未抽出 / 重要出典: 本文を確認</p>
+  </article><article class="scoreItem unrated">
+    <header>
+      <h3>H. 競争環境</h3>
+      <span class="scoreValue">未採点 / 3</span>
+    </header>
+    <p>理由は本文を確認。</p>
+    <p class="scoreMeta">前回比: 未抽出 / 重要出典: 本文を確認</p>
+  </article><article class="scoreItem unrated">
+    <header>
+      <h3>I. バリュエーション</h3>
+      <span class="scoreValue">未採点 / 3</span>
+    </header>
+    <p>理由は本文を確認。</p>
+    <p class="scoreMeta">前回比: 未抽出 / 重要出典: 本文を確認</p>
+  </article></div>
+  </section>
+  </section>
+
+  <nav class="toc" aria-label="目次">
+    <strong>目次</strong>
+    <a href="#sec-今回の結論">1. 今回の結論</a><a href="#sec-弱気材料を先に確認">2. 弱気材料を先に確認</a><a href="#sec-強制警戒条件">3. 強制警戒条件</a><a href="#sec-未検証・不明点">4. 未検証・不明点</a><a href="#sec-強気材料">5. 強気材料</a><a href="#sec-対象企業の決算・ガイダンス確認">6. 対象企業の決算・ガイダンス確認</a><a href="#sec-外部需要確認">7. 外部需要確認</a><a href="#sec-市況確認">8. 市況確認</a><a href="#sec-競合比較">9. 競合比較</a><a href="#sec-判定スコア">10. 判定スコア</a><a href="#sec-アクション提案">11. アクション提案</a><a href="#sec-品質ゲート">12. 品質ゲート</a><a href="#sec-state更新候補">13. state更新候補</a><a href="#sec-次回までの監視イベント">14. 次回までの監視イベント</a><a href="#sec-出典">15. 出典</a>
+  </nav>
+
+  <section class="actions" aria-label="コピー操作">
+    <button type="button" aria-label="Copy next prompt" data-copy-label="next prompt" data-copy="# 次回確認プロンプト: Micron集中投資 初回ベースライン検証レポート&#10;&#10;- target: MU&#10;- judgement: UNRATED&#10;- score: N/A / 27&#10;- source_status: partially_verified&#10;&#10;次回レポートでは、以下を優先して一次情報または信頼できる出典で確認してください。&#10;&#10;## 未検証・不明点&#10;- 未検証の初期ベースライン：Micron公式情報でFY2026 Q2売上、Non-GAAP粗利率、FY2026 Q3ガイダンス、FY2026 CapEx、FY2027 CapEx step-up、HBM4/SOCAMM2/Gen6 SSD量産は確認済み。&#10;- 一次情報で確認できなかった項目：TrendForce等の外部市況コメント、CSP CapEx総合、競合決算比較、バリュエーション評価。&#10;- 次回へ持ち越す確認事項：DRAM/NAND価格方向、SK hynix/SamsungのHBM4/HBM4E進捗、SanDiskのNAND/SSD勢い、CSP AI CapExの上方/下方修正。&#10;&#10;## 次回監視イベント&#10;- 対象企業次回決算：Micron FY2026 Q3決算。&#10;- 主要競合次回決算：SK hynix、Samsung、SanDisk。&#10;- 需要側企業決算：Microsoft、Alphabet、Amazon、Meta、Oracle。&#10;- 関連業界イベント：NVIDIA Rubin / Vera Rubin / HBM4関連発表。&#10;- 市況更新：TrendForce DRAM/NAND/HBM/enterprise SSD価格・需給。&#10;- その他重要イベント：米国対中輸出規制、中国でのMicron販売制限、先端パッケージ制約。&#10;&#10;## Open questions&#10;- 外部CSP CapEx&#10;- TrendForce/Omdia/IDCなど市況&#10;- SK hynix/Samsung/SanDisk競合比較&#10;- バリュエーション&#10;- HBM4/HBM4Eの競合比での採用優劣">Copy next prompt</button>
+    <button type="button" aria-label="Copy full report Markdown" data-copy-label="report Markdown" data-copy="---&#10;view: quarterly&#10;target: MU&#10;target_id: MU&#10;report_type: quarterly_initial_baseline&#10;title: Micron集中投資 初回ベースライン検証レポート&#10;date: 2026-05-10&#10;period: FY2026-Q2_initial_baseline&#10;company: Micron Technology&#10;ticker: MU&#10;judgement: UNRATED&#10;score:&#10;score_max: 27&#10;source_status: partially_verified&#10;previous_report:&#10;generated_html: ../../views/FY2026-Q2_initial_baseline.html&#10;---&#10;&#10;# Micron集中投資 初回ベースライン検証レポート&#10;&#10;対象：Micron Technology（MU）&#10;日付：2026-05-10&#10;対象期間：Micron FY2026 Q2およびFY2026 Q3ガイダンス中心&#10;判定：UNRATED&#10;総合スコア：未付与 / 27&#10;一言結論：ユーザー提供の中核ベースラインはMicron公式一次情報で概ね検証できた。ただし、これは初回ベースライン検証であり、外部需要・市況・競合・バリュエーションを含む四半期本判定ではない。&#10;&#10;## 1. 今回の結論&#10;&#10;- 集中投資を継続してよいか：今回の目的は投資判断ではなく初期ベースライン検証のため、継続可否は未判定。&#10;- 前回から判定が変わったか：初回のため比較なし。&#10;- 最も重要な変化：FY2026 Q2の売上、Non-GAAP粗利率、FY2026 Q3ガイダンス、FY2026/FY2027 CapEx見通し、HBM4/SOCAMM2/Gen6 SSD量産に関するユーザー提供ベースラインは、Micron公式情報で大部分を確認できた。&#10;&#10;## 2. 弱気材料を先に確認&#10;&#10;- 弱気材料1：CapExが非常に大きい。MicronはFY2026のnet PP&amp;E capexを250億ドル超と見ており、FY2027もHBM/DRAM関連投資で大きく増える見込み。&#10;- 弱気材料2：FY2027のconstruction-related capexは前年比100億ドル超増加見込みであり、将来の供給過剰リスクを監視する必要がある。これは会社見通しであり、実績値ではない。&#10;- 弱気材料3：10-Qでは、HBM需要が弱まった場合にHBM向け能力が通常DRAMへ戻り、DRAM供給増・価格下押しにつながるリスクが説明されている。&#10;- 弱気材料4：中国CACによるMicron製品購入制限、台湾DRAM生産集中、関税・輸出規制・貿易障壁は、10-Q上も継続リスクとして残っている。&#10;- 弱気材料5：MicronのFY2026 Q3ガイダンスには、通商・地政学的展開による影響は含まれていない。&#10;- これが投資仮説に与える影響：現時点では需要・価格・粗利は非常に強いが、投資仮説の破綻検知では、CapEx、在庫、ASP、市況価格、CSP CapExが同時に悪化する局面を最重要で監視する必要がある。&#10;&#10;## 3. 強制警戒条件&#10;&#10;- ORANGE以上の警戒条件：現時点の初回ベースライン確認だけでは該当判定しない。CapEx急増は監視対象だが、長期需要・顧客契約の裏付けが見えないとはまだ断定しない。&#10;- 全力解除検討条件：未判定。CSP CapEx、DRAM/HBM価格、在庫、FCF、HBM採用劣後を四半期本判定で確認する。&#10;- 総合点より優先すべき警戒：FY2027 CapEx拡大と将来供給過剰リスク。&#10;&#10;## 4. 未検証・不明点&#10;&#10;- 未検証の初期ベースライン：Micron公式情報でFY2026 Q2売上、Non-GAAP粗利率、FY2026 Q3ガイダンス、FY2026 CapEx、FY2027 CapEx step-up、HBM4/SOCAMM2/Gen6 SSD量産は確認済み。&#10;- 一次情報で確認できなかった項目：TrendForce等の外部市況コメント、CSP CapEx総合、競合決算比較、バリュエーション評価。&#10;- 次回へ持ち越す確認事項：DRAM/NAND価格方向、SK hynix/SamsungのHBM4/HBM4E進捗、SanDiskのNAND/SSD勢い、CSP AI CapExの上方/下方修正。&#10;&#10;## 5. 強気材料&#10;&#10;- 強気材料1：FY2026 Q2売上は238.60億ドル、Non-GAAP粗利率は74.9%。売上、粗利、EPS、FCFが過去最高級の水準。&#10;- 強気材料2：FY2026 Q3ガイダンスは売上335億ドル±7.5億ドル、粗利率約81%、Non-GAAP EPS 19.15ドル±0.40ドル。&#10;- 強気材料3：MicronはHBM4 36GB 12H、SOCAMM2、PCIe Gen6 9650 SSDをNVIDIA Vera Rubin世代向けに設計された製品として量産していると自社発表した。ただし、NVIDIA側がMicronを採用先として名指しした一次情報は未確認。&#10;- これが投資仮説を補強する理由：単なるDRAM市況だけでなく、HBM、CPU側低消費電力メモリ、データセンターSSDが同時にAIインフラ向け製品群として確認できる。&#10;&#10;## 6. 対象企業の決算・ガイダンス確認&#10;&#10;- 売上：FY2026 Q2 revenueは238.60億ドル。&#10;- 売上高ガイダンス：FY2026 Q3 revenueは335億ドル±7.5億ドル。&#10;- GAAP gross margin：FY2026 Q2は74.4%。&#10;- Non-GAAP gross margin：FY2026 Q2は74.9%。&#10;- operating margin：FY2026 Q2 Non-GAAP operating marginは69.0%。&#10;- EPS：FY2026 Q2 Non-GAAP diluted EPSは12.20ドル。FY2026 Q3 Non-GAAP EPSガイダンスは19.15ドル±0.40ドル。&#10;- FCF：FY2026 Q2 adjusted free cash flowは68.99億ドル。&#10;- operating cash flow：FY2026 Q2 operating cash flowは119.03億ドル。&#10;- CapEx：FY2026 Q2 net capexは50.04億ドル。FY2026通期は250億ドル超見込み。FY2026 Q3は約70億ドル見込み。FY2027のCapEx増加は会社見通しであり、実績値ではない。&#10;- cash / marketable investments / debt：FY2026 Q2末のcash, marketable investments, restricted cashは166.53億ドル。prepared remarksではcash and investments 167億ドル、debt 101億ドル、net cash 65億ドル。&#10;- inventory：2026年2月26日時点のinventoryは82.67億ドル。&#10;- inventory days：FY2026 Q2末は123日。DRAM inventory daysは120日未満。&#10;- セグメント：CMBU 77.49億ドル、CDBU 56.87億ドル、MCBU 77.11億ドル、AEBU 27.08億ドル。&#10;- 技術別売上：DRAM 187.68億ドル、NAND 49.97億ドル、Other 0.95億ドル。&#10;- data center SSD share / design wins：prepared remarksでは、data center SSD market shareが2025年に4年連続上昇して過去最高、design winsはrobustと説明。具体シェア数値は未開示。&#10;- HBM売上またはHBMコメント：HBM4 36GB 12Hのvolume shipment開始、HBM4Eは2027年量産予定。HBM売上金額はこの初回確認では未確認。&#10;- HBM4 / HBM4E / SOCAMM2 / Gen6 SSD採用状況：HBM4 36GB 12HはNVIDIA Vera Rubin向けに設計された製品として量産。SOCAMM2はNVIDIA Vera Rubin NVL72/Vera CPU向け。Micron 9650 Gen6 SSDはNVIDIA BlueField-4 STX reference architecture向けに最適化。NVIDIA側のMicron名指し採用確認は未確認。&#10;&#10;## 7. 外部需要確認&#10;&#10;- CSP CapEx：未確認。次回の週次/月次/四半期確認へ持ち越し。&#10;- AI推論需要：Micron prepared remarksは、AI inferenceの急成長が新アーキテクチャを生み、HBM/LP/DDR DRAM/SSDの広いポートフォリオが重要になると説明。&#10;- NVIDIA / AMD / Broadcom / Marvell等のコメント：未確認。次回以降で需要側・隣接企業の一次情報を確認する。&#10;- AIサーバー需要：Micron prepared remarksでは、AI server demandは強く、traditional server demandもagentic AIとserver refreshでrobustと説明。&#10;- エージェントAI需要：Micron prepared remarksはagentic AI workloads、multi-agent orchestration、KV cache offload、vector databaseを需要要因として挙げている。&#10;- その他需要：PC/スマホは供給制約で台数減の可能性がある一方、AI PCやスマホのメモリ搭載量増加が長期的需要要因。&#10;&#10;## 8. 市況確認&#10;&#10;- DRAM：MicronはDRAM価格がFY2026 Q2に前四半期比mid-60s%上昇したと説明。&#10;- HBM：MicronはHBM4 rampとvolume shipmentsを説明。供給過剰コメントは確認していない。&#10;- RDIMM：未確認。&#10;- LPDDR：SOCAMM2、LPDDR5X、LPDDR6 samplesなど製品面の進捗は確認。価格方向は未確認。&#10;- NAND：MicronはNAND価格がFY2026 Q2に前四半期比high-70s%上昇したと説明。&#10;- enterprise SSD：Micron 9650 Gen6 SSD量産、data center NAND revenue倍増、design winsを確認。&#10;- その他重要市況：DRAM/NANDとも供給制約が続くという会社コメントあり。&#10;- 価格方向：Micron公式ベースではDRAM/NANDともFY2026 Q2は大幅上昇。&#10;- 供給過剰リスク：短期は供給不足コメントが中心。ただしFY2026/FY2027 CapEx拡大により将来供給過剰リスクは監視継続。&#10;&#10;## 9. 競合比較&#10;&#10;- 主要競合1：SK hynixは未確認。&#10;- 主要競合2：Samsungは未確認。&#10;- 主要競合3：SanDiskは未確認。&#10;- 隣接セクター比較：Broadcom / Arista / Astera / Credo / ASML / TSMC / EDAとの比較は未確認。&#10;- 対象銘柄の相対魅力は上がったか、下がったか：今回の初回ベースラインでは未判定。Micron単体の公式情報は強いが、競合・隣接セクター比較なしでは相対魅力は確定しない。&#10;&#10;## 10. 判定スコア&#10;&#10;- A. AI需要・CSP CapEx：未採点 / 3&#10;- B. DRAM / HBM市況：未採点 / 3&#10;- C. NAND / SSD市況：未採点 / 3&#10;- D. 対象企業決算・ガイダンス：未採点 / 3&#10;- E. HBM / SOCAMM2 / AI製品採用：未採点 / 3&#10;- F. CapExと供給規律：未採点 / 3&#10;- G. 在庫・キャッシュフロー：未採点 / 3&#10;- H. 競争環境：未採点 / 3&#10;- I. バリュエーション：未採点 / 3&#10;- 総合：未採点 / 27&#10;&#10;## 11. アクション提案&#10;&#10;- GREEN：投資仮説は観測上かなり健全。ただし撤退条件は維持。&#10;- LIGHT_GREEN：投資仮説は観測上おおむね健全。ただし追加判断には次回データ確認が必要。&#10;- YELLOW：全力集中のリスク上昇を示す観測状態。新規追加や分散判断は追加確認が必要。&#10;- ORANGE：集中投資リスクが高い観測状態。人間レビューで縮小・ヘッジ・分散を検討する局面。&#10;- RED：投資仮説が壊れた可能性が高い観測状態。人間レビューで全力解除を優先検討する局面。&#10;&#10;今回の推奨アクション：売買推奨ではなく、観測上の次アクションとして、初回ベースラインの検証済み項目を基準点に採用する。週次・月次・四半期の本判定へ進む。&#10;理由：Micron公式一次情報ではユーザー提供ベースラインの中核は確認できたが、外部需要、市況、競合、バリュエーションが未確認。&#10;&#10;## 12. 品質ゲート&#10;&#10;- 弱気材料を先に確認したか：はい。&#10;- 強制警戒条件を確認したか：はい。CapEx急増は監視対象だが、初回ベースラインのみではORANGE判定しない。&#10;- monitoring_checklistを確認したか：はい。&#10;- 未確認項目をopen_questionsへ回したか：はい。&#10;- 警戒項目をalertsへ回したか：はい。&#10;- 出典URL、発表日、確認日があるか：はい。&#10;&#10;## 13. state更新候補&#10;&#10;### last_report&#10;&#10;- 初回ベースライン検証はsource_status: partially_verified。&#10;- Micron公式一次情報でFY2026 Q2売上、粗利率、FY2026 Q3ガイダンス、FY2026/FY2027 CapEx、HBM4/SOCAMM2/Gen6 SSD量産を確認。&#10;&#10;### open_questions&#10;&#10;- 外部CSP CapEx&#10;- TrendForce/Omdia/IDCなど市況&#10;- SK hynix/Samsung/SanDisk競合比較&#10;- バリュエーション&#10;- HBM4/HBM4Eの競合比での採用優劣&#10;&#10;### alerts&#10;&#10;- FY2026/FY2027 CapEx増加&#10;- 将来供給過剰リスク&#10;- 通商・地政学リスクがガイダンスに含まれていない点&#10;&#10;### next_events&#10;&#10;- Micron FY2026 Q3決算&#10;- Microsoft / Alphabet / Amazon / Meta / Oracle決算&#10;- SK hynix / Samsung決算&#10;- TrendForce DRAM/NAND価格更新&#10;&#10;## 14. 次回までの監視イベント&#10;&#10;- 対象企業次回決算：Micron FY2026 Q3決算。&#10;- 主要競合次回決算：SK hynix、Samsung、SanDisk。&#10;- 需要側企業決算：Microsoft、Alphabet、Amazon、Meta、Oracle。&#10;- 関連業界イベント：NVIDIA Rubin / Vera Rubin / HBM4関連発表。&#10;- 市況更新：TrendForce DRAM/NAND/HBM/enterprise SSD価格・需給。&#10;- その他重要イベント：米国対中輸出規制、中国でのMicron販売制限、先端パッケージ制約。&#10;&#10;## 15. 出典&#10;&#10;必ずURL、発表日、確認日を書く。&#10;一次情報を優先。&#10;噂、SNS、匿名情報は「未確認情報」と明記する。&#10;&#10;| 種別 | 発行元 | タイトル | URL | 発表日 | 確認日 |&#10;|---|---|---|---|---|---|&#10;| primary | Micron IR | Micron Technology, Inc. Reports Results for the Second Quarter of Fiscal 2026 | https://investors.micron.com/news-releases/news-release-details/micron-technology-inc-reports-results-second-quarter-fiscal-2026 | 2026-03-18 | 2026-05-10 |&#10;| primary | Micron IR | FQ2 2026 financial results presentation | https://investors.micron.com/static-files/9c0becf5-df56-4eec-bd67-453dda68b273 | 2026-03-18 | 2026-05-10 |&#10;| primary | Micron IR | Fiscal Q2 2026 Earnings Call Prepared Remarks | https://investors.micron.com/static-files/e089f8c0-065d-47b8-9d02-bfa863cdb357 | 2026-03-18 | 2026-05-10 |&#10;| primary | SEC | Micron FY2026 Q2 Form 10-Q | https://www.sec.gov/Archives/edgar/data/723125/000072312526000006/mu-20260226.htm | 2026-03-19 | 2026-05-10 |&#10;| primary | Micron IR | Micron in High-Volume Production of HBM4 Designed for NVIDIA Vera Rubin, PCIe Gen6 SSD and SOCAMM2 | https://investors.micron.com/news-releases/news-release-details/micron-high-volume-production-hbm4-designed-nvidia-vera-rubin | 2026-03-16 | 2026-05-10 |&#10;| primary | Micron IR | Micron Sets New Benchmark with World&#39;s First High-Capacity 256GB SOCAMM2 Customer Samples | https://investors.micron.com/news-releases/news-release-details/micron-sets-new-benchmark-worlds-first-high-capacity-256gb | 2026-03-03 | 2026-05-10 |&#10;| primary | NVIDIA | NVIDIA Vera Rubin NVL72 | https://www.nvidia.com/en-us/data-center/vera-rubin-nvl72/ | 2026-03-16 | 2026-05-10 |&#10;| primary | NVIDIA IR | NVIDIA Vera Rubin Opens Agentic AI Frontier | https://investor.nvidia.com/news/press-release-details/2026/NVIDIA-Vera-Rubin-Opens-Agentic-AI-Frontier/default.aspx | 2026-03-16 | 2026-05-10 |&#10;| primary | Micron product page | HBM4 | https://www.micron.com/products/memory/hbm/hbm4 | 未記載 | 2026-05-10 |&#10;| primary | Micron product page | 9650 NVMe SSD | https://www.micron.com/products/storage/ssd/data-center-ssd/9650-ssd | 未記載 | 2026-05-10 |&#10;">Copy report Markdown</button>
+    <button type="button" aria-label="Copy action summary" data-copy-label="action summary" data-copy="# Micron集中投資 初回ベースライン検証レポート action summary&#10;&#10;- judgement: UNRATED&#10;- score: N/A / 27&#10;- source_status: partially_verified&#10;&#10;## 今回の結論&#10;- 集中投資を継続してよいか：今回の目的は投資判断ではなく初期ベースライン検証のため、継続可否は未判定。&#10;- 前回から判定が変わったか：初回のため比較なし。&#10;- 最も重要な変化：FY2026 Q2の売上、Non-GAAP粗利率、FY2026 Q3ガイダンス、FY2026/FY2027 CapEx見通し、HBM4/SOCAMM2/Gen6 SSD量産に関するユーザー提供ベースラインは、Micron公式情報で大部分を確認できた。&#10;&#10;## アクション提案&#10;- GREEN：投資仮説は観測上かなり健全。ただし撤退条件は維持。&#10;- LIGHT_GREEN：投資仮説は観測上おおむね健全。ただし追加判断には次回データ確認が必要。&#10;- YELLOW：全力集中のリスク上昇を示す観測状態。新規追加や分散判断は追加確認が必要。&#10;- ORANGE：集中投資リスクが高い観測状態。人間レビューで縮小・ヘッジ・分散を検討する局面。&#10;- RED：投資仮説が壊れた可能性が高い観測状態。人間レビューで全力解除を優先検討する局面。&#10;&#10;今回の推奨アクション：売買推奨ではなく、観測上の次アクションとして、初回ベースラインの検証済み項目を基準点に採用する。週次・月次・四半期の本判定へ進む。&#10;理由：Micron公式一次情報ではユーザー提供ベースラインの中核は確認できたが、外部需要、市況、競合、バリュエーションが未確認。&#10;&#10;## 次回までの監視イベント&#10;- 対象企業次回決算：Micron FY2026 Q3決算。&#10;- 主要競合次回決算：SK hynix、Samsung、SanDisk。&#10;- 需要側企業決算：Microsoft、Alphabet、Amazon、Meta、Oracle。&#10;- 関連業界イベント：NVIDIA Rubin / Vera Rubin / HBM4関連発表。&#10;- 市況更新：TrendForce DRAM/NAND/HBM/enterprise SSD価格・需給。&#10;- その他重要イベント：米国対中輸出規制、中国でのMicron販売制限、先端パッケージ制約。&#10;&#10;## 未検証・不明点&#10;- 未検証の初期ベースライン：Micron公式情報でFY2026 Q2売上、Non-GAAP粗利率、FY2026 Q3ガイダンス、FY2026 CapEx、FY2027 CapEx step-up、HBM4/SOCAMM2/Gen6 SSD量産は確認済み。&#10;- 一次情報で確認できなかった項目：TrendForce等の外部市況コメント、CSP CapEx総合、競合決算比較、バリュエーション評価。&#10;- 次回へ持ち越す確認事項：DRAM/NAND価格方向、SK hynix/SamsungのHBM4/HBM4E進捗、SanDiskのNAND/SSD勢い、CSP AI CapExの上方/下方修正。">Copy action summary</button>
+    <button type="button" aria-label="Copy source checklist" data-copy-label="source checklist" data-copy="# Micron集中投資 初回ベースライン検証レポート source checklist&#10;&#10;- source_status: partially_verified&#10;&#10;- [ ] primary / Micron IR / Micron Technology, Inc. Reports Results for the Second Quarter of Fiscal 2026 / 確認済み&#10;- [ ] primary / Micron IR / FQ2 2026 financial results presentation / 確認済み&#10;- [ ] primary / Micron IR / Fiscal Q2 2026 Earnings Call Prepared Remarks / 確認済み&#10;- [ ] primary / SEC / Micron FY2026 Q2 Form 10-Q / 確認済み&#10;- [ ] primary / Micron IR / Micron in High-Volume Production of HBM4 Designed for NVIDIA Vera Rubin, PCIe Gen6 SSD and SOCAMM2 / 確認済み&#10;- [ ] primary / Micron IR / Micron Sets New Benchmark with World&#39;s First High-Capacity 256GB SOCAMM2 Customer Samples / 確認済み&#10;- [ ] primary / NVIDIA / NVIDIA Vera Rubin NVL72 / 確認済み&#10;- [ ] primary / NVIDIA IR / NVIDIA Vera Rubin Opens Agentic AI Frontier / 確認済み&#10;- [ ] primary / Micron product page / HBM4 / 要確認: 発表日&#10;- [ ] primary / Micron product page / 9650 NVMe SSD / 要確認: 発表日">Copy source checklist</button>
+  </section>
+  <details class="copyFallback" data-copy-fallback>
+    <summary>Copy fallback</summary>
+    <p>クリップボードAPIが使えない場合は、下のMarkdownを選択して使用します。</p>
+    <textarea readonly aria-label="コピー対象Markdown"></textarea>
+  </details>
+
+<details class="sourceDrawer">
+    <summary><span>Source drawer</span>出典一覧 (10件、primary 10件)</summary>
+    <div class="sourceDrawerBody">
+      <p>一次情報を先頭に並べています。URL、発表日、確認日の欠落は次回確認対象です。</p>
+      <div class="sourceList"><article class="sourceItem primary">
+    <span class="sourceType">primary / Micron IR</span>
+    <strong class="sourceTitle"><a href="https://investors.micron.com/news-releases/news-release-details/micron-technology-inc-reports-results-second-quarter-fiscal-2026">Micron Technology, Inc. Reports Results for the Second Quarter of Fiscal 2026</a></strong>
+    <p class="sourceMeta"><a href="https://investors.micron.com/news-releases/news-release-details/micron-technology-inc-reports-results-second-quarter-fiscal-2026">URL</a> / 発表日: 2026-03-18 / 確認日: 2026-05-10</p>
+  </article><article class="sourceItem primary">
+    <span class="sourceType">primary / Micron IR</span>
+    <strong class="sourceTitle"><a href="https://investors.micron.com/static-files/9c0becf5-df56-4eec-bd67-453dda68b273">FQ2 2026 financial results presentation</a></strong>
+    <p class="sourceMeta"><a href="https://investors.micron.com/static-files/9c0becf5-df56-4eec-bd67-453dda68b273">URL</a> / 発表日: 2026-03-18 / 確認日: 2026-05-10</p>
+  </article><article class="sourceItem primary">
+    <span class="sourceType">primary / Micron IR</span>
+    <strong class="sourceTitle"><a href="https://investors.micron.com/static-files/e089f8c0-065d-47b8-9d02-bfa863cdb357">Fiscal Q2 2026 Earnings Call Prepared Remarks</a></strong>
+    <p class="sourceMeta"><a href="https://investors.micron.com/static-files/e089f8c0-065d-47b8-9d02-bfa863cdb357">URL</a> / 発表日: 2026-03-18 / 確認日: 2026-05-10</p>
+  </article><article class="sourceItem primary">
+    <span class="sourceType">primary / SEC</span>
+    <strong class="sourceTitle"><a href="https://www.sec.gov/Archives/edgar/data/723125/000072312526000006/mu-20260226.htm">Micron FY2026 Q2 Form 10-Q</a></strong>
+    <p class="sourceMeta"><a href="https://www.sec.gov/Archives/edgar/data/723125/000072312526000006/mu-20260226.htm">URL</a> / 発表日: 2026-03-19 / 確認日: 2026-05-10</p>
+  </article><article class="sourceItem primary">
+    <span class="sourceType">primary / Micron IR</span>
+    <strong class="sourceTitle"><a href="https://investors.micron.com/news-releases/news-release-details/micron-high-volume-production-hbm4-designed-nvidia-vera-rubin">Micron in High-Volume Production of HBM4 Designed for NVIDIA Vera Rubin, PCIe Gen6 SSD and SOCAMM2</a></strong>
+    <p class="sourceMeta"><a href="https://investors.micron.com/news-releases/news-release-details/micron-high-volume-production-hbm4-designed-nvidia-vera-rubin">URL</a> / 発表日: 2026-03-16 / 確認日: 2026-05-10</p>
+  </article><article class="sourceItem primary">
+    <span class="sourceType">primary / Micron IR</span>
+    <strong class="sourceTitle"><a href="https://investors.micron.com/news-releases/news-release-details/micron-sets-new-benchmark-worlds-first-high-capacity-256gb">Micron Sets New Benchmark with World&#39;s First High-Capacity 256GB SOCAMM2 Customer Samples</a></strong>
+    <p class="sourceMeta"><a href="https://investors.micron.com/news-releases/news-release-details/micron-sets-new-benchmark-worlds-first-high-capacity-256gb">URL</a> / 発表日: 2026-03-03 / 確認日: 2026-05-10</p>
+  </article><article class="sourceItem primary">
+    <span class="sourceType">primary / NVIDIA</span>
+    <strong class="sourceTitle"><a href="https://www.nvidia.com/en-us/data-center/vera-rubin-nvl72/">NVIDIA Vera Rubin NVL72</a></strong>
+    <p class="sourceMeta"><a href="https://www.nvidia.com/en-us/data-center/vera-rubin-nvl72/">URL</a> / 発表日: 2026-03-16 / 確認日: 2026-05-10</p>
+  </article><article class="sourceItem primary">
+    <span class="sourceType">primary / NVIDIA IR</span>
+    <strong class="sourceTitle"><a href="https://investor.nvidia.com/news/press-release-details/2026/NVIDIA-Vera-Rubin-Opens-Agentic-AI-Frontier/default.aspx">NVIDIA Vera Rubin Opens Agentic AI Frontier</a></strong>
+    <p class="sourceMeta"><a href="https://investor.nvidia.com/news/press-release-details/2026/NVIDIA-Vera-Rubin-Opens-Agentic-AI-Frontier/default.aspx">URL</a> / 発表日: 2026-03-16 / 確認日: 2026-05-10</p>
+  </article><article class="sourceItem primary">
+    <span class="sourceType">primary / Micron product page</span>
+    <strong class="sourceTitle"><a href="https://www.micron.com/products/memory/hbm/hbm4">HBM4</a></strong>
+    <p class="sourceMeta"><a href="https://www.micron.com/products/memory/hbm/hbm4">URL</a> / 発表日: 未記載 / 確認日: 2026-05-10</p>
+  </article><article class="sourceItem primary">
+    <span class="sourceType">primary / Micron product page</span>
+    <strong class="sourceTitle"><a href="https://www.micron.com/products/storage/ssd/data-center-ssd/9650-ssd">9650 NVMe SSD</a></strong>
+    <p class="sourceMeta"><a href="https://www.micron.com/products/storage/ssd/data-center-ssd/9650-ssd">URL</a> / 発表日: 未記載 / 確認日: 2026-05-10</p>
+  </article></div>
+    </div>
+  </details>
+
+  <article class="report" data-report-path="targets/MU/reports/quarterly/FY2026-Q2_initial_baseline.md">
+<h1 id="sec-micron集中投資-初回ベースライン検証レポート">Micron集中投資 初回ベースライン検証レポート</h1>
+<p>対象：Micron Technology（MU）</p>
+<p>日付：2026-05-10</p>
+<p>対象期間：Micron FY2026 Q2およびFY2026 Q3ガイダンス中心</p>
+<p>判定：<span class="dir unknown">UNRATED</span></p>
+<p>総合スコア：<span class="dir unknown">未付与</span> / 27</p>
+<p>一言結論：ユーザー提供の中核ベースラインはMicron公式一次情報で概ね検証できた。ただし、これは初回ベースライン検証であり、外部需要・市況・競合・バリュエーションを含む四半期本判定ではない。</p>
+<details class="sectionDetails" id="sec-今回の結論" open><summary>1. 今回の結論</summary>
+<ul>
+<li>集中投資を継続してよいか：今回の目的は投資判断ではなく初期ベースライン検証のため、継続可否は未判定。</li>
+<li>前回から判定が変わったか：初回のため比較なし。</li>
+<li>最も重要な変化：FY2026 Q2の売上、Non-GAAP粗利率、FY2026 Q3ガイダンス、FY2026/FY2027 CapEx見通し、HBM4/SOCAMM2/Gen6 SSD量産に関するユーザー提供ベースラインは、Micron公式情報で大部分を確認できた。</li>
+</ul>
+</details>
+<details class="sectionDetails" id="sec-弱気材料を先に確認" open><summary>2. 弱気材料を先に確認</summary>
+<ul>
+<li>弱気材料1：CapExが非常に大きい。MicronはFY2026のnet PP&amp;E capexを250億ドル超と見ており、FY2027もHBM/DRAM関連投資で大きく増える見込み。</li>
+<li>弱気材料2：FY2027のconstruction-related capexは前年比100億ドル超<span class="dir up">増加</span>見込みであり、将来の供給過剰リスクを監視する必要がある。これは会社見通しであり、実績値ではない。</li>
+<li>弱気材料3：10-Qでは、HBM需要が弱まった場合にHBM向け能力が通常DRAMへ戻り、DRAM供給増・価格下押しにつながるリスクが説明されている。</li>
+<li>弱気材料4：中国CACによるMicron製品購入制限、台湾DRAM生産集中、関税・輸出規制・貿易障壁は、10-Q上も継続リスクとして残っている。</li>
+<li>弱気材料5：MicronのFY2026 Q3ガイダンスには、通商・地政学的展開による影響は含まれていない。</li>
+<li>これが投資仮説に与える影響：現時点では需要・価格・粗利は非常に強いが、投資仮説の破綻検知では、CapEx、在庫、ASP、市況価格、CSP CapExが同時に<span class="dir down">悪化</span>する局面を最重要で監視する必要がある。</li>
+</ul>
+</details>
+<details class="sectionDetails" id="sec-強制警戒条件" open><summary>3. 強制警戒条件</summary>
+<ul>
+<li>ORANGE以上の警戒条件：現時点の初回ベースライン確認だけでは該当判定しない。CapEx急増は監視対象だが、長期需要・顧客契約の裏付けが見えないとはまだ断定しない。</li>
+<li>全力解除検討条件：未判定。CSP CapEx、DRAM/HBM価格、在庫、FCF、HBM採用劣後を四半期本判定で確認する。</li>
+<li>総合点より優先すべき警戒：FY2027 CapEx拡大と将来供給過剰リスク。</li>
+</ul>
+</details>
+<details class="sectionDetails" id="sec-未検証・不明点" open><summary>4. <span class="dir unknown">未検証</span>・<span class="dir unknown">不明</span>点</summary>
+<ul>
+<li><span class="dir unknown">未検証</span>の初期ベースライン：Micron公式情報でFY2026 Q2売上、Non-GAAP粗利率、FY2026 Q3ガイダンス、FY2026 CapEx、FY2027 CapEx step-up、HBM4/SOCAMM2/Gen6 SSD量産は確認済み。</li>
+<li>一次情報で確認できなかった項目：TrendForce等の外部市況コメント、CSP CapEx総合、競合決算比較、バリュエーション評価。</li>
+<li>次回へ持ち越す確認事項：DRAM/NAND価格方向、SK hynix/SamsungのHBM4/HBM4E進捗、SanDiskのNAND/SSD勢い、CSP AI CapExの上方/<span class="dir down">下方修正</span>。</li>
+</ul>
+</details>
+<details class="sectionDetails" id="sec-強気材料" open><summary>5. 強気材料</summary>
+<ul>
+<li>強気材料1：FY2026 Q2売上は238.60億ドル、Non-GAAP粗利率は74.9%。売上、粗利、EPS、FCFが過去最高級の水準。</li>
+<li>強気材料2：FY2026 Q3ガイダンスは売上335億ドル±7.5億ドル、粗利率約81%、Non-GAAP EPS 19.15ドル±0.40ドル。</li>
+<li>強気材料3：MicronはHBM4 36GB 12H、SOCAMM2、PCIe Gen6 9650 SSDをNVIDIA Vera Rubin世代向けに設計された製品として量産していると自社発表した。ただし、NVIDIA側がMicronを採用先として名指しした一次情報は<span class="dir unknown">未確認</span>。</li>
+<li>これが投資仮説を補強する理由：単なるDRAM市況だけでなく、HBM、CPU側低消費電力メモリ、データセンターSSDが同時にAIインフラ向け製品群として確認できる。</li>
+</ul>
+</details>
+<details class="sectionDetails" id="sec-対象企業の決算・ガイダンス確認" open><summary>6. 対象企業の決算・ガイダンス確認</summary>
+<ul>
+<li>売上：FY2026 Q2 revenueは238.60億ドル。</li>
+<li>売上高ガイダンス：FY2026 Q3 revenueは335億ドル±7.5億ドル。</li>
+<li>GAAP gross margin：FY2026 Q2は74.4%。</li>
+<li>Non-GAAP gross margin：FY2026 Q2は74.9%。</li>
+<li>operating margin：FY2026 Q2 Non-GAAP operating marginは69.0%。</li>
+<li>EPS：FY2026 Q2 Non-GAAP diluted EPSは12.20ドル。FY2026 Q3 Non-GAAP EPSガイダンスは19.15ドル±0.40ドル。</li>
+<li>FCF：FY2026 Q2 adjusted free cash flowは68.99億ドル。</li>
+<li>operating cash flow：FY2026 Q2 operating cash flowは119.03億ドル。</li>
+<li>CapEx：FY2026 Q2 net capexは50.04億ドル。FY2026通期は250億ドル超見込み。FY2026 Q3は約70億ドル見込み。FY2027のCapEx<span class="dir up">増加</span>は会社見通しであり、実績値ではない。</li>
+<li>cash / marketable investments / debt：FY2026 Q2末のcash, marketable investments, restricted cashは166.53億ドル。prepared remarksではcash and investments 167億ドル、debt 101億ドル、net cash 65億ドル。</li>
+<li>inventory：2026年2月26日時点のinventoryは82.67億ドル。</li>
+<li>inventory days：FY2026 Q2末は123日。DRAM inventory daysは120日未満。</li>
+<li>セグメント：CMBU 77.49億ドル、CDBU 56.87億ドル、MCBU 77.11億ドル、AEBU 27.08億ドル。</li>
+<li>技術別売上：DRAM 187.68億ドル、NAND 49.97億ドル、Other 0.95億ドル。</li>
+<li>data center SSD share / design wins：prepared remarksでは、data center SSD market shareが2025年に4年連続<span class="dir up">上昇</span>して過去最高、design winsはrobustと説明。具体シェア数値は未開示。</li>
+<li>HBM売上またはHBMコメント：HBM4 36GB 12Hのvolume shipment開始、HBM4Eは2027年量産予定。HBM売上金額はこの初回確認では<span class="dir unknown">未確認</span>。</li>
+<li>HBM4 / HBM4E / SOCAMM2 / Gen6 SSD採用状況：HBM4 36GB 12HはNVIDIA Vera Rubin向けに設計された製品として量産。SOCAMM2はNVIDIA Vera Rubin NVL72/Vera CPU向け。Micron 9650 Gen6 SSDはNVIDIA BlueField-4 STX reference architecture向けに最適化。NVIDIA側のMicron名指し採用確認は<span class="dir unknown">未確認</span>。</li>
+</ul>
+</details>
+<details class="sectionDetails" id="sec-外部需要確認" open><summary>7. 外部需要確認</summary>
+<ul>
+<li>CSP CapEx：<span class="dir unknown">未確認</span>。次回の週次/月次/四半期確認へ持ち越し。</li>
+<li>AI推論需要：Micron prepared remarksは、AI inferenceの急成長が新アーキテクチャを生み、HBM/LP/DDR DRAM/SSDの広いポートフォリオが重要になると説明。</li>
+<li>NVIDIA / AMD / Broadcom / Marvell等のコメント：<span class="dir unknown">未確認</span>。次回以降で需要側・隣接企業の一次情報を確認する。</li>
+<li>AIサーバー需要：Micron prepared remarksでは、AI server demandは強く、traditional server demandもagentic AIとserver refreshでrobustと説明。</li>
+<li>エージェントAI需要：Micron prepared remarksはagentic AI workloads、multi-agent orchestration、KV cache offload、vector databaseを需要要因として挙げている。</li>
+<li>その他需要：PC/スマホは供給制約で台数減の可能性がある一方、AI PCやスマホのメモリ搭載量<span class="dir up">増加</span>が長期的需要要因。</li>
+</ul>
+</details>
+<details class="sectionDetails" id="sec-市況確認" open><summary>8. 市況確認</summary>
+<ul>
+<li>DRAM：MicronはDRAM価格がFY2026 Q2に前四半期比mid-60s%<span class="dir up">上昇</span>したと説明。</li>
+<li>HBM：MicronはHBM4 rampとvolume shipmentsを説明。供給過剰コメントは確認していない。</li>
+<li>RDIMM：<span class="dir unknown">未確認</span>。</li>
+<li>LPDDR：SOCAMM2、LPDDR5X、LPDDR6 samplesなど製品面の進捗は確認。価格方向は<span class="dir unknown">未確認</span>。</li>
+<li>NAND：MicronはNAND価格がFY2026 Q2に前四半期比high-70s%<span class="dir up">上昇</span>したと説明。</li>
+<li>enterprise SSD：Micron 9650 Gen6 SSD量産、data center NAND revenue倍増、design winsを確認。</li>
+<li>その他重要市況：DRAM/NANDとも供給制約が続くという会社コメントあり。</li>
+<li>価格方向：Micron公式ベースではDRAM/NANDともFY2026 Q2は大幅<span class="dir up">上昇</span>。</li>
+<li>供給過剰リスク：短期は供給不足コメントが中心。ただしFY2026/FY2027 CapEx拡大により将来供給過剰リスクは監視継続。</li>
+</ul>
+</details>
+<details class="sectionDetails" id="sec-競合比較" open><summary>9. 競合比較</summary>
+<ul>
+<li>主要競合1：SK hynixは<span class="dir unknown">未確認</span>。</li>
+<li>主要競合2：Samsungは<span class="dir unknown">未確認</span>。</li>
+<li>主要競合3：SanDiskは<span class="dir unknown">未確認</span>。</li>
+<li>隣接セクター比較：Broadcom / Arista / Astera / Credo / ASML / TSMC / EDAとの比較は<span class="dir unknown">未確認</span>。</li>
+<li>対象銘柄の相対魅力は上がったか、下がったか：今回の初回ベースラインでは未判定。Micron単体の公式情報は強いが、競合・隣接セクター比較なしでは相対魅力は確定しない。</li>
+</ul>
+</details>
+<details class="sectionDetails" id="sec-判定スコア" open><summary>10. 判定スコア</summary>
+<ul>
+<li>A. AI需要・CSP CapEx：<span class="dir unknown">未採点</span> / 3</li>
+<li>B. DRAM / HBM市況：<span class="dir unknown">未採点</span> / 3</li>
+<li>C. NAND / SSD市況：<span class="dir unknown">未採点</span> / 3</li>
+<li>D. 対象企業決算・ガイダンス：<span class="dir unknown">未採点</span> / 3</li>
+<li>E. HBM / SOCAMM2 / AI製品採用：<span class="dir unknown">未採点</span> / 3</li>
+<li>F. CapExと供給規律：<span class="dir unknown">未採点</span> / 3</li>
+<li>G. 在庫・キャッシュフロー：<span class="dir unknown">未採点</span> / 3</li>
+<li>H. 競争環境：<span class="dir unknown">未採点</span> / 3</li>
+<li>I. バリュエーション：<span class="dir unknown">未採点</span> / 3</li>
+<li>総合：<span class="dir unknown">未採点</span> / 27</li>
+</ul>
+</details>
+<details class="sectionDetails" id="sec-アクション提案" open><summary>11. アクション提案</summary>
+<ul>
+<li>GREEN：投資仮説は観測上かなり健全。ただし撤退条件は維持。</li>
+<li>LIGHT_GREEN：投資仮説は観測上おおむね健全。ただし追加判断には次回データ確認が必要。</li>
+<li>YELLOW：全力集中のリスク<span class="dir up">上昇</span>を示す観測状態。新規追加や分散判断は追加確認が必要。</li>
+<li>ORANGE：集中投資リスクが高い観測状態。人間レビューで縮小・ヘッジ・分散を検討する局面。</li>
+<li>RED：投資仮説が壊れた可能性が高い観測状態。人間レビューで全力解除を優先検討する局面。</li>
+</ul>
+<p>今回の推奨アクション：売買推奨ではなく、観測上の次アクションとして、初回ベースラインの検証済み項目を基準点に採用する。週次・月次・四半期の本判定へ進む。</p>
+<p>理由：Micron公式一次情報ではユーザー提供ベースラインの中核は確認できたが、外部需要、市況、競合、バリュエーションが<span class="dir unknown">未確認</span>。</p>
+</details>
+<details class="sectionDetails" id="sec-品質ゲート" open><summary>12. 品質ゲート</summary>
+<ul>
+<li>弱気材料を先に確認したか：はい。</li>
+<li>強制警戒条件を確認したか：はい。CapEx急増は監視対象だが、初回ベースラインのみではORANGE判定しない。</li>
+<li>monitoring_checklistを確認したか：はい。</li>
+<li><span class="dir unknown">未確認</span>項目をopen_questionsへ回したか：はい。</li>
+<li>警戒項目をalertsへ回したか：はい。</li>
+<li>出典URL、発表日、確認日があるか：はい。</li>
+</ul>
+</details>
+<details class="sectionDetails" id="sec-state更新候補" open><summary>13. state更新候補</summary>
+<h3 id="sec-last-report">last_report</h3>
+<ul>
+<li>初回ベースライン検証はsource_status: partially_verified。</li>
+<li>Micron公式一次情報でFY2026 Q2売上、粗利率、FY2026 Q3ガイダンス、FY2026/FY2027 CapEx、HBM4/SOCAMM2/Gen6 SSD量産を確認。</li>
+</ul>
+<h3 id="sec-open-questions">open_questions</h3>
+<ul>
+<li>外部CSP CapEx</li>
+<li>TrendForce/Omdia/IDCなど市況</li>
+<li>SK hynix/Samsung/SanDisk競合比較</li>
+<li>バリュエーション</li>
+<li>HBM4/HBM4Eの競合比での採用優劣</li>
+</ul>
+<h3 id="sec-alerts">alerts</h3>
+<ul>
+<li>FY2026/FY2027 CapEx<span class="dir up">増加</span></li>
+<li>将来供給過剰リスク</li>
+<li>通商・地政学リスクがガイダンスに含まれていない点</li>
+</ul>
+<h3 id="sec-next-events">next_events</h3>
+<ul>
+<li>Micron FY2026 Q3決算</li>
+<li>Microsoft / Alphabet / Amazon / Meta / Oracle決算</li>
+<li>SK hynix / Samsung決算</li>
+<li>TrendForce DRAM/NAND価格更新</li>
+</ul>
+</details>
+<details class="sectionDetails" id="sec-次回までの監視イベント" open><summary>14. 次回までの監視イベント</summary>
+<ul>
+<li>対象企業次回決算：Micron FY2026 Q3決算。</li>
+<li>主要競合次回決算：SK hynix、Samsung、SanDisk。</li>
+<li>需要側企業決算：Microsoft、Alphabet、Amazon、Meta、Oracle。</li>
+<li>関連業界イベント：NVIDIA Rubin / Vera Rubin / HBM4関連発表。</li>
+<li>市況更新：TrendForce DRAM/NAND/HBM/enterprise SSD価格・需給。</li>
+<li>その他重要イベント：米国対中輸出規制、中国でのMicron販売制限、先端パッケージ制約。</li>
+</ul>
+</details>
+<details class="sectionDetails" id="sec-出典"><summary>15. 出典</summary>
+<p>必ずURL、発表日、確認日を書く。</p>
+<p>一次情報を優先。</p>
+<p>噂、SNS、匿名情報は「<span class="dir unknown">未確認</span>情報」と明記する。</p>
+<div class="tableScroll"><table><thead><tr><th>種別</th><th>発行元</th><th>タイトル</th><th>URL</th><th>発表日</th><th>確認日</th></tr></thead><tbody><tr><td>primary</td><td>Micron IR</td><td>Micron Technology, Inc. Reports Results for the Second Quarter of Fiscal 2026</td><td>https://investors.micron.com/news-releases/news-release-details/micron-technology-inc-reports-results-second-quarter-fiscal-2026</td><td>2026-03-18</td><td>2026-05-10</td></tr><tr><td>primary</td><td>Micron IR</td><td>FQ2 2026 financial results presentation</td><td>https://investors.micron.com/static-files/9c0becf5-df56-4eec-bd67-453dda68b273</td><td>2026-03-18</td><td>2026-05-10</td></tr><tr><td>primary</td><td>Micron IR</td><td>Fiscal Q2 2026 Earnings Call Prepared Remarks</td><td>https://investors.micron.com/static-files/e089f8c0-065d-47b8-9d02-bfa863cdb357</td><td>2026-03-18</td><td>2026-05-10</td></tr><tr><td>primary</td><td>SEC</td><td>Micron FY2026 Q2 Form 10-Q</td><td>https://www.sec.gov/Archives/edgar/data/723125/000072312526000006/mu-20260226.htm</td><td>2026-03-19</td><td>2026-05-10</td></tr><tr><td>primary</td><td>Micron IR</td><td>Micron in High-Volume Production of HBM4 Designed for NVIDIA Vera Rubin, PCIe Gen6 SSD and SOCAMM2</td><td>https://investors.micron.com/news-releases/news-release-details/micron-high-volume-production-hbm4-designed-nvidia-vera-rubin</td><td>2026-03-16</td><td>2026-05-10</td></tr><tr><td>primary</td><td>Micron IR</td><td>Micron Sets New Benchmark with World&#39;s First High-Capacity 256GB SOCAMM2 Customer Samples</td><td>https://investors.micron.com/news-releases/news-release-details/micron-sets-new-benchmark-worlds-first-high-capacity-256gb</td><td>2026-03-03</td><td>2026-05-10</td></tr><tr><td>primary</td><td>NVIDIA</td><td>NVIDIA Vera Rubin NVL72</td><td>https://www.nvidia.com/en-us/data-center/vera-rubin-nvl72/</td><td>2026-03-16</td><td>2026-05-10</td></tr><tr><td>primary</td><td>NVIDIA IR</td><td>NVIDIA Vera Rubin Opens Agentic AI Frontier</td><td>https://investor.nvidia.com/news/press-release-details/2026/NVIDIA-Vera-Rubin-Opens-Agentic-AI-Frontier/default.aspx</td><td>2026-03-16</td><td>2026-05-10</td></tr><tr><td>primary</td><td>Micron product page</td><td>HBM4</td><td>https://www.micron.com/products/memory/hbm/hbm4</td><td>未記載</td><td>2026-05-10</td></tr><tr><td>primary</td><td>Micron product page</td><td>9650 NVMe SSD</td><td>https://www.micron.com/products/storage/ssd/data-center-ssd/9650-ssd</td><td>未記載</td><td>2026-05-10</td></tr></tbody></table></div>
+</details>
+  </article>
+</main>
+
+<script>
+document.querySelectorAll("[data-copy]").forEach((button) => {
+  button.addEventListener("click", async () => {
+    const label = button.getAttribute("data-copy-label") || "text";
+    const text = button.getAttribute("data-copy") || "";
+    try {
+      await navigator.clipboard.writeText(text);
+      const original = button.textContent;
+      button.textContent = "コピー完了: " + label;
+      setTimeout(() => { button.textContent = original; }, 1200);
+    } catch (error) {
+      const fallback = document.querySelector("[data-copy-fallback]");
+      if (fallback) {
+        const textarea = fallback.querySelector("textarea");
+        fallback.open = true;
+        if (textarea) {
+          textarea.value = text;
+          textarea.focus();
+          textarea.select();
+        }
+      }
+      button.textContent = "コピー失敗";
+    }
+  });
+});
+</script>
+</body>
+</html>

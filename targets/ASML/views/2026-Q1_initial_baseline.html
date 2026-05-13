@@ -1,0 +1,994 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ASML隣接target 初回ベースライン確認レポート</title>
+<style>
+
+:root {
+  color-scheme: light;
+  --bg: #f7f8fa;
+  --panel: #ffffff;
+  --text: #1f2933;
+  --muted: #627080;
+  --line: #d9dee6;
+  --accent: #145c9e;
+  --warn: #a85400;
+  --danger: #a51d2d;
+  --ok: #1f7a4d;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  line-height: 1.65;
+  overflow-wrap: anywhere;
+}
+.skipLink {
+  position: absolute;
+  left: 12px;
+  top: -48px;
+  z-index: 10;
+  background: #fff;
+  border: 2px solid var(--accent);
+  border-radius: 8px;
+  color: var(--accent);
+  padding: 8px 10px;
+}
+.skipLink:focus { top: 12px; }
+.topbar {
+  display: flex;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 28px clamp(16px, 4vw, 48px);
+  background: #ffffff;
+  border-bottom: 1px solid var(--line);
+}
+.eyebrow, .meta { color: var(--muted); margin: 0 0 6px; }
+h1 { margin: 0; font-size: 2rem; line-height: 1.18; letter-spacing: 0; }
+main { max-width: 1180px; margin: 0 auto; padding: 24px clamp(14px, 3vw, 32px) 56px; }
+.statusStack { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; }
+.badge {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 6px 10px;
+  font-weight: 700;
+  background: #fff;
+}
+.judgement.green { color: var(--ok); border-color: #8cc7a8; }
+.judgement.light_green { color: #4d7a1f; border-color: #b6d986; }
+.judgement.yellow { color: #7c6500; border-color: #d8c65a; }
+.judgement.orange { color: var(--warn); border-color: #d79a4a; }
+.judgement.red { color: var(--danger); border-color: #d8818d; }
+.judgement.unrated { color: #475569; border-color: #94a3b8; background: #f8fafc; }
+.source.needs_review { color: var(--danger); border-color: #d8818d; }
+.source.partially_verified, .source.draft { color: var(--warn); border-color: #d79a4a; }
+.source.verified { color: var(--ok); border-color: #8cc7a8; }
+.source.unknown, .source.unrated { color: #475569; border-color: #94a3b8; background: #f8fafc; }
+.statusCards, .summaryCards {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 18px;
+}
+.statusCard, .summaryCard {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-left: 6px solid var(--accent);
+  border-radius: 8px;
+  padding: 14px;
+}
+.statusCard > span, .summaryCard > span {
+  display: block;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 700;
+  margin-bottom: 4px;
+  text-transform: uppercase;
+}
+.statusCard strong, .summaryCard strong {
+  display: block;
+  font-size: 22px;
+  line-height: 1.25;
+}
+.statusCard p, .summaryCard p {
+  color: var(--muted);
+  margin: 8px 0 0;
+}
+.statusCard.green, .summaryCard.ok { border-left-color: var(--ok); }
+.statusCard.light_green { border-left-color: #6f9b2e; }
+.statusCard.yellow { border-left-color: #b69700; }
+.statusCard.orange, .statusCard.draft, .statusCard.partially_verified, .summaryCard.warn { border-left-color: var(--warn); }
+.statusCard.red, .statusCard.needs_review, .summaryCard.danger { border-left-color: var(--danger); }
+.statusCard.warn { border-left-color: var(--warn); }
+.statusCard.unrated, .statusCard.unknown { border-left-color: #64748b; }
+.summaryCard ul {
+  margin: 10px 0 0;
+  padding-left: 20px;
+}
+.summaryCard li { margin: 4px 0; }
+.decisionGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 18px;
+}
+.decisionGrid article {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 14px;
+}
+.decisionGrid span {
+  display: block;
+  color: var(--muted);
+  font-size: 13px;
+  margin-bottom: 4px;
+}
+.decisionGrid strong { font-size: 18px; line-height: 1.35; }
+.toc, .actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  align-items: center;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 12px;
+  margin-bottom: 16px;
+}
+.toc a { color: var(--accent); text-decoration: none; }
+button {
+  border: 1px solid #b9c2cf;
+  border-radius: 8px;
+  background: #fff;
+  color: var(--text);
+  padding: 8px 10px;
+  font: inherit;
+  cursor: pointer;
+  min-height: 44px;
+  touch-action: manipulation;
+}
+button:hover { border-color: var(--accent); color: var(--accent); }
+button:focus-visible,
+a:focus-visible,
+summary:focus-visible {
+  outline: 3px solid #5a8db8;
+  outline-offset: 3px;
+}
+.copyFallback {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  margin: 0 0 18px;
+  padding: 12px;
+}
+.copyFallback summary {
+  cursor: pointer;
+  font-weight: 700;
+}
+.copyFallback p {
+  color: var(--muted);
+  margin: 4px 0 8px;
+}
+.copyFallback textarea {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  font: 13px/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  min-height: 160px;
+  padding: 10px;
+  resize: vertical;
+  width: 100%;
+}
+.report {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 4px 18px 18px;
+}
+.report h1 { font-size: 28px; margin: 18px 0 10px; }
+.report h2 { font-size: 21px; margin: 24px 0 10px; padding-top: 8px; border-top: 1px solid var(--line); }
+.report h3 { font-size: 17px; margin: 18px 0 8px; }
+.report table { border-collapse: collapse; width: 100%; overflow-x: auto; display: block; }
+.report th, .report td { border: 1px solid var(--line); padding: 8px; text-align: left; vertical-align: top; }
+.report code { background: #eef1f5; padding: 2px 4px; border-radius: 4px; }
+.report pre { background: #111827; color: #f7f8fa; padding: 12px; border-radius: 8px; overflow-x: auto; }
+.sectionDetails {
+  border-top: 1px solid var(--line);
+  padding: 6px 0;
+}
+.sectionDetails > summary {
+  cursor: pointer;
+  font-size: 21px;
+  font-weight: 700;
+  padding: 10px 0;
+}
+.sectionDetails.sectionMarket {
+  border: 1px solid var(--line);
+  border-left: 6px solid var(--accent);
+  border-radius: 8px;
+  padding: 8px 12px 12px;
+  background: #fbfdff;
+}
+.sectionDetails.sectionMarket > summary {
+  margin: 0 0 4px;
+}
+.dir {
+  display: inline-block;
+  padding: 1px 6px;
+  border-radius: 999px;
+  font-size: 1em;
+  border: 1px solid transparent;
+}
+.dir.up {
+  color: var(--ok);
+  border-color: #8cc7a8;
+  background: #f0fbf5;
+}
+.dir.down {
+  color: var(--danger);
+  border-color: #d8818d;
+  background: #fff5f6;
+}
+.dir.flat {
+  color: #475569;
+  border-color: #94a3b8;
+  background: #f8fafc;
+}
+.dir.unknown {
+  color: var(--warn);
+  border-color: #d79a4a;
+  background: #fff9f1;
+  font-weight: 600;
+}
+.firstView {
+  display: grid;
+  gap: 14px;
+  margin-bottom: 18px;
+}
+.statusCards {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+.statusCard,
+.summaryCard,
+.decisionGrid article,
+.toc,
+.actions,
+.report,
+.sourceDrawer,
+.riskHighlight,
+.scoreboard {
+  box-shadow: 0 1px 2px rgba(31, 41, 51, 0.04);
+}
+.statusCard strong,
+.decisionGrid strong,
+.summaryCard strong {
+  overflow-wrap: anywhere;
+}
+.statusCard .miniList,
+.sourceDrawer .miniList {
+  margin: 10px 0 0;
+  padding-left: 18px;
+  color: var(--muted);
+  font-size: 14px;
+}
+.forcedCard.ok { border-left-color: var(--ok); }
+.forcedCard.warn { border-left-color: var(--warn); }
+.forcedCard.danger { border-left-color: var(--danger); }
+.sourceMetrics {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+}
+.metricPill {
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: #f8fafc;
+  color: #334155;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 2px 8px;
+}
+.riskHighlight {
+  background: #fffdf8;
+  border: 1px solid #e6d7b4;
+  border-left: 6px solid var(--warn);
+  border-radius: 8px;
+  padding: 14px;
+}
+.riskHighlight > span,
+.scoreboard > span,
+.sourceDrawer > summary span {
+  color: var(--muted);
+  display: block;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+.riskHighlight h2,
+.scoreboard h2 {
+  font-size: 18px;
+  line-height: 1.3;
+  margin: 2px 0 8px;
+}
+.riskHighlight ul {
+  display: grid;
+  gap: 6px;
+  margin: 10px 0 0;
+  padding-left: 20px;
+}
+.riskHighlight li::marker {
+  content: "Risk ";
+  color: var(--warn);
+  font-weight: 800;
+}
+.scoreboard {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 14px;
+}
+.scoreGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 12px;
+}
+.scoreItem {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fbfcfd;
+  min-width: 0;
+  padding: 12px;
+}
+.scoreItem header {
+  align-items: flex-start;
+  display: flex;
+  gap: 8px;
+  justify-content: space-between;
+}
+.scoreItem h3 {
+  font-size: 15px;
+  line-height: 1.35;
+  margin: 0;
+}
+.scoreValue {
+  border: 1px solid #c8d1dc;
+  border-radius: 999px;
+  color: #1f2933;
+  flex: 0 0 auto;
+  font-variant-numeric: tabular-nums;
+  font-weight: 800;
+  padding: 1px 8px;
+}
+.scoreItem p {
+  color: var(--muted);
+  font-size: 14px;
+  margin: 8px 0 0;
+}
+.scoreItem .scoreMeta {
+  color: var(--muted);
+  font-size: 12px;
+  margin-top: 8px;
+}
+.scoreItem.unrated .scoreValue,
+.scoreItem.unknown .scoreValue {
+  background: #fff9f1;
+  border-color: #d79a4a;
+  color: var(--warn);
+}
+.sourceDrawer {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  margin-bottom: 16px;
+  padding: 0;
+}
+.sourceDrawer > summary {
+  cursor: pointer;
+  font-weight: 800;
+  list-style-position: inside;
+  padding: 12px 14px;
+}
+.sourceDrawerBody {
+  border-top: 1px solid var(--line);
+  padding: 12px 14px 14px;
+}
+.sourceList {
+  display: grid;
+  gap: 8px;
+  margin-top: 12px;
+}
+.sourceItem {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 10px;
+}
+.sourceItem.primary {
+  border-left: 5px solid var(--ok);
+}
+.sourceItem.market_data {
+  border-left: 5px solid var(--accent);
+}
+.sourceType {
+  color: var(--muted);
+  display: block;
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+.sourceTitle {
+  display: block;
+  font-weight: 800;
+  line-height: 1.35;
+  margin-top: 2px;
+}
+.sourceMeta {
+  color: var(--muted);
+  font-size: 13px;
+  margin: 4px 0 0;
+}
+.sourceItem a {
+  color: var(--accent);
+}
+.report a {
+  color: var(--accent);
+  overflow-wrap: anywhere;
+}
+.tableScroll {
+  max-width: 100%;
+  overflow-x: auto;
+  overscroll-behavior-inline: contain;
+}
+.tableScroll table {
+  display: table;
+  min-width: 680px;
+  width: 100%;
+}
+@media (max-width: 720px) {
+  .topbar { flex-direction: column; }
+  .statusStack { align-items: flex-start; flex-direction: row; flex-wrap: wrap; }
+  .statusCards, .summaryCards { grid-template-columns: 1fr; }
+  .decisionGrid { grid-template-columns: 1fr; }
+  .scoreGrid { grid-template-columns: 1fr; }
+  .report { padding: 2px 12px 14px; }
+}
+@media (max-width: 420px) {
+  h1 { font-size: 1.45rem; }
+  main { padding-left: 10px; padding-right: 10px; }
+  .topbar { padding: 18px 12px; }
+  .badge,
+  button {
+    width: 100%;
+    justify-content: center;
+  }
+  .actions { align-items: stretch; flex-direction: column; }
+  .decisionGrid strong { font-size: 16px; }
+}
+@media print {
+  @page { margin: 14mm; }
+  body {
+    background: #fff;
+    color: #111;
+    font-size: 11pt;
+  }
+  main {
+    max-width: none;
+    padding: 0;
+  }
+  .topbar {
+    padding: 0 0 12px;
+    border-bottom-color: #999;
+  }
+  .toc, .report, .decisionGrid article, .statusCard, .summaryCard {
+    border-color: #999;
+    box-shadow: none;
+  }
+  .report table {
+    display: table;
+    table-layout: auto;
+    width: 100%;
+    font-size: 9pt;
+  }
+  .report thead {
+    display: table-header-group;
+  }
+  .report tr {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+  .report th, .report td {
+    overflow-wrap: anywhere;
+    word-break: break-word;
+    white-space: normal;
+  }
+  .toc, .statusCards, .summaryCards, .decisionGrid {
+    break-inside: avoid-page;
+  }
+  .report, .sectionDetails {
+    break-inside: auto;
+  }
+  a {
+    color: #111;
+    text-decoration: underline;
+  }
+}
+
+</style>
+
+<style>
+.pagesPublicNotice {
+  margin: 0;
+  padding: 10px 14px;
+  border-bottom: 1px solid #d7dee8;
+  background: #f6f8fb;
+  color: #243040;
+  font: 13px/1.55 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+.pagesPublicNotice strong {
+  display: inline-block;
+  margin-right: 8px;
+}
+.pagesPublicNotice small {
+  display: block;
+  margin-top: 2px;
+  color: #5b677a;
+  overflow-wrap: anywhere;
+}
+@media (max-width: 480px) {
+  .pagesPublicNotice {
+    padding: 9px 10px;
+  }
+  .pagesPublicNotice strong {
+    display: block;
+    margin: 0 0 2px;
+  }
+}
+</style>
+</head>
+<body>
+<aside class="pagesPublicNotice" role="note">
+  <strong>GitHub Pages public view</strong>
+  <span>このHTMLはGitHub Pagesでpublic配信される前提の閲覧用生成物です。個人情報・非公開メモ・認証情報を含めないでください。</span>
+  <small>source: targets/ASML/views/2026-Q1_initial_baseline.html / staged: 2026-05-13T22:05:31.239Z</small>
+</aside>
+
+<a class="skipLink" href="#main">本文へ移動</a>
+<header class="topbar">
+  <div>
+    <p class="eyebrow">ASML ASML Holding N.V.</p>
+    <h1>ASML隣接target 初回ベースライン確認レポート</h1>
+    <p class="meta">view: quarterly / date: 2026-05-10 / period: 2026-Q1_initial_baseline</p>
+  </div>
+  <div class="statusStack">
+    <span class="badge judgement unrated" aria-label="判定 UNRATED">UNRATED</span>
+    <span class="badge source partially_verified" aria-label="出典確認状況 partially_verified">partially_verified</span>
+  </div>
+</header>
+
+<main id="main">
+  <section class="firstView" aria-label="判断用ダッシュボード">
+  <section class="statusCards" aria-label="判定、出典品質、強制警戒条件">
+    <article class="statusCard judgementCard unrated">
+      <span>Judgement</span>
+      <strong>UNRATED</strong>
+      <p>現在の観測判定。色だけでなくラベルと本文で確認します。</p>
+    </article>
+    <article class="statusCard sourceCard partially_verified">
+      <span>Source status</span>
+      <strong>partially_verified</strong>
+      <p>一部は検証済み、未確認項目があります。 出典7件、一次情報4件。</p>
+      <div class="sourceMetrics" aria-label="出典内訳">
+        <span class="metricPill">primary 4</span>
+        <span class="metricPill">other 3</span>
+        <span class="metricPill">unknown 0</span>
+      </div>
+      <ul class="miniList"><li>未検証の初期ベースライン：order intake定量値、backlog、regional sales、China exposure、export controls、cancellations / delays / pushouts、tariffs、company-defined FCF、inventory、同一基準peer比較。</li><li>一次情報で確認できなかった項目：presentation、transcript、annual report詳細、order intake table、顧客別capacity expansion。</li><li>URL未提供または本文未確認の項目：transcript、regional sales、China exposure、規制アップデート、company-defined FCF reconciliation。</li></ul>
+    </article>
+    <article class="statusCard forcedCard warn">
+      <span>Forced alert</span>
+      <strong>このtarget固有の強制警戒条件：export controls悪化、China ex...</strong>
+      <p>本文中の撤退条件・強制警戒条件コメントから抽出しました。</p>
+      <ul><li>このtarget固有の強制警戒条件：export controls悪化、China exposure悪化、order cancellations / delays / pushouts、customer capacity cycle下方修正、supply chain capacity制約、tariffs悪影響、AI需要反転、valuation過熱。</li></ul>
+    </article>
+    <article class="statusCard previousChangeCard _">
+      <span>Previous change</span>
+      <strong>初回または前回なし</strong>
+      <p>前回レポートからの判定変化と主要な差分です。</p>
+      <ul class="miniList"><li>最も重要な変化: 初回ベースラインとして確認できたこと：Q1 2026 total net sales、installed base management sales、新品/中古lithography systems sold、gross profit、gross margin、net income、basic EPS、cash、Q2 2026 outlook、2026 outlookを親確認済み一次情報として記録した。RP-202605-P0-0008でvaluation入力snapshot、cash/ST investments、long-term debt、net cash、weighted-average shares、OCF、PPE purchasesも一次情報中心で追記した。</li></ul>
+    </article>
+    <article class="statusCard unconfirmedCard warn">
+      <span>Unconfirmed</span>
+      <strong>4項目を確認</strong>
+      <p>強気材料として扱わず、次回確認へ回す項目です。</p>
+      <ul class="miniList"><li>未検証の初期ベースライン：order intake定量値、backlog、regional sales、China exposure、export controls、cancellations / delays / pushouts、tariffs、company-defined FCF、inventory、同一基準peer比較。</li><li>一次情報で確認できなかった項目：presentation、transcript、annual report詳細、order intake table、顧客別capacity expansion。</li><li>URL未提供または本文未確認の項目：transcript、regional sales、China exposure、規制アップデート、company-defined FCF reconciliation。</li></ul>
+    </article>
+  </section>
+
+  <section class="decisionGrid">
+    <article>
+      <span>Score</span>
+      <strong>N/A / 27</strong>
+    </article>
+    <article>
+      <span>Conclusion</span>
+      <strong>ASMLはMicronの直接メモリ競合ではなく、AI半導体capacity expansionを支えるlithography装置の隣接targetとして追加する。Q1 2026の売上、粗利率、純利益、cash、Q2/2026 outlook、AI-related infrastructure investments関連コメントは親確認済み。RP-202605-P0-0008でvaluation入力snapshotも一次情報中心で確認したが、export controls、China exposure、order pushout、顧客capacity cycle、supply chain capacity、tariffs、company-defined FCF、同一基準peer比較は未確認であり、相対魅力は未採点のまま維持する。</strong>
+    </article>
+    <article>
+      <span>Action</span>
+      <strong>対象企業次回決算：needs_research。</strong>
+    </article>
+  </section>
+
+<section class="riskHighlight" aria-label="弱気材料ファースト">
+    <span>Risk first</span>
+    <h2>弱気材料を先に確認</h2>
+    <p>強気材料より先に確認するリスクです。</p>
+    <ul><li>弱気材料1：export controlsとChina exposureはASML固有の主要リスクである。親確認済み情報だけでは地域別売上、受注、serviceへの影響を確認できていない。</li><li>弱気材料2：order cancellations、delays、pushoutsは半導体装置cycleの反転を早く示す可能性がある。親確認済みCEO statementではorder intake remains very strongとされたが、定量値、backlog、キャンセル有無はneeds_research。</li><li>弱気材料3：customer capacity cycleとsupply chain capacityは、2026年以降のcapacity expansion plansを支える一方で、前倒し投資、供給制約、過剰投資のリスクにもなる。</li><li>弱気材料4：tariffsとAI需要反転は、装置需要、顧客投資計画、gross marginに悪影響を与える可能性がある。</li><li>弱気材料5：RP-202605-P0-0008でvaluation入力snapshotを確認したところ、Euronext終値ベースのEV/SalesはQ1 revenue年率化で約14.35x、annualized Q1 P/Eは約46.13xとなった。寡占・AI capacity expansion期待を相当程度織り込んでいる可能性があり、強気材料として採用しない。</li></ul>
+  </section>
+<section class="scoreboard" aria-label="9項目スコアカード">
+    <span>Scoreboard</span>
+    <h2>総合：未採点 / 27</h2>
+    <p>判定スコアの確認結果です。</p>
+    <div class="scoreGrid"><article class="scoreItem unrated">
+    <header>
+      <h3>A. AI需要・CSP CapEx</h3>
+      <span class="scoreValue">未採点 / 3</span>
+    </header>
+    <p>理由は本文を確認。</p>
+    <p class="scoreMeta">前回比: 未抽出 / 重要出典: 本文を確認</p>
+  </article><article class="scoreItem unrated">
+    <header>
+      <h3>B. DRAM / HBM市況または該当中核市況</h3>
+      <span class="scoreValue">未採点 / 3</span>
+    </header>
+    <p>lithography / wafer fab equipmentを該当中核市況として次回評価、</p>
+    <p class="scoreMeta">前回比: 未抽出 / 重要出典: 本文を確認</p>
+  </article><article class="scoreItem unrated">
+    <header>
+      <h3>C. NAND / SSD市況または該当隣接市況</h3>
+      <span class="scoreValue">未採点 / 3</span>
+    </header>
+    <p>installed base management / serviceを次回評価、</p>
+    <p class="scoreMeta">前回比: 未抽出 / 重要出典: 本文を確認</p>
+  </article><article class="scoreItem unrated">
+    <header>
+      <h3>D. 対象企業決算・ガイダンス</h3>
+      <span class="scoreValue">未採点 / 3</span>
+    </header>
+    <p>理由は本文を確認。</p>
+    <p class="scoreMeta">前回比: 未抽出 / 重要出典: 本文を確認</p>
+  </article><article class="scoreItem unrated">
+    <header>
+      <h3>E. AI製品採用・ロードマップ</h3>
+      <span class="scoreValue">未採点 / 3</span>
+    </header>
+    <p>理由は本文を確認。</p>
+    <p class="scoreMeta">前回比: 未抽出 / 重要出典: 本文を確認</p>
+  </article><article class="scoreItem unrated">
+    <header>
+      <h3>F. CapExと供給規律</h3>
+      <span class="scoreValue">未採点 / 3</span>
+    </header>
+    <p>理由は本文を確認。</p>
+    <p class="scoreMeta">前回比: 未抽出 / 重要出典: 本文を確認</p>
+  </article><article class="scoreItem unrated">
+    <header>
+      <h3>G. 在庫・キャッシュフロー</h3>
+      <span class="scoreValue">未採点 / 3</span>
+    </header>
+    <p>理由は本文を確認。</p>
+    <p class="scoreMeta">前回比: 未抽出 / 重要出典: 本文を確認</p>
+  </article><article class="scoreItem unrated">
+    <header>
+      <h3>H. 競争環境</h3>
+      <span class="scoreValue">未採点 / 3</span>
+    </header>
+    <p>理由は本文を確認。</p>
+    <p class="scoreMeta">前回比: 未抽出 / 重要出典: 本文を確認</p>
+  </article><article class="scoreItem unrated">
+    <header>
+      <h3>I. バリュエーション</h3>
+      <span class="scoreValue">未採点 / 3</span>
+    </header>
+    <p>入力snapshot確認済み、。2026-05-08 Euronext終値EUR 1,319.40、Q1 2026 diluted weighted-average shares 385.7M、cash/ST investments EUR 8.3763B、long-term debt EUR 2.7056B、net cash EUR 5.6707B、EV/Sales annualized Q1 revenue約14.35x、annualized Q1 P/E約46.13x。割安/割高判定とMicron相対魅力は未確定。</p>
+    <p class="scoreMeta">前回比: 未抽出 / 重要出典: 本文を確認</p>
+  </article></div>
+  </section>
+  </section>
+
+  <nav class="toc" aria-label="目次">
+    <strong>目次</strong>
+    <a href="#sec-親提供url受け取り欄">0. 親提供URL受け取り欄</a><a href="#sec-今回の結論">1. 今回の結論</a><a href="#sec-弱気材料を先に確認">2. 弱気材料を先に確認</a><a href="#sec-強制警戒条件・比較上の注意">3. 強制警戒条件・比較上の注意</a><a href="#sec-未検証・不明点">4. 未検証・不明点</a><a href="#sec-強気材料">5. 強気材料</a><a href="#sec-対象企業の事業・決算・ガイダンス確認">6. 対象企業の事業・決算・ガイダンス確認</a><a href="#sec-aiインフラ内での役割">7. AIインフラ内での役割</a><a href="#sec-市況確認">8. 市況確認</a><a href="#sec-競合比較">9. 競合比較</a><a href="#sec-判定スコア">10. 判定スコア</a><a href="#sec-portfolio更新候補">11. portfolio更新候補</a><a href="#sec-品質ゲート">12. 品質ゲート</a><a href="#sec-state更新候補">13. state更新候補</a><a href="#sec-データ・ログ更新候補">14. データ・ログ更新候補</a><a href="#sec-次回までの監視イベント">15. 次回までの監視イベント</a><a href="#sec-出典">16. 出典</a>
+  </nav>
+
+  <section class="actions" aria-label="コピー操作">
+    <button type="button" aria-label="Copy next prompt" data-copy-label="next prompt" data-copy="# 次回確認プロンプト: ASML隣接target 初回ベースライン確認レポート&#10;&#10;- target: ASML&#10;- judgement: UNRATED&#10;- score: N/A / 27&#10;- source_status: partially_verified&#10;&#10;次回レポートでは、以下を優先して一次情報または信頼できる出典で確認してください。&#10;&#10;## 未検証・不明点&#10;- 未検証の初期ベースライン：order intake定量値、backlog、regional sales、China exposure、export controls、cancellations / delays / pushouts、tariffs、company-defined FCF、inventory、同一基準peer比較。&#10;- 一次情報で確認できなかった項目：presentation、transcript、annual report詳細、order intake table、顧客別capacity expansion。&#10;- URL未提供または本文未確認の項目：transcript、regional sales、China exposure、規制アップデート、company-defined FCF reconciliation。&#10;- 次回へ持ち越す確認事項：order intake定量値、China exposure、輸出規制、tariffs、顧客capacity cycle、同一基準peer比較。&#10;&#10;## 次回監視イベント&#10;- 対象企業次回決算：needs_research。&#10;- 主要競合次回決算：Applied Materials、Lam Research、KLA、Tokyo Electron、TSMC、Intel。&#10;- 需要側企業決算：Micron、SK hynix、Samsung、TSMC、Intel、NVIDIA。&#10;- 関連業界イベント：export controls、China exposure、tariffs、EUV/DUV、wafer fab equipment、advanced packaging / memory capacity investment関連発表。&#10;- 市況更新：CSP CapEx、AI data center semiconductor demand、HBM/DRAM/NAND市況、foundry / logic / memory capacity expansion。&#10;- その他重要イベント：order intake、long-term agreements、customer pushouts、supply chain capacity commentary。&#10;&#10;## Open questions&#10;- order intake定量値、backlog、China exposure、export controls、order cancellations / delays / pushouts、customer capacity cycle、supply chain capacity、tariffs、company-defined FCF、同一基準peer比較。">Copy next prompt</button>
+    <button type="button" aria-label="Copy full report Markdown" data-copy-label="report Markdown" data-copy="---&#10;view: quarterly&#10;target: ASML&#10;target_id: ASML&#10;report_type: target_initial_baseline&#10;title: ASML隣接target 初回ベースライン確認レポート&#10;date: 2026-05-10&#10;period: 2026-Q1_initial_baseline&#10;company: ASML Holding N.V.&#10;ticker: ASML&#10;judgement: UNRATED&#10;score:&#10;score_max: 27&#10;source_status: partially_verified&#10;research_status: needs_research&#10;previous_report:&#10;generated_html: ../../views/2026-Q1_initial_baseline.html&#10;report_verify:&#10;---&#10;&#10;# ASML隣接target 初回ベースライン確認レポート&#10;&#10;対象：ASML Holding N.V.（ASML）&#10;日付：2026-05-10&#10;対象期間：2026-Q1 初回target追加&#10;判定：UNRATED&#10;総合スコア：未付与 / 27&#10;一言結論：ASMLはMicronの直接メモリ競合ではなく、AI半導体capacity expansionを支えるlithography装置の隣接targetとして追加する。Q1 2026の売上、粗利率、純利益、cash、Q2/2026 outlook、AI-related infrastructure investments関連コメントは親確認済み。RP-202605-P0-0008でvaluation入力snapshotも一次情報中心で確認したが、export controls、China exposure、order pushout、顧客capacity cycle、supply chain capacity、tariffs、company-defined FCF、同一基準peer比較は未確認であり、相対魅力は未採点のまま維持する。&#10;&#10;注記：これは投資助言ではなく、Micron集中投資との相対比較へ渡すための初回観測レポートである。未確認情報は`needs_review`または`needs_research`として隔離する。&#10;&#10;## 0. 親提供URL受け取り欄&#10;&#10;| source_id | 種別 | 発行元 | タイトルまたは確認対象 | URL | 発表日 | 確認日 | 期待する確認事項 | 処理状態 |&#10;|---|---|---|---|---|---|---|---|---|&#10;| SRC-ASML-001 | primary | ASML Holding N.V. | Financial Results | https://www.asml.com/en/investors/financial-results | n/a | 2026-05-10 | IR/financial results入口 | verified |&#10;| SRC-ASML-002 | primary | ASML Holding N.V. | Q1 2026 Financial Results Page | https://www.asml.com/en/investors/financial-results/q1-2026 | 2026-04-15 | 2026-05-10 | Q1 2026結果ページ、関連資料入口 | partially_verified |&#10;| SRC-ASML-003 | press_release | ASML Holding N.V. | Q1 2026 Financial Results Press Release | https://www.asml.com/en/news/press-releases/2026/q1-2026-financial-results | 2026-04-15 | 2026-05-10 | Q1 2026 KPI、Q2 outlook、2026 outlook、AI infrastructure関連コメント | partially_verified |&#10;&#10;## 1. 今回の結論&#10;&#10;- 初回ベースラインとして確認できたこと：Q1 2026 total net sales、installed base management sales、新品/中古lithography systems sold、gross profit、gross margin、net income、basic EPS、cash、Q2 2026 outlook、2026 outlookを親確認済み一次情報として記録した。RP-202605-P0-0008でvaluation入力snapshot、cash/ST investments、long-term debt、net cash、weighted-average shares、OCF、PPE purchasesも一次情報中心で追記した。&#10;- Micron集中投資との相対比較に使えること：ASMLはAI需要が半導体capacity expansionへ波及しているか、またMicronのAIメモリ仮説を装置受注・顧客投資計画側から補強または反証する対象になる。&#10;- まだ相対比較に使えないこと：order intake定量値、backlog、China exposure、export controls影響、cancellations / delays / pushouts、customer capacity cycle、supply chain capacity、tariffs、company-defined FCF、同一基準peer比較。&#10;- portfolioへ渡す状態：partial。`target_dir`は有効だが、score、relative_attractiveness、diversification_value、exit_candidate_relevanceは`needs_research`のまま維持する。&#10;&#10;## 2. 弱気材料を先に確認&#10;&#10;- 弱気材料1：export controlsとChina exposureはASML固有の主要リスクである。親確認済み情報だけでは地域別売上、受注、serviceへの影響を確認できていない。&#10;- 弱気材料2：order cancellations、delays、pushoutsは半導体装置cycleの反転を早く示す可能性がある。親確認済みCEO statementではorder intake remains very strongとされたが、定量値、backlog、キャンセル有無は`needs_research`。&#10;- 弱気材料3：customer capacity cycleとsupply chain capacityは、2026年以降のcapacity expansion plansを支える一方で、前倒し投資、供給制約、過剰投資のリスクにもなる。&#10;- 弱気材料4：tariffsとAI需要反転は、装置需要、顧客投資計画、gross marginに悪影響を与える可能性がある。&#10;- 弱気材料5：RP-202605-P0-0008でvaluation入力snapshotを確認したところ、Euronext終値ベースのEV/SalesはQ1 revenue年率化で約14.35x、annualized Q1 P/Eは約46.13xとなった。寡占・AI capacity expansion期待を相当程度織り込んでいる可能性があり、強気材料として採用しない。&#10;- これがMicron集中投資との比較に与える影響：ASMLの受注が強ければAI半導体供給拡張の広がりを示すが、規制・China・顧客cycle・valuationが悪化すれば、Micron分散先としての魅力は未判定または低下する。&#10;- 未確認の弱気材料：`needs_research`。export controls、China exposure、cancellations / delays / pushouts、customer capacity cycle、supply chain capacity、tariffs、AI需要反転時の受注感応度、company-defined FCF、同一基準peer比較。&#10;&#10;## 3. 強制警戒条件・比較上の注意&#10;&#10;- このtarget固有の強制警戒条件：export controls悪化、China exposure悪化、order cancellations / delays / pushouts、customer capacity cycle下方修正、supply chain capacity制約、tariffs悪影響、AI需要反転、valuation過熱。&#10;- Micron側の強制警戒条件に影響する競合材料：ASMLのorder intakeやcapacity expansion plansが弱まる場合、AI半導体全体の投資サイクル鈍化としてMicronのHBM/DRAM/NAND需要見通しにも影響し得る。&#10;- portfolio比較で強気材料として扱ってはいけない情報：ASMLがMicronより魅力的という断定、寡占プレミアムの妥当性、Chinaリスク軽微という断定、受注キャンセルがないという断定。&#10;- `needs_review`に隔離した情報：ASMLがMicronより堅い寡占に見えるという印象、AI-related infrastructure investmentsとASML受注の直接的な定量関係、long-term agreementsのdowncycle耐性。&#10;&#10;## 4. 未検証・不明点&#10;&#10;- 未検証の初期ベースライン：order intake定量値、backlog、regional sales、China exposure、export controls、cancellations / delays / pushouts、tariffs、company-defined FCF、inventory、同一基準peer比較。&#10;- 一次情報で確認できなかった項目：presentation、transcript、annual report詳細、order intake table、顧客別capacity expansion。&#10;- URL未提供または本文未確認の項目：transcript、regional sales、China exposure、規制アップデート、company-defined FCF reconciliation。&#10;- 次回へ持ち越す確認事項：order intake定量値、China exposure、輸出規制、tariffs、顧客capacity cycle、同一基準peer比較。&#10;&#10;## 5. 強気材料&#10;&#10;- 強気材料1：Q1 2026 total net salesはEUR 8.767B、gross marginは53.0%、net incomeはEUR 2.757B、basic EPSはEUR 7.15。&#10;- 強気材料2：Q1 2026 installed base management salesはEUR 2.488B、新品lithography systems soldは67 units、中古lithography systems soldは12 units。&#10;- 強気材料3：end-quarter cash/cash equivalents/short-term investmentsはEUR 8.376B。&#10;- 強気材料4：Q2 2026 outlookはtotal net sales EUR 8.4B-EUR 9.0B、gross margin 51%-52%、R&amp;D around EUR 1.2B、SG&amp;A around EUR 0.3B。&#10;- 強気材料5：2026 outlookはtotal net sales EUR 36B-EUR 40B、gross margin 51%-53%。&#10;- 強気材料6：親確認済みCEO statementでは、AI-related infrastructure investmentsが半導体業界の成長見通しを支え、demand for chips is outpacing supply、顧客が2026年以降のcapacity expansion plansを加速、long-term agreementsに支えられている、order intake remains very strongとされた。&#10;- これがMicron集中投資との比較を変える理由：ASMLの装置需要と顧客capacity expansionが強いなら、AI半導体供給制約がメモリだけでなく製造能力全体に広がっている可能性を示す。&#10;- 強気材料として採用しない未確認情報：ASMLのvaluation割安性、Micronより相対魅力が高いという結論、Chinaリスクが十分小さいという判断、order cancellations / delays / pushoutsがないという断定。&#10;&#10;## 6. 対象企業の事業・決算・ガイダンス確認&#10;&#10;- 売上：Q1 2026 total net salesはEUR 8.767B。&#10;- 売上高ガイダンス：Q2 2026 total net sales outlookはEUR 8.4B-EUR 9.0B。2026 total net sales outlookはEUR 36B-EUR 40B。&#10;- gross margin：Q1 2026 gross marginは53.0%。Q2 2026 outlookは51%-52%。2026 outlookは51%-53%。&#10;- operating margin：Q1 2026 income from operationsはEUR 3.1578B、operating marginは約36.02%。&#10;- EPS：Q1 2026 basic EPSはEUR 7.15。&#10;- FCF：company-defined FCFはneeds_research。derived FCF proxyはQ1 2026 operating cash flow EUR -2.1856BからPPE purchases EUR 0.4024Bを控除してEUR -2.5880Bだが、採点根拠には昇格しない。&#10;- operating cash flow：Q1 2026 net cash used in operating activitiesはEUR -2.1856B。&#10;- CapEx：Q1 2026 purchase of property, plant and equipmentはEUR 0.4024Bの支出。&#10;- cash / investments / debt：end-quarter cash/cash equivalents/short-term investmentsはEUR 8.3763B。long-term debtはEUR 2.7056B。net cashはEUR 5.6707B。summary balance sheet上でcurrent debtの独立行は未観測。&#10;- inventory：needs_research。&#10;- セグメント：installed base management salesはEUR 2.488B。新品/中古lithography systems soldは67 units / 12 units。その他セグメント詳細はneeds_research。&#10;- AIインフラ関連売上：定量額はneeds_research。AI-related infrastructure investments関連CEO statementは親確認済み。&#10;- 会社が明示した需要コメント：demand for chips is outpacing supply、顧客が2026年以降のcapacity expansion plansを加速、order intake remains very strongという親確認済み確認事項。&#10;- 会社が明示した供給・投資コメント：long-term agreementsに支えられているという親確認済み確認事項。supply chain capacity詳細はneeds_research。&#10;&#10;## 7. AIインフラ内での役割&#10;&#10;- role_in_ai_infra：advanced semiconductor manufacturing capacity、lithography equipment、installed base management。&#10;- Micronとの直接競合領域：直接メモリ競合ではない。&#10;- Micronとの隣接・代替領域：AIメモリ需要を支える先端半導体capacity expansion、メモリメーカー・ファウンドリ・ロジックメーカーの装置投資。&#10;- AI需要が効く主要製品：EUV / DUV lithography、installed base management。製品別定量寄与はneeds_research。&#10;- 顧客・プラットフォーム採用状況：needs_research。&#10;- 技術世代・ロードマップ：needs_research。&#10;- Micron集中投資への示唆：ASMLの受注・outlookが強い場合、MicronのAIメモリ需要を含む半導体供給拡張仮説を補強する。一方で、装置cycleが反転すればMicron側にも警戒材料になる。&#10;&#10;## 8. 市況確認&#10;&#10;- DRAM：not_applicable。ただしMicron比較のため継続確認する。&#10;- HBM：not_applicable。ただしAIメモリcapacity expansionの顧客投資として確認する。&#10;- RDIMM：not_applicable。&#10;- LPDDR：not_applicable。&#10;- NAND：not_applicable。&#10;- enterprise SSD：not_applicable。&#10;- HDD / networking / optical / foundry / EDA / equipment等の該当市況：lithography equipment、wafer fab equipment、installed base management、foundry / logic / memory capacity expansionが該当。需給と価格方向はneeds_research。&#10;- 価格方向（上昇 / 横ばい / 下落 / 不明 / not_applicable）：不明。&#10;- 供給過剰リスク：不明。customer capacity cycle、order cancellations / delays / pushouts、AI需要反転を監視する。&#10;&#10;## 9. 競合比較&#10;&#10;- Micronに対する相対優位：メモリ価格サイクルそのものではなく、半導体製造能力拡張とinstalled baseから収益を得られる可能性。&#10;- Micronに対する相対劣位：HBM、DRAM、NAND、enterprise SSDの直接露出はなく、規制・China・顧客capacity cycle・valuationの確認が必要。&#10;- SK hynix / Samsung / SanDisk等の直接競合比較：ASMLはmemory peerではなく、memoryメーカーのcapacity investmentを観測する装置側targetとして扱う。&#10;- 隣接セクター比較：Applied Materials、Lam Research、KLA、Tokyo Electron、TSMC、Intelとのequipment / foundry / customer cycle比較が必要。&#10;- Micron集中の相対魅力は上がったか、下がったか、未判定か：未判定。&#10;- portfolioの`relative_to_micron`候補：needs_research。&#10;&#10;## 10. 判定スコア&#10;&#10;- A. AI需要・CSP CapEx：未採点 / 3&#10;- B. DRAM / HBM市況または該当中核市況：lithography / wafer fab equipmentを該当中核市況として次回評価、未採点 / 3&#10;- C. NAND / SSD市況または該当隣接市況：installed base management / serviceを次回評価、未採点 / 3&#10;- D. 対象企業決算・ガイダンス：未採点 / 3&#10;- E. AI製品採用・ロードマップ：未採点 / 3&#10;- F. CapExと供給規律：未採点 / 3&#10;- G. 在庫・キャッシュフロー：未採点 / 3&#10;- H. 競争環境：未採点 / 3&#10;- I. バリュエーション：入力snapshot確認済み、未採点 / 3。2026-05-08 Euronext終値EUR 1,319.40、Q1 2026 diluted weighted-average shares 385.7M、cash/ST investments EUR 8.3763B、long-term debt EUR 2.7056B、net cash EUR 5.6707B、EV/Sales annualized Q1 revenue約14.35x、annualized Q1 P/E約46.13x。割安/割高判定とMicron相対魅力は未確定。&#10;- 総合：未採点 / 27&#10;- 通常スコア判定：UNRATED&#10;- 最終判定：UNRATED&#10;&#10;## 11. portfolio更新候補&#10;&#10;- ticker：ASML&#10;- company：ASML Holding N.V.&#10;- category：semiconductor_equipment&#10;- role_in_ai_infra：lithography_capacity_expansion_candidate&#10;- current_target_dir：`targets/ASML`&#10;- monitoring_status：baseline_ready&#10;- source_status：partially_verified&#10;- relative_to_micron：needs_research&#10;- relative_attractiveness：needs_research&#10;- diversification_candidate：needs_research&#10;- exit_pressure_on_micron：unknown&#10;- key_question：AI半導体capacity expansionを支えるASMLの受注・outlookは、Micron集中よりrisk-adjustedで魅力的な分散先を示すか。&#10;- next_action：order intake、backlog、China exposure、export controls、cancellations / delays / pushouts、customer capacity cycle、supply chain capacity、tariffs、company-defined FCF、同一基準peer比較を確認する。valuation入力snapshotはRP-202605-P0-0008で確認済みだが、相対魅力は未採点。&#10;&#10;## 12. 品質ゲート&#10;&#10;- `target.yaml`を最初に読んだか：はい。新規作成した`target.yaml`をsource of truthとして構成した。&#10;- 弱気材料を強気材料より先に確認したか：はい。&#10;- 親提供URLの発表日、確認日を残したか：はい。&#10;- 外部取得データを読む前に可能な限りsecurity-gateを実行したか：はい。RP-202605-P0-0008のraw取得物は[public redacted: raw evidence path]`に保存し、`security-gate scan ... --allow-warnings`を実行。PDF/XLSX opaque warningとEuronext HTML hidden text warningを許容し、利用範囲をfinancial tables、shares page、価格CSV、SEC 6-K提出確認に限定した。&#10;- 未確認情報を`needs_review`または`needs_research`へ隔離したか：はい。&#10;- portfolioで未確認銘柄を相対魅力確定済みとして扱わないよう明記したか：はい。&#10;- `source_status: draft`のまま確定していないか：はい。&#10;- `state/`と`runs/`更新候補を明記したか：はい。&#10;- HTML生成と`report_verify`の実行結果を`runs/`に記録したか：runログへ記録する。&#10;&#10;## 13. state更新候補&#10;&#10;### last_report&#10;&#10;- 初回ベースラインはsource_status: partially_verified。&#10;- Q1 2026 total net sales、gross margin、net income、EPS、cash、Q2 outlook、2026 outlookを記録。RP-202605-P0-0008でvaluation入力snapshot、operating margin、OCF、PPE purchases、long-term debt、net cashも追記。&#10;&#10;### open_questions&#10;&#10;- order intake定量値、backlog、China exposure、export controls、order cancellations / delays / pushouts、customer capacity cycle、supply chain capacity、tariffs、company-defined FCF、同一基準peer比較。&#10;&#10;### alerts&#10;&#10;- export controls悪化、China exposure悪化、order cancellations / delays / pushouts、顧客capacity cycle下方修正、supply chain capacity制約、tariffs悪影響、AI需要反転。&#10;&#10;### next_events&#10;&#10;- 次回決算日：needs_research。&#10;- Q1 2026 results materials本文確認：financial statements、SEC 6-K、sharesページ、価格snapshotはRP-202605-P0-0008で確認済み。presentation、transcript、order intake、regional salesはnext。&#10;&#10;## 14. データ・ログ更新候補&#10;&#10;- `sources/source_log.md`追記候補：SRC-ASML-001からSRC-ASML-003を追加済み。&#10;- `sources/watchlist.md`追記候補：公式financial results入口、Q1 2026 results page、Q1 2026 press releaseを追加済み。&#10;- `data/asml_metrics.csv`更新候補：親確認済みQ1 2026主要ファクトに加え、RP-202605-P0-0008でoperating margin、OCF、PPE purchases、long-term debt、net cash、weighted-average sharesをpartially_verifiedで追加済み。&#10;- `data/scores.csv`更新候補：未採点のためヘッダーのみ。&#10;- `data/peer_comparison.csv`更新候補：未評価のためヘッダーのみ。&#10;- `data/valuation.csv`更新候補：RP-202605-P0-0008で入力snapshotを追加済み。Euronext終値、weighted-average shares、cash/ST investments、long-term debt、net cash、equity value、EV、EV/Sales、annualized Q1 P/Eを記録。&#10;- `runs/2026-Q1_initial_baseline_run.md`記録候補：security-gate、HTML生成、verify結果を記録する。&#10;- security-gate実行記録：RP-202605-P0-0008 runログへ記録する。&#10;- HTML生成結果：`targets/ASML/views/2026-Q1_initial_baseline.html`&#10;- `report_verify`実行結果：runログへ記録する。&#10;&#10;## 15. 次回までの監視イベント&#10;&#10;- 対象企業次回決算：needs_research。&#10;- 主要競合次回決算：Applied Materials、Lam Research、KLA、Tokyo Electron、TSMC、Intel。&#10;- 需要側企業決算：Micron、SK hynix、Samsung、TSMC、Intel、NVIDIA。&#10;- 関連業界イベント：export controls、China exposure、tariffs、EUV/DUV、wafer fab equipment、advanced packaging / memory capacity investment関連発表。&#10;- 市況更新：CSP CapEx、AI data center semiconductor demand、HBM/DRAM/NAND市況、foundry / logic / memory capacity expansion。&#10;- その他重要イベント：order intake、long-term agreements、customer pushouts、supply chain capacity commentary。&#10;&#10;## 16. 出典&#10;&#10;| 種別 | 発行元 | タイトル | URL | 発表日 | 確認日 | source_id | reliability | status |&#10;|---|---|---|---|---|---|---|---|---|&#10;| primary | ASML Holding N.V. | Financial Results | https://www.asml.com/en/investors/financial-results | n/a | 2026-05-10 | SRC-ASML-001 | high | verified |&#10;| primary | ASML Holding N.V. | Q1 2026 Financial Results Page | https://www.asml.com/en/investors/financial-results/q1-2026 | 2026-04-15 | 2026-05-10 | SRC-ASML-002 | high | partially_verified |&#10;| press_release | ASML Holding N.V. | Q1 2026 Financial Results Press Release | https://www.asml.com/en/news/press-releases/2026/q1-2026-financial-results | 2026-04-15 | 2026-05-10 | SRC-ASML-003 | high | partially_verified |&#10;| sec_filing | U.S. SEC / ASML Holding N.V. | Form 6-K Q1 2026 quarterly filing | https://www.sec.gov/Archives/edgar/data/937966/000162828026025147/form6-kquarterlyfilings.htm | 2026-04-15 | 2026-05-11 | SRC-ASML-004 | high | partially_verified |&#10;| primary | ASML Holding N.V. | Financial statements US GAAP Q1 2026 PDF/XLSX | https://ourbrand.asml.com/asset/3f4235e1-ad38-4af8-a39b-de0d39cb71d1/Financial-statements-US-GAAP-Q1-2026.pdf | 2026-04-15 | 2026-05-11 | SRC-ASML-005 | high | partially_verified |&#10;| primary | ASML Holding N.V. | Shares | https://www.asml.com/en/investors/shares | 2026-04-15 | 2026-05-11 | SRC-ASML-006 | high | partially_verified |&#10;| market_data | Stooq | ASML.NL historical quote CSV | https://stooq.com/q/l/?s=asml.nl&amp;f=sd2t2ohlcv&amp;h&amp;e=csv | 2026-05-08 | 2026-05-11 | SRC-ASML-007 | medium | partially_verified |&#10;">Copy report Markdown</button>
+    <button type="button" aria-label="Copy action summary" data-copy-label="action summary" data-copy="# ASML隣接target 初回ベースライン確認レポート action summary&#10;&#10;- judgement: UNRATED&#10;- score: N/A / 27&#10;- source_status: partially_verified&#10;&#10;## 今回の結論&#10;- 初回ベースラインとして確認できたこと：Q1 2026 total net sales、installed base management sales、新品/中古lithography systems sold、gross profit、gross margin、net income、basic EPS、cash、Q2 2026 outlook、2026 outlookを親確認済み一次情報として記録した。RP-202605-P0-0008でvaluation入力snapshot、cash/ST investments、long-term debt、net cash、weighted-average shares、OCF、PPE purchasesも一次情報中心で追記した。&#10;- Micron集中投資との相対比較に使えること：ASMLはAI需要が半導体capacity expansionへ波及しているか、またMicronのAIメモリ仮説を装置受注・顧客投資計画側から補強または反証する対象になる。&#10;- まだ相対比較に使えないこと：order intake定量値、backlog、China exposure、export controls影響、cancellations / delays / pushouts、customer capacity cycle、supply chain capacity、tariffs、company-defined FCF、同一基準peer比較。&#10;- portfolioへ渡す状態：partial。`target_dir`は有効だが、score、relative_attractiveness、diversification_value、exit_candidate_relevanceは`needs_research`のまま維持する。&#10;&#10;## 次回までの監視イベント&#10;- 対象企業次回決算：needs_research。&#10;- 主要競合次回決算：Applied Materials、Lam Research、KLA、Tokyo Electron、TSMC、Intel。&#10;- 需要側企業決算：Micron、SK hynix、Samsung、TSMC、Intel、NVIDIA。&#10;- 関連業界イベント：export controls、China exposure、tariffs、EUV/DUV、wafer fab equipment、advanced packaging / memory capacity investment関連発表。&#10;- 市況更新：CSP CapEx、AI data center semiconductor demand、HBM/DRAM/NAND市況、foundry / logic / memory capacity expansion。&#10;- その他重要イベント：order intake、long-term agreements、customer pushouts、supply chain capacity commentary。&#10;&#10;## 未検証・不明点&#10;- 未検証の初期ベースライン：order intake定量値、backlog、regional sales、China exposure、export controls、cancellations / delays / pushouts、tariffs、company-defined FCF、inventory、同一基準peer比較。&#10;- 一次情報で確認できなかった項目：presentation、transcript、annual report詳細、order intake table、顧客別capacity expansion。&#10;- URL未提供または本文未確認の項目：transcript、regional sales、China exposure、規制アップデート、company-defined FCF reconciliation。&#10;- 次回へ持ち越す確認事項：order intake定量値、China exposure、輸出規制、tariffs、顧客capacity cycle、同一基準peer比較。">Copy action summary</button>
+    <button type="button" aria-label="Copy source checklist" data-copy-label="source checklist" data-copy="# ASML隣接target 初回ベースライン確認レポート source checklist&#10;&#10;- source_status: partially_verified&#10;&#10;- [ ] primary / ASML Holding N.V. / Financial Results / 確認済み&#10;- [ ] primary / ASML Holding N.V. / Q1 2026 Financial Results Page / 確認済み&#10;- [ ] press_release / ASML Holding N.V. / Q1 2026 Financial Results Press Release / 確認済み&#10;- [ ] sec_filing / U.S. SEC / ASML Holding N.V. / Form 6-K Q1 2026 quarterly filing / 確認済み&#10;- [ ] primary / ASML Holding N.V. / Financial statements US GAAP Q1 2026 PDF/XLSX / 確認済み&#10;- [ ] primary / ASML Holding N.V. / Shares / 確認済み&#10;- [ ] market_data / Stooq / ASML.NL historical quote CSV / 確認済み">Copy source checklist</button>
+  </section>
+  <details class="copyFallback" data-copy-fallback>
+    <summary>Copy fallback</summary>
+    <p>クリップボードAPIが使えない場合は、下のMarkdownを選択して使用します。</p>
+    <textarea readonly aria-label="コピー対象Markdown"></textarea>
+  </details>
+
+<details class="sourceDrawer">
+    <summary><span>Source drawer</span>出典一覧 (7件、primary 4件)</summary>
+    <div class="sourceDrawerBody">
+      <p>一次情報を先頭に並べています。URL、発表日、確認日の欠落は次回確認対象です。</p>
+      <div class="sourceList"><article class="sourceItem primary">
+    <span class="sourceType">primary / ASML Holding N.V.</span>
+    <strong class="sourceTitle"><a href="https://www.asml.com/en/investors/financial-results">Financial Results</a></strong>
+    <p class="sourceMeta"><a href="https://www.asml.com/en/investors/financial-results">URL</a> / 発表日: n/a / 確認日: 2026-05-10</p>
+  </article><article class="sourceItem primary">
+    <span class="sourceType">primary / ASML Holding N.V.</span>
+    <strong class="sourceTitle"><a href="https://www.asml.com/en/investors/financial-results/q1-2026">Q1 2026 Financial Results Page</a></strong>
+    <p class="sourceMeta"><a href="https://www.asml.com/en/investors/financial-results/q1-2026">URL</a> / 発表日: 2026-04-15 / 確認日: 2026-05-10</p>
+  </article><article class="sourceItem primary">
+    <span class="sourceType">primary / ASML Holding N.V.</span>
+    <strong class="sourceTitle"><a href="https://ourbrand.asml.com/asset/3f4235e1-ad38-4af8-a39b-de0d39cb71d1/Financial-statements-US-GAAP-Q1-2026.pdf">Financial statements US GAAP Q1 2026 PDF/XLSX</a></strong>
+    <p class="sourceMeta"><a href="https://ourbrand.asml.com/asset/3f4235e1-ad38-4af8-a39b-de0d39cb71d1/Financial-statements-US-GAAP-Q1-2026.pdf">URL</a> / 発表日: 2026-04-15 / 確認日: 2026-05-11</p>
+  </article><article class="sourceItem primary">
+    <span class="sourceType">primary / ASML Holding N.V.</span>
+    <strong class="sourceTitle"><a href="https://www.asml.com/en/investors/shares">Shares</a></strong>
+    <p class="sourceMeta"><a href="https://www.asml.com/en/investors/shares">URL</a> / 発表日: 2026-04-15 / 確認日: 2026-05-11</p>
+  </article><article class="sourceItem press_release">
+    <span class="sourceType">press_release / ASML Holding N.V.</span>
+    <strong class="sourceTitle"><a href="https://www.asml.com/en/news/press-releases/2026/q1-2026-financial-results">Q1 2026 Financial Results Press Release</a></strong>
+    <p class="sourceMeta"><a href="https://www.asml.com/en/news/press-releases/2026/q1-2026-financial-results">URL</a> / 発表日: 2026-04-15 / 確認日: 2026-05-10</p>
+  </article><article class="sourceItem sec_filing">
+    <span class="sourceType">sec_filing / U.S. SEC / ASML Holding N.V.</span>
+    <strong class="sourceTitle"><a href="https://www.sec.gov/Archives/edgar/data/937966/000162828026025147/form6-kquarterlyfilings.htm">Form 6-K Q1 2026 quarterly filing</a></strong>
+    <p class="sourceMeta"><a href="https://www.sec.gov/Archives/edgar/data/937966/000162828026025147/form6-kquarterlyfilings.htm">URL</a> / 発表日: 2026-04-15 / 確認日: 2026-05-11</p>
+  </article><article class="sourceItem market_data">
+    <span class="sourceType">market_data / Stooq</span>
+    <strong class="sourceTitle"><a href="https://stooq.com/q/l/?s=asml.nl&amp;f=sd2t2ohlcv&amp;h&amp;e=csv">ASML.NL historical quote CSV</a></strong>
+    <p class="sourceMeta"><a href="https://stooq.com/q/l/?s=asml.nl&amp;f=sd2t2ohlcv&amp;h&amp;e=csv">URL</a> / 発表日: 2026-05-08 / 確認日: 2026-05-11</p>
+  </article></div>
+    </div>
+  </details>
+
+  <article class="report" data-report-path="targets/ASML/reports/quarterly/2026-Q1_initial_baseline.md">
+<h1 id="sec-asml隣接target-初回ベースライン確認レポート">ASML隣接target 初回ベースライン確認レポート</h1>
+<p>対象：ASML Holding N.V.（ASML）</p>
+<p>日付：2026-05-10</p>
+<p>対象期間：2026-Q1 初回target追加</p>
+<p>判定：<span class="dir unknown">UNRATED</span></p>
+<p>総合スコア：<span class="dir unknown">未付与</span> / 27</p>
+<p>一言結論：ASMLはMicronの直接メモリ競合ではなく、AI半導体capacity expansionを支えるlithography装置の隣接targetとして追加する。Q1 2026の売上、粗利率、純利益、cash、Q2/2026 outlook、AI-related infrastructure investments関連コメントは親確認済み。RP-202605-P0-0008でvaluation入力snapshotも一次情報中心で確認したが、export controls、China exposure、order pushout、顧客capacity cycle、supply chain capacity、tariffs、company-defined FCF、同一基準peer比較は<span class="dir unknown">未確認</span>であり、相対魅力は<span class="dir unknown">未採点</span>のまま維持する。</p>
+<p>注記：これは投資助言ではなく、Micron集中投資との相対比較へ渡すための初回観測レポートである。<span class="dir unknown">未確認</span>情報は<code>needs_review</code>または<code>needs_research</code>として隔離する。</p>
+<details class="sectionDetails" id="sec-親提供url受け取り欄" open><summary>0. 親提供URL受け取り欄</summary>
+<div class="tableScroll"><table><thead><tr><th>source_id</th><th>種別</th><th>発行元</th><th>タイトルまたは確認対象</th><th>URL</th><th>発表日</th><th>確認日</th><th>期待する確認事項</th><th>処理状態</th></tr></thead><tbody><tr><td>SRC-ASML-001</td><td>primary</td><td>ASML Holding N.V.</td><td>Financial Results</td><td>https://www.asml.com/en/investors/financial-results</td><td><span class="dir unknown">n/a</span></td><td>2026-05-10</td><td>IR/financial results入口</td><td>verified</td></tr><tr><td>SRC-ASML-002</td><td>primary</td><td>ASML Holding N.V.</td><td>Q1 2026 Financial Results Page</td><td>https://www.asml.com/en/investors/financial-results/q1-2026</td><td>2026-04-15</td><td>2026-05-10</td><td>Q1 2026結果ページ、関連資料入口</td><td>partially_verified</td></tr><tr><td>SRC-ASML-003</td><td>press_release</td><td>ASML Holding N.V.</td><td>Q1 2026 Financial Results Press Release</td><td>https://www.asml.com/en/news/press-releases/2026/q1-2026-financial-results</td><td>2026-04-15</td><td>2026-05-10</td><td>Q1 2026 KPI、Q2 outlook、2026 outlook、AI infrastructure関連コメント</td><td>partially_verified</td></tr></tbody></table></div>
+</details>
+<details class="sectionDetails" id="sec-今回の結論" open><summary>1. 今回の結論</summary>
+<ul>
+<li>初回ベースラインとして確認できたこと：Q1 2026 total net sales、installed base management sales、新品/中古lithography systems sold、gross profit、gross margin、net income、basic EPS、cash、Q2 2026 outlook、2026 outlookを親確認済み一次情報として記録した。RP-202605-P0-0008でvaluation入力snapshot、cash/ST investments、long-term debt、net cash、weighted-average shares、OCF、PPE purchasesも一次情報中心で追記した。</li>
+<li>Micron集中投資との相対比較に使えること：ASMLはAI需要が半導体capacity expansionへ波及しているか、またMicronのAIメモリ仮説を装置受注・顧客投資計画側から補強または反証する対象になる。</li>
+<li>まだ相対比較に使えないこと：order intake定量値、backlog、China exposure、export controls影響、cancellations / delays / pushouts、customer capacity cycle、supply chain capacity、tariffs、company-defined FCF、同一基準peer比較。</li>
+<li>portfolioへ渡す状態：partial。<code>target_dir</code>は有効だが、score、relative_attractiveness、diversification_value、exit_candidate_relevanceは<code>needs_research</code>のまま維持する。</li>
+</ul>
+</details>
+<details class="sectionDetails" id="sec-弱気材料を先に確認" open><summary>2. 弱気材料を先に確認</summary>
+<ul>
+<li>弱気材料1：export controlsとChina exposureはASML固有の主要リスクである。親確認済み情報だけでは地域別売上、受注、serviceへの影響を確認できていない。</li>
+<li>弱気材料2：order cancellations、delays、pushoutsは半導体装置cycleの反転を早く示す可能性がある。親確認済みCEO statementではorder intake remains very strongとされたが、定量値、backlog、キャンセル有無は<code>needs_research</code>。</li>
+<li>弱気材料3：customer capacity cycleとsupply chain capacityは、2026年以降のcapacity expansion plansを支える一方で、前倒し投資、供給制約、過剰投資のリスクにもなる。</li>
+<li>弱気材料4：tariffsとAI需要反転は、装置需要、顧客投資計画、gross marginに悪影響を与える可能性がある。</li>
+<li>弱気材料5：RP-202605-P0-0008でvaluation入力snapshotを確認したところ、Euronext終値ベースのEV/SalesはQ1 revenue年率化で約14.35x、annualized Q1 P/Eは約46.13xとなった。寡占・AI capacity expansion期待を相当程度織り込んでいる可能性があり、強気材料として採用しない。</li>
+<li>これがMicron集中投資との比較に与える影響：ASMLの受注が強ければAI半導体供給拡張の広がりを示すが、規制・China・顧客cycle・valuationが<span class="dir down">悪化</span>すれば、Micron分散先としての魅力は未判定または<span class="dir down">低下</span>する。</li>
+<li><span class="dir unknown">未確認</span>の弱気材料：<code>needs_research</code>。export controls、China exposure、cancellations / delays / pushouts、customer capacity cycle、supply chain capacity、tariffs、AI需要反転時の受注感応度、company-defined FCF、同一基準peer比較。</li>
+</ul>
+</details>
+<details class="sectionDetails" id="sec-強制警戒条件・比較上の注意" open><summary>3. 強制警戒条件・比較上の注意</summary>
+<ul>
+<li>このtarget固有の強制警戒条件：export controls<span class="dir down">悪化</span>、China exposure<span class="dir down">悪化</span>、order cancellations / delays / pushouts、customer capacity cycle<span class="dir down">下方修正</span>、supply chain capacity制約、tariffs悪影響、AI需要反転、valuation過熱。</li>
+<li>Micron側の強制警戒条件に影響する競合材料：ASMLのorder intakeやcapacity expansion plansが弱まる場合、AI半導体全体の投資サイクル鈍化としてMicronのHBM/DRAM/NAND需要見通しにも影響し得る。</li>
+<li>portfolio比較で強気材料として扱ってはいけない情報：ASMLがMicronより魅力的という断定、寡占プレミアムの妥当性、Chinaリスク軽微という断定、受注キャンセルがないという断定。</li>
+<li><code>needs_review</code>に隔離した情報：ASMLがMicronより堅い寡占に見えるという印象、AI-related infrastructure investmentsとASML受注の直接的な定量関係、long-term agreementsのdowncycle耐性。</li>
+</ul>
+</details>
+<details class="sectionDetails" id="sec-未検証・不明点" open><summary>4. <span class="dir unknown">未検証</span>・<span class="dir unknown">不明</span>点</summary>
+<ul>
+<li><span class="dir unknown">未検証</span>の初期ベースライン：order intake定量値、backlog、regional sales、China exposure、export controls、cancellations / delays / pushouts、tariffs、company-defined FCF、inventory、同一基準peer比較。</li>
+<li>一次情報で確認できなかった項目：presentation、transcript、annual report詳細、order intake table、顧客別capacity expansion。</li>
+<li>URL未提供または本文<span class="dir unknown">未確認</span>の項目：transcript、regional sales、China exposure、規制アップデート、company-defined FCF reconciliation。</li>
+<li>次回へ持ち越す確認事項：order intake定量値、China exposure、輸出規制、tariffs、顧客capacity cycle、同一基準peer比較。</li>
+</ul>
+</details>
+<details class="sectionDetails" id="sec-強気材料" open><summary>5. 強気材料</summary>
+<ul>
+<li>強気材料1：Q1 2026 total net salesはEUR 8.767B、gross marginは53.0%、net incomeはEUR 2.757B、basic EPSはEUR 7.15。</li>
+<li>強気材料2：Q1 2026 installed base management salesはEUR 2.488B、新品lithography systems soldは67 units、中古lithography systems soldは12 units。</li>
+<li>強気材料3：end-quarter cash/cash equivalents/short-term investmentsはEUR 8.376B。</li>
+<li>強気材料4：Q2 2026 outlookはtotal net sales EUR 8.4B-EUR 9.0B、gross margin 51%-52%、R&amp;D around EUR 1.2B、SG&amp;A around EUR 0.3B。</li>
+<li>強気材料5：2026 outlookはtotal net sales EUR 36B-EUR 40B、gross margin 51%-53%。</li>
+<li>強気材料6：親確認済みCEO statementでは、AI-related infrastructure investmentsが半導体業界の成長見通しを支え、demand for chips is outpacing supply、顧客が2026年以降のcapacity expansion plansを加速、long-term agreementsに支えられている、order intake remains very strongとされた。</li>
+<li>これがMicron集中投資との比較を変える理由：ASMLの装置需要と顧客capacity expansionが強いなら、AI半導体供給制約がメモリだけでなく製造能力全体に広がっている可能性を示す。</li>
+<li>強気材料として採用しない<span class="dir unknown">未確認</span>情報：ASMLのvaluation割安性、Micronより相対魅力が高いという結論、Chinaリスクが十分小さいという判断、order cancellations / delays / pushoutsがないという断定。</li>
+</ul>
+</details>
+<details class="sectionDetails" id="sec-対象企業の事業・決算・ガイダンス確認" open><summary>6. 対象企業の事業・決算・ガイダンス確認</summary>
+<ul>
+<li>売上：Q1 2026 total net salesはEUR 8.767B。</li>
+<li>売上高ガイダンス：Q2 2026 total net sales outlookはEUR 8.4B-EUR 9.0B。2026 total net sales outlookはEUR 36B-EUR 40B。</li>
+<li>gross margin：Q1 2026 gross marginは53.0%。Q2 2026 outlookは51%-52%。2026 outlookは51%-53%。</li>
+<li>operating margin：Q1 2026 income from operationsはEUR 3.1578B、operating marginは約36.02%。</li>
+<li>EPS：Q1 2026 basic EPSはEUR 7.15。</li>
+<li>FCF：company-defined FCFはneeds_research。derived FCF proxyはQ1 2026 operating cash flow EUR -2.1856BからPPE purchases EUR 0.4024Bを控除してEUR -2.5880Bだが、採点根拠には昇格しない。</li>
+<li>operating cash flow：Q1 2026 net cash used in operating activitiesはEUR -2.1856B。</li>
+<li>CapEx：Q1 2026 purchase of property, plant and equipmentはEUR 0.4024Bの支出。</li>
+<li>cash / investments / debt：end-quarter cash/cash equivalents/short-term investmentsはEUR 8.3763B。long-term debtはEUR 2.7056B。net cashはEUR 5.6707B。summary balance sheet上でcurrent debtの独立行は未観測。</li>
+<li>inventory：needs_research。</li>
+<li>セグメント：installed base management salesはEUR 2.488B。新品/中古lithography systems soldは67 units / 12 units。その他セグメント詳細はneeds_research。</li>
+<li>AIインフラ関連売上：定量額はneeds_research。AI-related infrastructure investments関連CEO statementは親確認済み。</li>
+<li>会社が明示した需要コメント：demand for chips is outpacing supply、顧客が2026年以降のcapacity expansion plansを加速、order intake remains very strongという親確認済み確認事項。</li>
+<li>会社が明示した供給・投資コメント：long-term agreementsに支えられているという親確認済み確認事項。supply chain capacity詳細はneeds_research。</li>
+</ul>
+</details>
+<details class="sectionDetails" id="sec-aiインフラ内での役割" open><summary>7. AIインフラ内での役割</summary>
+<ul>
+<li>role_in_ai_infra：advanced semiconductor manufacturing capacity、lithography equipment、installed base management。</li>
+<li>Micronとの直接競合領域：直接メモリ競合ではない。</li>
+<li>Micronとの隣接・代替領域：AIメモリ需要を支える先端半導体capacity expansion、メモリメーカー・ファウンドリ・ロジックメーカーの装置投資。</li>
+<li>AI需要が効く主要製品：EUV / DUV lithography、installed base management。製品別定量寄与はneeds_research。</li>
+<li>顧客・プラットフォーム採用状況：needs_research。</li>
+<li>技術世代・ロードマップ：needs_research。</li>
+<li>Micron集中投資への示唆：ASMLの受注・outlookが強い場合、MicronのAIメモリ需要を含む半導体供給拡張仮説を補強する。一方で、装置cycleが反転すればMicron側にも警戒材料になる。</li>
+</ul>
+</details>
+<details class="sectionDetails" id="sec-市況確認" open><summary>8. 市況確認</summary>
+<ul>
+<li>DRAM：not_applicable。ただしMicron比較のため継続確認する。</li>
+<li>HBM：not_applicable。ただしAIメモリcapacity expansionの顧客投資として確認する。</li>
+<li>RDIMM：not_applicable。</li>
+<li>LPDDR：not_applicable。</li>
+<li>NAND：not_applicable。</li>
+<li>enterprise SSD：not_applicable。</li>
+<li>HDD / networking / optical / foundry / EDA / equipment等の該当市況：lithography equipment、wafer fab equipment、installed base management、foundry / logic / memory capacity expansionが該当。需給と価格方向はneeds_research。</li>
+<li>価格方向（<span class="dir up">上昇</span> / <span class="dir flat">横ばい</span> / <span class="dir down">下落</span> / <span class="dir unknown">不明</span> / not_applicable）：<span class="dir unknown">不明</span>。</li>
+<li>供給過剰リスク：<span class="dir unknown">不明</span>。customer capacity cycle、order cancellations / delays / pushouts、AI需要反転を監視する。</li>
+</ul>
+</details>
+<details class="sectionDetails" id="sec-競合比較" open><summary>9. 競合比較</summary>
+<ul>
+<li>Micronに対する相対優位：メモリ価格サイクルそのものではなく、半導体製造能力拡張とinstalled baseから収益を得られる可能性。</li>
+<li>Micronに対する相対劣位：HBM、DRAM、NAND、enterprise SSDの直接露出はなく、規制・China・顧客capacity cycle・valuationの確認が必要。</li>
+<li>SK hynix / Samsung / SanDisk等の直接競合比較：ASMLはmemory peerではなく、memoryメーカーのcapacity investmentを観測する装置側targetとして扱う。</li>
+<li>隣接セクター比較：Applied Materials、Lam Research、KLA、Tokyo Electron、TSMC、Intelとのequipment / foundry / customer cycle比較が必要。</li>
+<li>Micron集中の相対魅力は上がったか、下がったか、未判定か：未判定。</li>
+<li>portfolioの<code>relative_to_micron</code>候補：needs_research。</li>
+</ul>
+</details>
+<details class="sectionDetails" id="sec-判定スコア" open><summary>10. 判定スコア</summary>
+<ul>
+<li>A. AI需要・CSP CapEx：<span class="dir unknown">未採点</span> / 3</li>
+<li>B. DRAM / HBM市況または該当中核市況：lithography / wafer fab equipmentを該当中核市況として次回評価、<span class="dir unknown">未採点</span> / 3</li>
+<li>C. NAND / SSD市況または該当隣接市況：installed base management / serviceを次回評価、<span class="dir unknown">未採点</span> / 3</li>
+<li>D. 対象企業決算・ガイダンス：<span class="dir unknown">未採点</span> / 3</li>
+<li>E. AI製品採用・ロードマップ：<span class="dir unknown">未採点</span> / 3</li>
+<li>F. CapExと供給規律：<span class="dir unknown">未採点</span> / 3</li>
+<li>G. 在庫・キャッシュフロー：<span class="dir unknown">未採点</span> / 3</li>
+<li>H. 競争環境：<span class="dir unknown">未採点</span> / 3</li>
+<li>I. バリュエーション：入力snapshot確認済み、<span class="dir unknown">未採点</span> / 3。2026-05-08 Euronext終値EUR 1,319.40、Q1 2026 diluted weighted-average shares 385.7M、cash/ST investments EUR 8.3763B、long-term debt EUR 2.7056B、net cash EUR 5.6707B、EV/Sales annualized Q1 revenue約14.35x、annualized Q1 P/E約46.13x。割安/割高判定とMicron相対魅力は未確定。</li>
+<li>総合：<span class="dir unknown">未採点</span> / 27</li>
+<li>通常スコア判定：<span class="dir unknown">UNRATED</span></li>
+<li>最終判定：<span class="dir unknown">UNRATED</span></li>
+</ul>
+</details>
+<details class="sectionDetails" id="sec-portfolio更新候補" open><summary>11. portfolio更新候補</summary>
+<ul>
+<li>ticker：ASML</li>
+<li>company：ASML Holding N.V.</li>
+<li>category：semiconductor_equipment</li>
+<li>role_in_ai_infra：lithography_capacity_expansion_candidate</li>
+<li>current_target_dir：<code>targets/ASML</code></li>
+<li>monitoring_status：baseline_ready</li>
+<li>source_status：partially_verified</li>
+<li>relative_to_micron：needs_research</li>
+<li>relative_attractiveness：needs_research</li>
+<li>diversification_candidate：needs_research</li>
+<li>exit_pressure_on_micron：<span class="dir unknown">unknown</span></li>
+<li>key_question：AI半導体capacity expansionを支えるASMLの受注・outlookは、Micron集中よりrisk-adjustedで魅力的な分散先を示すか。</li>
+<li>next_action：order intake、backlog、China exposure、export controls、cancellations / delays / pushouts、customer capacity cycle、supply chain capacity、tariffs、company-defined FCF、同一基準peer比較を確認する。valuation入力snapshotはRP-202605-P0-0008で確認済みだが、相対魅力は<span class="dir unknown">未採点</span>。</li>
+</ul>
+</details>
+<details class="sectionDetails" id="sec-品質ゲート" open><summary>12. 品質ゲート</summary>
+<ul>
+<li><code>target.yaml</code>を最初に読んだか：はい。新規作成した<code>target.yaml</code>をsource of truthとして構成した。</li>
+<li>弱気材料を強気材料より先に確認したか：はい。</li>
+<li>親提供URLの発表日、確認日を残したか：はい。</li>
+<li>外部取得データを読む前に可能な限りsecurity-gateを実行したか：はい。RP-202605-P0-0008のraw取得物は<code>[public redacted: raw evidence path]</code>に保存し、<code>security-gate scan ... --allow-warnings</code>を実行。PDF/XLSX opaque warningとEuronext HTML hidden text warningを許容し、利用範囲をfinancial tables、shares page、価格CSV、SEC 6-K提出確認に限定した。</li>
+<li><span class="dir unknown">未確認</span>情報を<code>needs_review</code>または<code>needs_research</code>へ隔離したか：はい。</li>
+<li>portfolioで<span class="dir unknown">未確認</span>銘柄を相対魅力確定済みとして扱わないよう明記したか：はい。</li>
+<li><code>source_status: draft</code>のまま確定していないか：はい。</li>
+<li><code>state/</code>と<code>runs/</code>更新候補を明記したか：はい。</li>
+<li>HTML生成と<code>report_verify</code>の実行結果を<code>runs/</code>に記録したか：runログへ記録する。</li>
+</ul>
+</details>
+<details class="sectionDetails" id="sec-state更新候補" open><summary>13. state更新候補</summary>
+<h3 id="sec-last-report">last_report</h3>
+<ul>
+<li>初回ベースラインはsource_status: partially_verified。</li>
+<li>Q1 2026 total net sales、gross margin、net income、EPS、cash、Q2 outlook、2026 outlookを記録。RP-202605-P0-0008でvaluation入力snapshot、operating margin、OCF、PPE purchases、long-term debt、net cashも追記。</li>
+</ul>
+<h3 id="sec-open-questions">open_questions</h3>
+<ul>
+<li>order intake定量値、backlog、China exposure、export controls、order cancellations / delays / pushouts、customer capacity cycle、supply chain capacity、tariffs、company-defined FCF、同一基準peer比較。</li>
+</ul>
+<h3 id="sec-alerts">alerts</h3>
+<ul>
+<li>export controls<span class="dir down">悪化</span>、China exposure<span class="dir down">悪化</span>、order cancellations / delays / pushouts、顧客capacity cycle<span class="dir down">下方修正</span>、supply chain capacity制約、tariffs悪影響、AI需要反転。</li>
+</ul>
+<h3 id="sec-next-events">next_events</h3>
+<ul>
+<li>次回決算日：needs_research。</li>
+<li>Q1 2026 results materials本文確認：financial statements、SEC 6-K、sharesページ、価格snapshotはRP-202605-P0-0008で確認済み。presentation、transcript、order intake、regional salesはnext。</li>
+</ul>
+</details>
+<details class="sectionDetails" id="sec-データ・ログ更新候補" open><summary>14. データ・ログ更新候補</summary>
+<ul>
+<li><code>sources/source_log.md</code>追記候補：SRC-ASML-001からSRC-ASML-003を追加済み。</li>
+<li><code>sources/watchlist.md</code>追記候補：公式financial results入口、Q1 2026 results page、Q1 2026 press releaseを追加済み。</li>
+<li><code>data/asml_metrics.csv</code>更新候補：親確認済みQ1 2026主要ファクトに加え、RP-202605-P0-0008でoperating margin、OCF、PPE purchases、long-term debt、net cash、weighted-average sharesをpartially_verifiedで追加済み。</li>
+<li><code>data/scores.csv</code>更新候補：<span class="dir unknown">未採点</span>のためヘッダーのみ。</li>
+<li><code>data/peer_comparison.csv</code>更新候補：未評価のためヘッダーのみ。</li>
+<li><code>data/valuation.csv</code>更新候補：RP-202605-P0-0008で入力snapshotを追加済み。Euronext終値、weighted-average shares、cash/ST investments、long-term debt、net cash、equity value、EV、EV/Sales、annualized Q1 P/Eを記録。</li>
+<li><code>runs/2026-Q1_initial_baseline_run.md</code>記録候補：security-gate、HTML生成、verify結果を記録する。</li>
+<li>security-gate実行記録：RP-202605-P0-0008 runログへ記録する。</li>
+<li>HTML生成結果：<code>targets/ASML/views/2026-Q1_initial_baseline.html</code></li>
+<li><code>report_verify</code>実行結果：runログへ記録する。</li>
+</ul>
+</details>
+<details class="sectionDetails" id="sec-次回までの監視イベント" open><summary>15. 次回までの監視イベント</summary>
+<ul>
+<li>対象企業次回決算：needs_research。</li>
+<li>主要競合次回決算：Applied Materials、Lam Research、KLA、Tokyo Electron、TSMC、Intel。</li>
+<li>需要側企業決算：Micron、SK hynix、Samsung、TSMC、Intel、NVIDIA。</li>
+<li>関連業界イベント：export controls、China exposure、tariffs、EUV/DUV、wafer fab equipment、advanced packaging / memory capacity investment関連発表。</li>
+<li>市況更新：CSP CapEx、AI data center semiconductor demand、HBM/DRAM/NAND市況、foundry / logic / memory capacity expansion。</li>
+<li>その他重要イベント：order intake、long-term agreements、customer pushouts、supply chain capacity commentary。</li>
+</ul>
+</details>
+<details class="sectionDetails" id="sec-出典"><summary>16. 出典</summary>
+<div class="tableScroll"><table><thead><tr><th>種別</th><th>発行元</th><th>タイトル</th><th>URL</th><th>発表日</th><th>確認日</th><th>source_id</th><th>reliability</th><th>status</th></tr></thead><tbody><tr><td>primary</td><td>ASML Holding N.V.</td><td>Financial Results</td><td>https://www.asml.com/en/investors/financial-results</td><td><span class="dir unknown">n/a</span></td><td>2026-05-10</td><td>SRC-ASML-001</td><td>high</td><td>verified</td></tr><tr><td>primary</td><td>ASML Holding N.V.</td><td>Q1 2026 Financial Results Page</td><td>https://www.asml.com/en/investors/financial-results/q1-2026</td><td>2026-04-15</td><td>2026-05-10</td><td>SRC-ASML-002</td><td>high</td><td>partially_verified</td></tr><tr><td>press_release</td><td>ASML Holding N.V.</td><td>Q1 2026 Financial Results Press Release</td><td>https://www.asml.com/en/news/press-releases/2026/q1-2026-financial-results</td><td>2026-04-15</td><td>2026-05-10</td><td>SRC-ASML-003</td><td>high</td><td>partially_verified</td></tr><tr><td>sec_filing</td><td>U.S. SEC / ASML Holding N.V.</td><td>Form 6-K Q1 2026 quarterly filing</td><td>https://www.sec.gov/Archives/edgar/data/937966/000162828026025147/form6-kquarterlyfilings.htm</td><td>2026-04-15</td><td>2026-05-11</td><td>SRC-ASML-004</td><td>high</td><td>partially_verified</td></tr><tr><td>primary</td><td>ASML Holding N.V.</td><td>Financial statements US GAAP Q1 2026 PDF/XLSX</td><td>https://ourbrand.asml.com/asset/3f4235e1-ad38-4af8-a39b-de0d39cb71d1/Financial-statements-US-GAAP-Q1-2026.pdf</td><td>2026-04-15</td><td>2026-05-11</td><td>SRC-ASML-005</td><td>high</td><td>partially_verified</td></tr><tr><td>primary</td><td>ASML Holding N.V.</td><td>Shares</td><td>https://www.asml.com/en/investors/shares</td><td>2026-04-15</td><td>2026-05-11</td><td>SRC-ASML-006</td><td>high</td><td>partially_verified</td></tr><tr><td>market_data</td><td>Stooq</td><td>ASML.NL historical quote CSV</td><td>https://stooq.com/q/l/?s=asml.nl&amp;f=sd2t2ohlcv&amp;h&amp;e=csv</td><td>2026-05-08</td><td>2026-05-11</td><td>SRC-ASML-007</td><td>medium</td><td>partially_verified</td></tr></tbody></table></div>
+</details>
+  </article>
+</main>
+
+<script>
+document.querySelectorAll("[data-copy]").forEach((button) => {
+  button.addEventListener("click", async () => {
+    const label = button.getAttribute("data-copy-label") || "text";
+    const text = button.getAttribute("data-copy") || "";
+    try {
+      await navigator.clipboard.writeText(text);
+      const original = button.textContent;
+      button.textContent = "コピー完了: " + label;
+      setTimeout(() => { button.textContent = original; }, 1200);
+    } catch (error) {
+      const fallback = document.querySelector("[data-copy-fallback]");
+      if (fallback) {
+        const textarea = fallback.querySelector("textarea");
+        fallback.open = true;
+        if (textarea) {
+          textarea.value = text;
+          textarea.focus();
+          textarea.select();
+        }
+      }
+      button.textContent = "コピー失敗";
+    }
+  });
+});
+</script>
+</body>
+</html>

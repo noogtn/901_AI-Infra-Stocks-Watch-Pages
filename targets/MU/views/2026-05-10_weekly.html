@@ -1,0 +1,844 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Micron集中投資 週次ニュース監視</title>
+<style>
+
+:root {
+  color-scheme: light;
+  --bg: #f7f8fa;
+  --panel: #ffffff;
+  --text: #1f2933;
+  --muted: #627080;
+  --line: #d9dee6;
+  --accent: #145c9e;
+  --warn: #a85400;
+  --danger: #a51d2d;
+  --ok: #1f7a4d;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  line-height: 1.65;
+  overflow-wrap: anywhere;
+}
+.skipLink {
+  position: absolute;
+  left: 12px;
+  top: -48px;
+  z-index: 10;
+  background: #fff;
+  border: 2px solid var(--accent);
+  border-radius: 8px;
+  color: var(--accent);
+  padding: 8px 10px;
+}
+.skipLink:focus { top: 12px; }
+.topbar {
+  display: flex;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 28px clamp(16px, 4vw, 48px);
+  background: #ffffff;
+  border-bottom: 1px solid var(--line);
+}
+.eyebrow, .meta { color: var(--muted); margin: 0 0 6px; }
+h1 { margin: 0; font-size: 2rem; line-height: 1.18; letter-spacing: 0; }
+main { max-width: 1180px; margin: 0 auto; padding: 24px clamp(14px, 3vw, 32px) 56px; }
+.statusStack { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; }
+.badge {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 6px 10px;
+  font-weight: 700;
+  background: #fff;
+}
+.judgement.green { color: var(--ok); border-color: #8cc7a8; }
+.judgement.light_green { color: #4d7a1f; border-color: #b6d986; }
+.judgement.yellow { color: #7c6500; border-color: #d8c65a; }
+.judgement.orange { color: var(--warn); border-color: #d79a4a; }
+.judgement.red { color: var(--danger); border-color: #d8818d; }
+.judgement.unrated { color: #475569; border-color: #94a3b8; background: #f8fafc; }
+.source.needs_review { color: var(--danger); border-color: #d8818d; }
+.source.partially_verified, .source.draft { color: var(--warn); border-color: #d79a4a; }
+.source.verified { color: var(--ok); border-color: #8cc7a8; }
+.source.unknown, .source.unrated { color: #475569; border-color: #94a3b8; background: #f8fafc; }
+.statusCards, .summaryCards {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 18px;
+}
+.statusCard, .summaryCard {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-left: 6px solid var(--accent);
+  border-radius: 8px;
+  padding: 14px;
+}
+.statusCard > span, .summaryCard > span {
+  display: block;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 700;
+  margin-bottom: 4px;
+  text-transform: uppercase;
+}
+.statusCard strong, .summaryCard strong {
+  display: block;
+  font-size: 22px;
+  line-height: 1.25;
+}
+.statusCard p, .summaryCard p {
+  color: var(--muted);
+  margin: 8px 0 0;
+}
+.statusCard.green, .summaryCard.ok { border-left-color: var(--ok); }
+.statusCard.light_green { border-left-color: #6f9b2e; }
+.statusCard.yellow { border-left-color: #b69700; }
+.statusCard.orange, .statusCard.draft, .statusCard.partially_verified, .summaryCard.warn { border-left-color: var(--warn); }
+.statusCard.red, .statusCard.needs_review, .summaryCard.danger { border-left-color: var(--danger); }
+.statusCard.warn { border-left-color: var(--warn); }
+.statusCard.unrated, .statusCard.unknown { border-left-color: #64748b; }
+.summaryCard ul {
+  margin: 10px 0 0;
+  padding-left: 20px;
+}
+.summaryCard li { margin: 4px 0; }
+.decisionGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 18px;
+}
+.decisionGrid article {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 14px;
+}
+.decisionGrid span {
+  display: block;
+  color: var(--muted);
+  font-size: 13px;
+  margin-bottom: 4px;
+}
+.decisionGrid strong { font-size: 18px; line-height: 1.35; }
+.toc, .actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  align-items: center;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 12px;
+  margin-bottom: 16px;
+}
+.toc a { color: var(--accent); text-decoration: none; }
+button {
+  border: 1px solid #b9c2cf;
+  border-radius: 8px;
+  background: #fff;
+  color: var(--text);
+  padding: 8px 10px;
+  font: inherit;
+  cursor: pointer;
+  min-height: 44px;
+  touch-action: manipulation;
+}
+button:hover { border-color: var(--accent); color: var(--accent); }
+button:focus-visible,
+a:focus-visible,
+summary:focus-visible {
+  outline: 3px solid #5a8db8;
+  outline-offset: 3px;
+}
+.copyFallback {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  margin: 0 0 18px;
+  padding: 12px;
+}
+.copyFallback summary {
+  cursor: pointer;
+  font-weight: 700;
+}
+.copyFallback p {
+  color: var(--muted);
+  margin: 4px 0 8px;
+}
+.copyFallback textarea {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  font: 13px/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  min-height: 160px;
+  padding: 10px;
+  resize: vertical;
+  width: 100%;
+}
+.report {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 4px 18px 18px;
+}
+.report h1 { font-size: 28px; margin: 18px 0 10px; }
+.report h2 { font-size: 21px; margin: 24px 0 10px; padding-top: 8px; border-top: 1px solid var(--line); }
+.report h3 { font-size: 17px; margin: 18px 0 8px; }
+.report table { border-collapse: collapse; width: 100%; overflow-x: auto; display: block; }
+.report th, .report td { border: 1px solid var(--line); padding: 8px; text-align: left; vertical-align: top; }
+.report code { background: #eef1f5; padding: 2px 4px; border-radius: 4px; }
+.report pre { background: #111827; color: #f7f8fa; padding: 12px; border-radius: 8px; overflow-x: auto; }
+.sectionDetails {
+  border-top: 1px solid var(--line);
+  padding: 6px 0;
+}
+.sectionDetails > summary {
+  cursor: pointer;
+  font-size: 21px;
+  font-weight: 700;
+  padding: 10px 0;
+}
+.sectionDetails.sectionMarket {
+  border: 1px solid var(--line);
+  border-left: 6px solid var(--accent);
+  border-radius: 8px;
+  padding: 8px 12px 12px;
+  background: #fbfdff;
+}
+.sectionDetails.sectionMarket > summary {
+  margin: 0 0 4px;
+}
+.dir {
+  display: inline-block;
+  padding: 1px 6px;
+  border-radius: 999px;
+  font-size: 1em;
+  border: 1px solid transparent;
+}
+.dir.up {
+  color: var(--ok);
+  border-color: #8cc7a8;
+  background: #f0fbf5;
+}
+.dir.down {
+  color: var(--danger);
+  border-color: #d8818d;
+  background: #fff5f6;
+}
+.dir.flat {
+  color: #475569;
+  border-color: #94a3b8;
+  background: #f8fafc;
+}
+.dir.unknown {
+  color: var(--warn);
+  border-color: #d79a4a;
+  background: #fff9f1;
+  font-weight: 600;
+}
+.firstView {
+  display: grid;
+  gap: 14px;
+  margin-bottom: 18px;
+}
+.statusCards {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+.statusCard,
+.summaryCard,
+.decisionGrid article,
+.toc,
+.actions,
+.report,
+.sourceDrawer,
+.riskHighlight,
+.scoreboard {
+  box-shadow: 0 1px 2px rgba(31, 41, 51, 0.04);
+}
+.statusCard strong,
+.decisionGrid strong,
+.summaryCard strong {
+  overflow-wrap: anywhere;
+}
+.statusCard .miniList,
+.sourceDrawer .miniList {
+  margin: 10px 0 0;
+  padding-left: 18px;
+  color: var(--muted);
+  font-size: 14px;
+}
+.forcedCard.ok { border-left-color: var(--ok); }
+.forcedCard.warn { border-left-color: var(--warn); }
+.forcedCard.danger { border-left-color: var(--danger); }
+.sourceMetrics {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+}
+.metricPill {
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: #f8fafc;
+  color: #334155;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 2px 8px;
+}
+.riskHighlight {
+  background: #fffdf8;
+  border: 1px solid #e6d7b4;
+  border-left: 6px solid var(--warn);
+  border-radius: 8px;
+  padding: 14px;
+}
+.riskHighlight > span,
+.scoreboard > span,
+.sourceDrawer > summary span {
+  color: var(--muted);
+  display: block;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+.riskHighlight h2,
+.scoreboard h2 {
+  font-size: 18px;
+  line-height: 1.3;
+  margin: 2px 0 8px;
+}
+.riskHighlight ul {
+  display: grid;
+  gap: 6px;
+  margin: 10px 0 0;
+  padding-left: 20px;
+}
+.riskHighlight li::marker {
+  content: "Risk ";
+  color: var(--warn);
+  font-weight: 800;
+}
+.scoreboard {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 14px;
+}
+.scoreGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 12px;
+}
+.scoreItem {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fbfcfd;
+  min-width: 0;
+  padding: 12px;
+}
+.scoreItem header {
+  align-items: flex-start;
+  display: flex;
+  gap: 8px;
+  justify-content: space-between;
+}
+.scoreItem h3 {
+  font-size: 15px;
+  line-height: 1.35;
+  margin: 0;
+}
+.scoreValue {
+  border: 1px solid #c8d1dc;
+  border-radius: 999px;
+  color: #1f2933;
+  flex: 0 0 auto;
+  font-variant-numeric: tabular-nums;
+  font-weight: 800;
+  padding: 1px 8px;
+}
+.scoreItem p {
+  color: var(--muted);
+  font-size: 14px;
+  margin: 8px 0 0;
+}
+.scoreItem .scoreMeta {
+  color: var(--muted);
+  font-size: 12px;
+  margin-top: 8px;
+}
+.scoreItem.unrated .scoreValue,
+.scoreItem.unknown .scoreValue {
+  background: #fff9f1;
+  border-color: #d79a4a;
+  color: var(--warn);
+}
+.sourceDrawer {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  margin-bottom: 16px;
+  padding: 0;
+}
+.sourceDrawer > summary {
+  cursor: pointer;
+  font-weight: 800;
+  list-style-position: inside;
+  padding: 12px 14px;
+}
+.sourceDrawerBody {
+  border-top: 1px solid var(--line);
+  padding: 12px 14px 14px;
+}
+.sourceList {
+  display: grid;
+  gap: 8px;
+  margin-top: 12px;
+}
+.sourceItem {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 10px;
+}
+.sourceItem.primary {
+  border-left: 5px solid var(--ok);
+}
+.sourceItem.market_data {
+  border-left: 5px solid var(--accent);
+}
+.sourceType {
+  color: var(--muted);
+  display: block;
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+.sourceTitle {
+  display: block;
+  font-weight: 800;
+  line-height: 1.35;
+  margin-top: 2px;
+}
+.sourceMeta {
+  color: var(--muted);
+  font-size: 13px;
+  margin: 4px 0 0;
+}
+.sourceItem a {
+  color: var(--accent);
+}
+.report a {
+  color: var(--accent);
+  overflow-wrap: anywhere;
+}
+.tableScroll {
+  max-width: 100%;
+  overflow-x: auto;
+  overscroll-behavior-inline: contain;
+}
+.tableScroll table {
+  display: table;
+  min-width: 680px;
+  width: 100%;
+}
+@media (max-width: 720px) {
+  .topbar { flex-direction: column; }
+  .statusStack { align-items: flex-start; flex-direction: row; flex-wrap: wrap; }
+  .statusCards, .summaryCards { grid-template-columns: 1fr; }
+  .decisionGrid { grid-template-columns: 1fr; }
+  .scoreGrid { grid-template-columns: 1fr; }
+  .report { padding: 2px 12px 14px; }
+}
+@media (max-width: 420px) {
+  h1 { font-size: 1.45rem; }
+  main { padding-left: 10px; padding-right: 10px; }
+  .topbar { padding: 18px 12px; }
+  .badge,
+  button {
+    width: 100%;
+    justify-content: center;
+  }
+  .actions { align-items: stretch; flex-direction: column; }
+  .decisionGrid strong { font-size: 16px; }
+}
+@media print {
+  @page { margin: 14mm; }
+  body {
+    background: #fff;
+    color: #111;
+    font-size: 11pt;
+  }
+  main {
+    max-width: none;
+    padding: 0;
+  }
+  .topbar {
+    padding: 0 0 12px;
+    border-bottom-color: #999;
+  }
+  .toc, .report, .decisionGrid article, .statusCard, .summaryCard {
+    border-color: #999;
+    box-shadow: none;
+  }
+  .report table {
+    display: table;
+    table-layout: auto;
+    width: 100%;
+    font-size: 9pt;
+  }
+  .report thead {
+    display: table-header-group;
+  }
+  .report tr {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+  .report th, .report td {
+    overflow-wrap: anywhere;
+    word-break: break-word;
+    white-space: normal;
+  }
+  .toc, .statusCards, .summaryCards, .decisionGrid {
+    break-inside: avoid-page;
+  }
+  .report, .sectionDetails {
+    break-inside: auto;
+  }
+  a {
+    color: #111;
+    text-decoration: underline;
+  }
+}
+
+</style>
+
+<style>
+.pagesPublicNotice {
+  margin: 0;
+  padding: 10px 14px;
+  border-bottom: 1px solid #d7dee8;
+  background: #f6f8fb;
+  color: #243040;
+  font: 13px/1.55 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+.pagesPublicNotice strong {
+  display: inline-block;
+  margin-right: 8px;
+}
+.pagesPublicNotice small {
+  display: block;
+  margin-top: 2px;
+  color: #5b677a;
+  overflow-wrap: anywhere;
+}
+@media (max-width: 480px) {
+  .pagesPublicNotice {
+    padding: 9px 10px;
+  }
+  .pagesPublicNotice strong {
+    display: block;
+    margin: 0 0 2px;
+  }
+}
+</style>
+</head>
+<body>
+<aside class="pagesPublicNotice" role="note">
+  <strong>GitHub Pages public view</strong>
+  <span>このHTMLはGitHub Pagesでpublic配信される前提の閲覧用生成物です。個人情報・非公開メモ・認証情報を含めないでください。</span>
+  <small>source: targets/MU/views/2026-05-10_weekly.html / staged: 2026-05-13T22:05:31.239Z</small>
+</aside>
+
+<a class="skipLink" href="#main">本文へ移動</a>
+<header class="topbar">
+  <div>
+    <p class="eyebrow">MU Micron Technology</p>
+    <h1>Micron集中投資 週次ニュース監視</h1>
+    <p class="meta">view: weekly / date: 2026-05-10 / period: 2026-05-04_to_2026-05-10</p>
+  </div>
+  <div class="statusStack">
+    <span class="badge judgement unrated" aria-label="判定 UNRATED">UNRATED</span>
+    <span class="badge source partially_verified" aria-label="出典確認状況 partially_verified">partially_verified</span>
+  </div>
+</header>
+
+<main id="main">
+  <section class="firstView" aria-label="判断用ダッシュボード">
+  <section class="statusCards" aria-label="判定、出典品質、強制警戒条件">
+    <article class="statusCard judgementCard unrated">
+      <span>Judgement</span>
+      <strong>UNRATED</strong>
+      <p>現在の観測判定。色だけでなくラベルと本文で確認します。</p>
+    </article>
+    <article class="statusCard sourceCard partially_verified">
+      <span>Source status</span>
+      <strong>partially_verified</strong>
+      <p>一部は検証済み、未確認項目があります。 出典8件、一次情報7件。</p>
+      <div class="sourceMetrics" aria-label="出典内訳">
+        <span class="metricPill">primary 7</span>
+        <span class="metricPill">other 1</span>
+        <span class="metricPill">unknown 0</span>
+      </div>
+      <ul class="miniList"><li>Microsoft/Alphabet/Amazon/Meta/OracleのCapExを、finance lease、PPE、gross/net capexの定義差込みで比較する方法。</li><li>SamsungのVera Rubin向けHBM4/SOCAMM2販売がMicronの採用余地をどの程度削るか。</li><li>Micron 6600 ION SSDの顧客採用、売上寄与、data center SSD shareへの影響。</li></ul>
+    </article>
+    <article class="statusCard forcedCard ok">
+      <span>Forced alert</span>
+      <strong>該当なし / 監視継続</strong>
+      <p>本文中の撤退条件・強制警戒条件コメントから抽出しました。</p>
+      <ul><li>強制警戒条件に触れる兆候を確認したか：はい。CSP CapEx下方修正、DRAM/HBM価格下落、Micron粗利率低下、在庫増加、HBM採用劣後は現時点で同時発生を確認していない。</li></ul>
+    </article>
+    <article class="statusCard previousChangeCard _">
+      <span>Previous change</span>
+      <strong>本文を確認</strong>
+      <p>前回レポートからの判定変化と主要な差分です。</p>
+      <ul class="miniList"><li>最も重要な変化: Micronが245TB 6600 ION data center SSDのshippingを発表し、AI data lake / cloud-scale storage仮説を補強した。一方で、MicrosoftとMetaが部材価格上昇をCapEx増加要因として明示し、SamsungもNVIDIA Vera Rubin向けHBM4/SOCAMM2の競争材料を出した。</li><li>previous_report: ../quarterly/FY2026-Q2_initial_baseline.md</li></ul>
+    </article>
+    <article class="statusCard unconfirmedCard warn">
+      <span>Unconfirmed</span>
+      <strong>4項目を確認</strong>
+      <p>強気材料として扱わず、次回確認へ回す項目です。</p>
+      <ul class="miniList"><li>Microsoft/Alphabet/Amazon/Meta/OracleのCapExを、finance lease、PPE、gross/net capexの定義差込みで比較する方法。</li><li>SamsungのVera Rubin向けHBM4/SOCAMM2販売がMicronの採用余地をどの程度削るか。</li><li>Micron 6600 ION SSDの顧客採用、売上寄与、data center SSD shareへの影響。</li></ul>
+    </article>
+  </section>
+
+  <section class="decisionGrid">
+    <article>
+      <span>Score</span>
+      <strong>N/A / 27</strong>
+    </article>
+    <article>
+      <span>Conclusion</span>
+      <strong>最も重要な変化：Micronが245TB 6600 ION data center SSDのshippingを発表し、AI data lake / cloud-scale storage仮説を補強した。一方で、MicrosoftとMetaが部材価格上昇をCapEx増加要因として明示し、SamsungもNVIDIA Vera Rubin向けHBM4/SOCAMM2の競争材料を出した。</strong>
+    </article>
+    <article>
+      <span>Action</span>
+      <strong>Micron 6600 ION SSDのDell Tech World展示後の顧客採用・design win・売上寄与。</strong>
+    </article>
+  </section>
+
+<section class="riskHighlight" aria-label="弱気材料ファースト">
+    <span>Risk first</span>
+    <h2>弱気材料を先に確認</h2>
+    <p>撤退条件との関係：現時点で強制ORANGE/RED条件には該当しない。ただし、CSP CapExが高水準でも「部材価格上昇で投資効率が悪化」している点は、需要鈍化や投資見直しに転じる前兆として監視する。</p>
+    <ul><li>弱気材料1：MicrosoftはCY2026 CapExを約1,900億ドルと見込み、そのうち約250億ドルは部材価格上昇の影響と説明した。需要は強いが、メモリ・部材価格上昇はCSPの投資効率を圧迫する可能性がある。</li><li>弱気材料2：Metaは2026年CapEx見通しを1,250億から1,450億ドルへ引き上げた。従来レンジ1,150億から1,350億ドルからの増額で、理由は部材価格上昇と将来能力向けデータセンター費用。</li><li>弱気材料3：SamsungはQ1 2026で、HBM4とSOCAMM2のmass product salesをNVIDIA Vera Rubin platform向けに開始したと説明した。MicronのVera Rubin世代での相対的な食い込みを継続確認する必要がある。</li><li>弱気材料4：AmazonはTTM FCF低下の主因として、AI投資を反映したproperty and equipment purchases等の大幅増加を示した。AI投資が強い一方、CSP側の資本負担は重い。</li><li>撤退条件との関係：現時点で強制ORANGE/RED条件には該当しない。ただし、CSP CapExが高水準でも「部材価格上昇で投資効率が悪化」している点は、需要鈍化や投資見直しに転じる前兆として監視する。</li></ul>
+  </section>
+
+  </section>
+
+  <nav class="toc" aria-label="目次">
+    <strong>目次</strong>
+    <a href="#sec-今週の結論">1. 今週の結論</a><a href="#sec-弱気材料を先に確認">2. 弱気材料を先に確認</a><a href="#sec-強気材料">3. 強気材料</a><a href="#sec-重要ニュース">4. 重要ニュース</a><a href="#sec-state更新候補">5. state更新候補</a><a href="#sec-品質ゲート">6. 品質ゲート</a><a href="#sec-次回確認すること">7. 次回確認すること</a><a href="#sec-出典">8. 出典</a>
+  </nav>
+
+  <section class="actions" aria-label="コピー操作">
+    <button type="button" aria-label="Copy next prompt" data-copy-label="next prompt" data-copy="# 次回確認プロンプト: Micron集中投資 週次ニュース監視&#10;&#10;- target: MU&#10;- judgement: UNRATED&#10;- score: N/A / 27&#10;- source_status: partially_verified&#10;&#10;次回レポートでは、以下を優先して一次情報または信頼できる出典で確認してください。&#10;&#10;## 未検証・不明点&#10;- 未記入&#10;&#10;## 次回監視イベント&#10;- Micron 6600 ION SSDのDell Tech World展示後の顧客採用・design win・売上寄与。&#10;- Microsoft/Alphabet/Amazon/Meta/OracleのAI CapEx定義を揃えた比較。&#10;- Samsung/SK hynix/MicronのHBM4/HBM4E/SOCAMM2の顧客別採用配分。&#10;- TrendForce以外のOmdia/IDC/会社コメントによる価格方向確認。&#10;- 部材価格上昇がCSPのAI投資継続性を損なう兆候がないか。&#10;&#10;## Open questions&#10;- Microsoft/Alphabet/Amazon/Meta/OracleのCapExを、finance lease、PPE、gross/net capexの定義差込みで比較する方法。&#10;- SamsungのVera Rubin向けHBM4/SOCAMM2販売がMicronの採用余地をどの程度削るか。&#10;- Micron 6600 ION SSDの顧客採用、売上寄与、data center SSD shareへの影響。&#10;- TrendForce以外のOmdia/IDC/会社コメントによるDRAM/NAND/enterprise SSD価格確認。">Copy next prompt</button>
+    <button type="button" aria-label="Copy full report Markdown" data-copy-label="report Markdown" data-copy="---&#10;view: weekly&#10;target: MU&#10;target_id: MU&#10;report_type: weekly_watch&#10;title: Micron集中投資 週次ニュース監視&#10;date: 2026-05-10&#10;period: 2026-05-04_to_2026-05-10&#10;company: Micron Technology&#10;ticker: MU&#10;judgement: UNRATED&#10;score:&#10;score_max: 27&#10;source_status: partially_verified&#10;previous_report: ../quarterly/FY2026-Q2_initial_baseline.md&#10;generated_html: ../../views/2026-05-10_weekly.html&#10;---&#10;&#10;# Micron集中投資 週次ニュース監視&#10;&#10;対象：Micron Technology（MU）&#10;日付：2026-05-10&#10;対象期間：2026-05-04 から 2026-05-10&#10;警戒度：注意&#10;スコア：週次では未付与 / 27&#10;&#10;注記：これは投資助言ではなく、次回の月次・四半期判定へ渡すための週次観測メモである。&#10;&#10;## 1. 今週の結論&#10;&#10;- 最も重要な変化：Micronが245TB 6600 ION data center SSDのshippingを発表し、AI data lake / cloud-scale storage仮説を補強した。一方で、MicrosoftとMetaが部材価格上昇をCapEx増加要因として明示し、SamsungもNVIDIA Vera Rubin向けHBM4/SOCAMM2の競争材料を出した。&#10;- 投資仮説への影響：メモリ階層全体がAIインフラの制約になるという仮説は、CSP CapEx、TrendForceの価格見通し、Micron/SK hynix/Samsungの会社コメントで補強された。ただし、部材価格上昇がCSP収益性・投資継続性へ跳ね返るリスクと、Samsung/SK hynixに対するMicronの相対採用リスクは強めに監視する。&#10;- 四半期判定に持ち越す論点：CSP CapExの定義を揃えた横比較、Samsung/SK hynix/MicronのHBM4・SOCAMM2採用配分、TrendForce以外の市況ソース確認、Micron 6600 IONのdesign winや売上寄与。&#10;&#10;## 2. 弱気材料を先に確認&#10;&#10;- 弱気材料1：MicrosoftはCY2026 CapExを約1,900億ドルと見込み、そのうち約250億ドルは部材価格上昇の影響と説明した。需要は強いが、メモリ・部材価格上昇はCSPの投資効率を圧迫する可能性がある。&#10;- 弱気材料2：Metaは2026年CapEx見通しを1,250億から1,450億ドルへ引き上げた。従来レンジ1,150億から1,350億ドルからの増額で、理由は部材価格上昇と将来能力向けデータセンター費用。&#10;- 弱気材料3：SamsungはQ1 2026で、HBM4とSOCAMM2のmass product salesをNVIDIA Vera Rubin platform向けに開始したと説明した。MicronのVera Rubin世代での相対的な食い込みを継続確認する必要がある。&#10;- 弱気材料4：AmazonはTTM FCF低下の主因として、AI投資を反映したproperty and equipment purchases等の大幅増加を示した。AI投資が強い一方、CSP側の資本負担は重い。&#10;- 撤退条件との関係：現時点で強制ORANGE/RED条件には該当しない。ただし、CSP CapExが高水準でも「部材価格上昇で投資効率が悪化」している点は、需要鈍化や投資見直しに転じる前兆として監視する。&#10;&#10;## 3. 強気材料&#10;&#10;- 強気材料1：Micronは245TB Micron 6600 ION SSDのshippingを発表。AI data lakes、cloud-scale file/object storage、ラック密度、電力効率を訴求しており、AIストレージ需要の観測材料になる。&#10;- 強気材料2：TrendForceは2Q26のconventional DRAM contract priceを前四半期比58-63%上昇、NAND Flash contract priceを70-75%上昇と予想。CSPが長期契約で供給確保を進めると説明している。&#10;- 強気材料3：MicrosoftはAI businessが年換算370億ドル超、前年比123%増と説明し、GPU/CPU/storage capacityは2026年を通じて制約が残る見込みとした。&#10;- 強気材料4：AlphabetはGoogle Cloud revenueが63%増の200億ドル、backlogが4,600億ドル超と説明。Q1 purchases of property and equipmentは356.74億ドル。&#10;- 強気材料5：SK hynixはagentic AIによってDRAM/NAND全般へ需要が広がると説明し、HBM・高容量server DRAM・eSSD販売拡大を示した。&#10;&#10;## 4. 重要ニュース&#10;&#10;### 対象企業&#10;&#10;- Micronは2026-05-05に245TB 6600 ION data center SSDのshippingを発表した。AI workloads、data lakes、cloud-scale file/object storageを対象に、HDD比でラック数・電力・冷却面の効率を訴求している。&#10;- これはHBM/DRAMだけでなく、データセンターSSDもAI常駐社会のメモリ階層に含めるという投資仮説を補強する。&#10;&#10;### 主要製品・技術テーマ&#10;&#10;- TrendForceは、AI inference deploymentとgeneral-purpose server増設により、高容量RDIMMがCSPの主要調達対象になっていると説明した。&#10;- NAND側では、AI/data center需要によりenterprise SSD向けにcapacity allocationが進み、NAND Flash全体の価格上昇に広がっていると説明した。&#10;&#10;### 需要側&#10;&#10;- Microsoft：AI businessは年換算370億ドル超、前年比123%増。CY2026 CapExは約1,900億ドル見込みで、GPU/CPU/storage capacityの制約は少なくとも2026年中続く見込み。&#10;- Alphabet：Google Cloud revenueは63%増の200億ドル、backlogは4,600億ドル超。Q1 purchases of property and equipmentは356.74億ドル。&#10;- Amazon：AWS salesは28%増の376億ドル。TTM FCF低下は、主にAI投資を反映したproperty and equipment purchases等の593億ドル増加によるもの。&#10;- Meta：Q1 CapExは198億ドル。2026年CapEx見通しは1,250億から1,450億ドルへ増額。&#10;&#10;### 市況&#10;&#10;- TrendForceは2Q26のconventional DRAM contract priceを前四半期比58-63%上昇、NAND Flash contract priceを70-75%上昇と予想。&#10;- DRAM suppliersはHBM/server向けへcapacityを再配分し、NAND capacityもenterprise SSDへ寄っている。&#10;- 月次市況dry-runでは、Omdia/IDC/会社コメントを追加し、TrendForce単独依存を避ける。&#10;&#10;### 競合&#10;&#10;- SamsungはMemory Businessが過去最高の四半期売上・営業利益を出し、HBM4とSOCAMM2のmass product salesをNVIDIA Vera Rubin platform向けに開始したと説明。&#10;- SK hynixはQ1 2026で過去最高業績を発表し、HBM・高容量server DRAM・eSSD販売拡大、agentic AIによるDRAM/NAND全般の需要拡大を説明。&#10;- 競合も非常に強いため、市場全体の伸びだけでなく、Micronの相対的な採用・歩留まり・供給能力を次回以降で確認する。&#10;&#10;### 地政学・規制&#10;&#10;- 今週確認した一次情報では、Micronに直接影響する新規の対中規制・関税・補助金・ファブ遅延は確認していない。&#10;- 初回ベースラインで確認した中国CAC、台湾集中、通商・地政学リスクは継続監視。&#10;&#10;## 5. state更新候補&#10;&#10;### last_report&#10;&#10;- 最新レポートは`targets/MU/reports/weekly/2026-05-10_weekly.md`。&#10;- 判定はUNRATED、source_statusはpartially_verified、警戒度は注意。&#10;- 週次ではスコア付与せず、四半期判定へ持ち越す論点を更新する。&#10;&#10;### open_questions&#10;&#10;- Microsoft/Alphabet/Amazon/Meta/OracleのCapExを、finance lease、PPE、gross/net capexの定義差込みで比較する方法。&#10;- SamsungのVera Rubin向けHBM4/SOCAMM2販売がMicronの採用余地をどの程度削るか。&#10;- Micron 6600 ION SSDの顧客採用、売上寄与、data center SSD shareへの影響。&#10;- TrendForce以外のOmdia/IDC/会社コメントによるDRAM/NAND/enterprise SSD価格確認。&#10;&#10;### alerts&#10;&#10;- CSP CapExは強いが、MicrosoftとMetaが部材価格上昇をCapEx増加要因として明示。&#10;- SamsungがNVIDIA Vera Rubin platform向けHBM4/SOCAMM2で競争材料を提示。&#10;- AmazonのAI投資増加はFCFを圧迫しており、CSP側の投資効率は監視対象。&#10;&#10;### next_events&#10;&#10;- Dell Tech World 2026でMicron 6600 IONの展示・顧客コメントを確認。&#10;- 次回月次市況dry-runでTrendForce以外のDRAM/NAND/SSD価格ソースを確認。&#10;- 次回四半期判定でCSP CapEx横比較と競合HBM4/SOCAMM2採用比較を実施。&#10;&#10;## 6. 品質ゲート&#10;&#10;- 弱気材料を先に確認したか：はい。&#10;- 強制警戒条件に触れる兆候を確認したか：はい。CSP CapEx下方修正、DRAM/HBM価格下落、Micron粗利率低下、在庫増加、HBM採用劣後は現時点で同時発生を確認していない。&#10;- 出典URL、発表日、確認日があるか：はい。&#10;- 未確認項目をopen_questionsへ回したか：はい。&#10;- 投資助言ではなく観測レポートとして書いたか：はい。&#10;- 週次ではスコア未付与にしたか：はい。&#10;&#10;## 7. 次回確認すること&#10;&#10;- Micron 6600 ION SSDのDell Tech World展示後の顧客採用・design win・売上寄与。&#10;- Microsoft/Alphabet/Amazon/Meta/OracleのAI CapEx定義を揃えた比較。&#10;- Samsung/SK hynix/MicronのHBM4/HBM4E/SOCAMM2の顧客別採用配分。&#10;- TrendForce以外のOmdia/IDC/会社コメントによる価格方向確認。&#10;- 部材価格上昇がCSPのAI投資継続性を損なう兆候がないか。&#10;&#10;## 8. 出典&#10;&#10;| 種別 | 発行元 | タイトル | URL | 発表日 | 確認日 |&#10;|---|---|---|---|---|---|&#10;| primary | Micron IR | Industry-Leading 245TB Micron 6600 ION Data Center SSD Now Shipping | https://investors.micron.com/news-releases/news-release-details/industry-leading-245tb-micron-6600-ion-data-center-ssd-now | 2026-05-05 | 2026-05-10 |&#10;| market_data | TrendForce | AI Server Demand to Drive Memory Contract Price Increases in 2Q26 as CSPs Secure Supply via Long-Term Agreements | https://www.trendforce.com/presscenter/news/20260331-12995.html | 2026-03-31 | 2026-05-10 |&#10;| primary | Microsoft IR | Microsoft Fiscal Year 2026 Third Quarter Earnings Conference Call | https://www.microsoft.com/en-us/investor/events/fy-2026/earnings-fy-2026-q3 | 2026-04-29 | 2026-05-10 |&#10;| primary | Alphabet / SEC | Alphabet Announces First Quarter 2026 Results | https://www.sec.gov/Archives/edgar/data/1652044/000165204426000043/googexhibit991q12026.htm | 2026-04-29 | 2026-05-10 |&#10;| primary | Amazon IR | Amazon.com Announces First Quarter Results | https://s2.q4cdn.com/299287126/files/doc_earnings/2026/q1/earnings-result/AMZN-Q1-2026-Earnings-Release.pdf | 2026-04-29 | 2026-05-10 |&#10;| primary | Meta / SEC | Meta Reports First Quarter 2026 Results | https://www.sec.gov/Archives/edgar/data/1326801/000162828026028364/meta-03312026xexhibit991.htm | 2026-04-29 | 2026-05-10 |&#10;| primary | Samsung Newsroom | Samsung Electronics Announces First Quarter 2026 Results | https://news.samsung.com/ca/samsung-electronics-announces-first-quarter-2026-results | 2026-05-06 | 2026-05-10 |&#10;| primary | SK hynix Newsroom | SK hynix Announces 1Q26 Financial Results | https://news.skhynix.com/q1-2026-business-results/ | 2026-04-23 | 2026-05-10 |&#10;">Copy report Markdown</button>
+    <button type="button" aria-label="Copy action summary" data-copy-label="action summary" data-copy="# Micron集中投資 週次ニュース監視 action summary&#10;&#10;- judgement: UNRATED&#10;- score: N/A / 27&#10;- source_status: partially_verified&#10;&#10;## 今週の結論&#10;- 最も重要な変化：Micronが245TB 6600 ION data center SSDのshippingを発表し、AI data lake / cloud-scale storage仮説を補強した。一方で、MicrosoftとMetaが部材価格上昇をCapEx増加要因として明示し、SamsungもNVIDIA Vera Rubin向けHBM4/SOCAMM2の競争材料を出した。&#10;- 投資仮説への影響：メモリ階層全体がAIインフラの制約になるという仮説は、CSP CapEx、TrendForceの価格見通し、Micron/SK hynix/Samsungの会社コメントで補強された。ただし、部材価格上昇がCSP収益性・投資継続性へ跳ね返るリスクと、Samsung/SK hynixに対するMicronの相対採用リスクは強めに監視する。&#10;- 四半期判定に持ち越す論点：CSP CapExの定義を揃えた横比較、Samsung/SK hynix/MicronのHBM4・SOCAMM2採用配分、TrendForce以外の市況ソース確認、Micron 6600 IONのdesign winや売上寄与。&#10;&#10;## 次回確認すること&#10;- Micron 6600 ION SSDのDell Tech World展示後の顧客採用・design win・売上寄与。&#10;- Microsoft/Alphabet/Amazon/Meta/OracleのAI CapEx定義を揃えた比較。&#10;- Samsung/SK hynix/MicronのHBM4/HBM4E/SOCAMM2の顧客別採用配分。&#10;- TrendForce以外のOmdia/IDC/会社コメントによる価格方向確認。&#10;- 部材価格上昇がCSPのAI投資継続性を損なう兆候がないか。">Copy action summary</button>
+    <button type="button" aria-label="Copy source checklist" data-copy-label="source checklist" data-copy="# Micron集中投資 週次ニュース監視 source checklist&#10;&#10;- source_status: partially_verified&#10;&#10;- [ ] primary / Micron IR / Industry-Leading 245TB Micron 6600 ION Data Center SSD Now Shipping / 確認済み&#10;- [ ] market_data / TrendForce / AI Server Demand to Drive Memory Contract Price Increases in 2Q26 as CSPs Secure Supply via Long-Term Agreements / 確認済み&#10;- [ ] primary / Microsoft IR / Microsoft Fiscal Year 2026 Third Quarter Earnings Conference Call / 確認済み&#10;- [ ] primary / Alphabet / SEC / Alphabet Announces First Quarter 2026 Results / 確認済み&#10;- [ ] primary / Amazon IR / Amazon.com Announces First Quarter Results / 確認済み&#10;- [ ] primary / Meta / SEC / Meta Reports First Quarter 2026 Results / 確認済み&#10;- [ ] primary / Samsung Newsroom / Samsung Electronics Announces First Quarter 2026 Results / 確認済み&#10;- [ ] primary / SK hynix Newsroom / SK hynix Announces 1Q26 Financial Results / 確認済み">Copy source checklist</button>
+  </section>
+  <details class="copyFallback" data-copy-fallback>
+    <summary>Copy fallback</summary>
+    <p>クリップボードAPIが使えない場合は、下のMarkdownを選択して使用します。</p>
+    <textarea readonly aria-label="コピー対象Markdown"></textarea>
+  </details>
+
+<details class="sourceDrawer">
+    <summary><span>Source drawer</span>出典一覧 (8件、primary 7件)</summary>
+    <div class="sourceDrawerBody">
+      <p>一次情報を先頭に並べています。URL、発表日、確認日の欠落は次回確認対象です。</p>
+      <div class="sourceList"><article class="sourceItem primary">
+    <span class="sourceType">primary / Micron IR</span>
+    <strong class="sourceTitle"><a href="https://investors.micron.com/news-releases/news-release-details/industry-leading-245tb-micron-6600-ion-data-center-ssd-now">Industry-Leading 245TB Micron 6600 ION Data Center SSD Now Shipping</a></strong>
+    <p class="sourceMeta"><a href="https://investors.micron.com/news-releases/news-release-details/industry-leading-245tb-micron-6600-ion-data-center-ssd-now">URL</a> / 発表日: 2026-05-05 / 確認日: 2026-05-10</p>
+  </article><article class="sourceItem primary">
+    <span class="sourceType">primary / Microsoft IR</span>
+    <strong class="sourceTitle"><a href="https://www.microsoft.com/en-us/investor/events/fy-2026/earnings-fy-2026-q3">Microsoft Fiscal Year 2026 Third Quarter Earnings Conference Call</a></strong>
+    <p class="sourceMeta"><a href="https://www.microsoft.com/en-us/investor/events/fy-2026/earnings-fy-2026-q3">URL</a> / 発表日: 2026-04-29 / 確認日: 2026-05-10</p>
+  </article><article class="sourceItem primary">
+    <span class="sourceType">primary / Alphabet / SEC</span>
+    <strong class="sourceTitle"><a href="https://www.sec.gov/Archives/edgar/data/1652044/000165204426000043/googexhibit991q12026.htm">Alphabet Announces First Quarter 2026 Results</a></strong>
+    <p class="sourceMeta"><a href="https://www.sec.gov/Archives/edgar/data/1652044/000165204426000043/googexhibit991q12026.htm">URL</a> / 発表日: 2026-04-29 / 確認日: 2026-05-10</p>
+  </article><article class="sourceItem primary">
+    <span class="sourceType">primary / Amazon IR</span>
+    <strong class="sourceTitle"><a href="https://s2.q4cdn.com/299287126/files/doc_earnings/2026/q1/earnings-result/AMZN-Q1-2026-Earnings-Release.pdf">Amazon.com Announces First Quarter Results</a></strong>
+    <p class="sourceMeta"><a href="https://s2.q4cdn.com/299287126/files/doc_earnings/2026/q1/earnings-result/AMZN-Q1-2026-Earnings-Release.pdf">URL</a> / 発表日: 2026-04-29 / 確認日: 2026-05-10</p>
+  </article><article class="sourceItem primary">
+    <span class="sourceType">primary / Meta / SEC</span>
+    <strong class="sourceTitle"><a href="https://www.sec.gov/Archives/edgar/data/1326801/000162828026028364/meta-03312026xexhibit991.htm">Meta Reports First Quarter 2026 Results</a></strong>
+    <p class="sourceMeta"><a href="https://www.sec.gov/Archives/edgar/data/1326801/000162828026028364/meta-03312026xexhibit991.htm">URL</a> / 発表日: 2026-04-29 / 確認日: 2026-05-10</p>
+  </article><article class="sourceItem primary">
+    <span class="sourceType">primary / Samsung Newsroom</span>
+    <strong class="sourceTitle"><a href="https://news.samsung.com/ca/samsung-electronics-announces-first-quarter-2026-results">Samsung Electronics Announces First Quarter 2026 Results</a></strong>
+    <p class="sourceMeta"><a href="https://news.samsung.com/ca/samsung-electronics-announces-first-quarter-2026-results">URL</a> / 発表日: 2026-05-06 / 確認日: 2026-05-10</p>
+  </article><article class="sourceItem primary">
+    <span class="sourceType">primary / SK hynix Newsroom</span>
+    <strong class="sourceTitle"><a href="https://news.skhynix.com/q1-2026-business-results/">SK hynix Announces 1Q26 Financial Results</a></strong>
+    <p class="sourceMeta"><a href="https://news.skhynix.com/q1-2026-business-results/">URL</a> / 発表日: 2026-04-23 / 確認日: 2026-05-10</p>
+  </article><article class="sourceItem market_data">
+    <span class="sourceType">market_data / TrendForce</span>
+    <strong class="sourceTitle"><a href="https://www.trendforce.com/presscenter/news/20260331-12995.html">AI Server Demand to Drive Memory Contract Price Increases in 2Q26 as CSPs Secure Supply via Long-Term Agreements</a></strong>
+    <p class="sourceMeta"><a href="https://www.trendforce.com/presscenter/news/20260331-12995.html">URL</a> / 発表日: 2026-03-31 / 確認日: 2026-05-10</p>
+  </article></div>
+    </div>
+  </details>
+
+  <article class="report" data-report-path="targets/MU/reports/weekly/2026-05-10_weekly.md">
+<h1 id="sec-micron集中投資-週次ニュース監視">Micron集中投資 週次ニュース監視</h1>
+<p>対象：Micron Technology（MU）</p>
+<p>日付：2026-05-10</p>
+<p>対象期間：2026-05-04 から 2026-05-10</p>
+<p>警戒度：注意</p>
+<p>スコア：週次では<span class="dir unknown">未付与</span> / 27</p>
+<p>注記：これは投資助言ではなく、次回の月次・四半期判定へ渡すための週次観測メモである。</p>
+<details class="sectionDetails" id="sec-今週の結論" open><summary>1. 今週の結論</summary>
+<ul>
+<li>最も重要な変化：Micronが245TB 6600 ION data center SSDのshippingを発表し、AI data lake / cloud-scale storage仮説を補強した。一方で、MicrosoftとMetaが部材価格<span class="dir up">上昇</span>をCapEx<span class="dir up">増加</span>要因として明示し、SamsungもNVIDIA Vera Rubin向けHBM4/SOCAMM2の競争材料を出した。</li>
+<li>投資仮説への影響：メモリ階層全体がAIインフラの制約になるという仮説は、CSP CapEx、TrendForceの価格見通し、Micron/SK hynix/Samsungの会社コメントで補強された。ただし、部材価格<span class="dir up">上昇</span>がCSP収益性・投資継続性へ跳ね返るリスクと、Samsung/SK hynixに対するMicronの相対採用リスクは強めに監視する。</li>
+<li>四半期判定に持ち越す論点：CSP CapExの定義を揃えた横比較、Samsung/SK hynix/MicronのHBM4・SOCAMM2採用配分、TrendForce以外の市況ソース確認、Micron 6600 IONのdesign winや売上寄与。</li>
+</ul>
+</details>
+<details class="sectionDetails" id="sec-弱気材料を先に確認" open><summary>2. 弱気材料を先に確認</summary>
+<ul>
+<li>弱気材料1：MicrosoftはCY2026 CapExを約1,900億ドルと見込み、そのうち約250億ドルは部材価格<span class="dir up">上昇</span>の影響と説明した。需要は強いが、メモリ・部材価格<span class="dir up">上昇</span>はCSPの投資効率を圧迫する可能性がある。</li>
+<li>弱気材料2：Metaは2026年CapEx見通しを1,250億から1,450億ドルへ引き上げた。従来レンジ1,150億から1,350億ドルからの増額で、理由は部材価格<span class="dir up">上昇</span>と将来能力向けデータセンター費用。</li>
+<li>弱気材料3：SamsungはQ1 2026で、HBM4とSOCAMM2のmass product salesをNVIDIA Vera Rubin platform向けに開始したと説明した。MicronのVera Rubin世代での相対的な食い込みを継続確認する必要がある。</li>
+<li>弱気材料4：AmazonはTTM FCF<span class="dir down">低下</span>の主因として、AI投資を反映したproperty and equipment purchases等の大幅<span class="dir up">増加</span>を示した。AI投資が強い一方、CSP側の資本負担は重い。</li>
+<li>撤退条件との関係：現時点で強制ORANGE/RED条件には該当しない。ただし、CSP CapExが高水準でも「部材価格<span class="dir up">上昇</span>で投資効率が<span class="dir down">悪化</span>」している点は、需要鈍化や投資見直しに転じる前兆として監視する。</li>
+</ul>
+</details>
+<details class="sectionDetails" id="sec-強気材料" open><summary>3. 強気材料</summary>
+<ul>
+<li>強気材料1：Micronは245TB Micron 6600 ION SSDのshippingを発表。AI data lakes、cloud-scale file/object storage、ラック密度、電力効率を訴求しており、AIストレージ需要の観測材料になる。</li>
+<li>強気材料2：TrendForceは2Q26のconventional DRAM contract priceを前四半期比58-63%<span class="dir up">上昇</span>、NAND Flash contract priceを70-75%<span class="dir up">上昇</span>と予想。CSPが長期契約で供給確保を進めると説明している。</li>
+<li>強気材料3：MicrosoftはAI businessが年換算370億ドル超、前年比123%増と説明し、GPU/CPU/storage capacityは2026年を通じて制約が残る見込みとした。</li>
+<li>強気材料4：AlphabetはGoogle Cloud revenueが63%増の200億ドル、backlogが4,600億ドル超と説明。Q1 purchases of property and equipmentは356.74億ドル。</li>
+<li>強気材料5：SK hynixはagentic AIによってDRAM/NAND全般へ需要が広がると説明し、HBM・高容量server DRAM・eSSD販売拡大を示した。</li>
+</ul>
+</details>
+<details class="sectionDetails" id="sec-重要ニュース" open><summary>4. 重要ニュース</summary>
+<h3 id="sec-対象企業">対象企業</h3>
+<ul>
+<li>Micronは2026-05-05に245TB 6600 ION data center SSDのshippingを発表した。AI workloads、data lakes、cloud-scale file/object storageを対象に、HDD比でラック数・電力・冷却面の効率を訴求している。</li>
+<li>これはHBM/DRAMだけでなく、データセンターSSDもAI常駐社会のメモリ階層に含めるという投資仮説を補強する。</li>
+</ul>
+<h3 id="sec-主要製品・技術テーマ">主要製品・技術テーマ</h3>
+<ul>
+<li>TrendForceは、AI inference deploymentとgeneral-purpose server増設により、高容量RDIMMがCSPの主要調達対象になっていると説明した。</li>
+<li>NAND側では、AI/data center需要によりenterprise SSD向けにcapacity allocationが進み、NAND Flash全体の価格<span class="dir up">上昇</span>に広がっていると説明した。</li>
+</ul>
+<h3 id="sec-需要側">需要側</h3>
+<ul>
+<li>Microsoft：AI businessは年換算370億ドル超、前年比123%増。CY2026 CapExは約1,900億ドル見込みで、GPU/CPU/storage capacityの制約は少なくとも2026年中続く見込み。</li>
+<li>Alphabet：Google Cloud revenueは63%増の200億ドル、backlogは4,600億ドル超。Q1 purchases of property and equipmentは356.74億ドル。</li>
+<li>Amazon：AWS salesは28%増の376億ドル。TTM FCF<span class="dir down">低下</span>は、主にAI投資を反映したproperty and equipment purchases等の593億ドル<span class="dir up">増加</span>によるもの。</li>
+<li>Meta：Q1 CapExは198億ドル。2026年CapEx見通しは1,250億から1,450億ドルへ増額。</li>
+</ul>
+<h3 id="sec-市況">市況</h3>
+<ul>
+<li>TrendForceは2Q26のconventional DRAM contract priceを前四半期比58-63%<span class="dir up">上昇</span>、NAND Flash contract priceを70-75%<span class="dir up">上昇</span>と予想。</li>
+<li>DRAM suppliersはHBM/server向けへcapacityを再配分し、NAND capacityもenterprise SSDへ寄っている。</li>
+<li>月次市況dry-runでは、Omdia/IDC/会社コメントを追加し、TrendForce単独依存を避ける。</li>
+</ul>
+<h3 id="sec-競合">競合</h3>
+<ul>
+<li>SamsungはMemory Businessが過去最高の四半期売上・営業利益を出し、HBM4とSOCAMM2のmass product salesをNVIDIA Vera Rubin platform向けに開始したと説明。</li>
+<li>SK hynixはQ1 2026で過去最高業績を発表し、HBM・高容量server DRAM・eSSD販売拡大、agentic AIによるDRAM/NAND全般の需要拡大を説明。</li>
+<li>競合も非常に強いため、市場全体の伸びだけでなく、Micronの相対的な採用・歩留まり・供給能力を次回以降で確認する。</li>
+</ul>
+<h3 id="sec-地政学・規制">地政学・規制</h3>
+<ul>
+<li>今週確認した一次情報では、Micronに直接影響する新規の対中規制・関税・補助金・ファブ遅延は確認していない。</li>
+<li>初回ベースラインで確認した中国CAC、台湾集中、通商・地政学リスクは継続監視。</li>
+</ul>
+</details>
+<details class="sectionDetails" id="sec-state更新候補" open><summary>5. state更新候補</summary>
+<h3 id="sec-last-report">last_report</h3>
+<ul>
+<li>最新レポートは<code>targets/MU/reports/weekly/2026-05-10_weekly.md</code>。</li>
+<li>判定は<span class="dir unknown">UNRATED</span>、source_statusはpartially_verified、警戒度は注意。</li>
+<li>週次ではスコア付与せず、四半期判定へ持ち越す論点を更新する。</li>
+</ul>
+<h3 id="sec-open-questions">open_questions</h3>
+<ul>
+<li>Microsoft/Alphabet/Amazon/Meta/OracleのCapExを、finance lease、PPE、gross/net capexの定義差込みで比較する方法。</li>
+<li>SamsungのVera Rubin向けHBM4/SOCAMM2販売がMicronの採用余地をどの程度削るか。</li>
+<li>Micron 6600 ION SSDの顧客採用、売上寄与、data center SSD shareへの影響。</li>
+<li>TrendForce以外のOmdia/IDC/会社コメントによるDRAM/NAND/enterprise SSD価格確認。</li>
+</ul>
+<h3 id="sec-alerts">alerts</h3>
+<ul>
+<li>CSP CapExは強いが、MicrosoftとMetaが部材価格<span class="dir up">上昇</span>をCapEx<span class="dir up">増加</span>要因として明示。</li>
+<li>SamsungがNVIDIA Vera Rubin platform向けHBM4/SOCAMM2で競争材料を提示。</li>
+<li>AmazonのAI投資<span class="dir up">増加</span>はFCFを圧迫しており、CSP側の投資効率は監視対象。</li>
+</ul>
+<h3 id="sec-next-events">next_events</h3>
+<ul>
+<li>Dell Tech World 2026でMicron 6600 IONの展示・顧客コメントを確認。</li>
+<li>次回月次市況dry-runでTrendForce以外のDRAM/NAND/SSD価格ソースを確認。</li>
+<li>次回四半期判定でCSP CapEx横比較と競合HBM4/SOCAMM2採用比較を実施。</li>
+</ul>
+</details>
+<details class="sectionDetails" id="sec-品質ゲート" open><summary>6. 品質ゲート</summary>
+<ul>
+<li>弱気材料を先に確認したか：はい。</li>
+<li>強制警戒条件に触れる兆候を確認したか：はい。CSP CapEx<span class="dir down">下方修正</span>、DRAM/HBM価格<span class="dir down">下落</span>、Micron粗利率<span class="dir down">低下</span>、在庫<span class="dir up">増加</span>、HBM採用劣後は現時点で同時発生を確認していない。</li>
+<li>出典URL、発表日、確認日があるか：はい。</li>
+<li><span class="dir unknown">未確認</span>項目をopen_questionsへ回したか：はい。</li>
+<li>投資助言ではなく観測レポートとして書いたか：はい。</li>
+<li>週次ではスコア<span class="dir unknown">未付与</span>にしたか：はい。</li>
+</ul>
+</details>
+<details class="sectionDetails" id="sec-次回確認すること" open><summary>7. 次回確認すること</summary>
+<ul>
+<li>Micron 6600 ION SSDのDell Tech World展示後の顧客採用・design win・売上寄与。</li>
+<li>Microsoft/Alphabet/Amazon/Meta/OracleのAI CapEx定義を揃えた比較。</li>
+<li>Samsung/SK hynix/MicronのHBM4/HBM4E/SOCAMM2の顧客別採用配分。</li>
+<li>TrendForce以外のOmdia/IDC/会社コメントによる価格方向確認。</li>
+<li>部材価格<span class="dir up">上昇</span>がCSPのAI投資継続性を損なう兆候がないか。</li>
+</ul>
+</details>
+<details class="sectionDetails" id="sec-出典"><summary>8. 出典</summary>
+<div class="tableScroll"><table><thead><tr><th>種別</th><th>発行元</th><th>タイトル</th><th>URL</th><th>発表日</th><th>確認日</th></tr></thead><tbody><tr><td>primary</td><td>Micron IR</td><td>Industry-Leading 245TB Micron 6600 ION Data Center SSD Now Shipping</td><td>https://investors.micron.com/news-releases/news-release-details/industry-leading-245tb-micron-6600-ion-data-center-ssd-now</td><td>2026-05-05</td><td>2026-05-10</td></tr><tr><td>market_data</td><td>TrendForce</td><td>AI Server Demand to Drive Memory Contract Price Increases in 2Q26 as CSPs Secure Supply via Long-Term Agreements</td><td>https://www.trendforce.com/presscenter/news/20260331-12995.html</td><td>2026-03-31</td><td>2026-05-10</td></tr><tr><td>primary</td><td>Microsoft IR</td><td>Microsoft Fiscal Year 2026 Third Quarter Earnings Conference Call</td><td>https://www.microsoft.com/en-us/investor/events/fy-2026/earnings-fy-2026-q3</td><td>2026-04-29</td><td>2026-05-10</td></tr><tr><td>primary</td><td>Alphabet / SEC</td><td>Alphabet Announces First Quarter 2026 Results</td><td>https://www.sec.gov/Archives/edgar/data/1652044/000165204426000043/googexhibit991q12026.htm</td><td>2026-04-29</td><td>2026-05-10</td></tr><tr><td>primary</td><td>Amazon IR</td><td>Amazon.com Announces First Quarter Results</td><td>https://s2.q4cdn.com/299287126/files/doc_earnings/2026/q1/earnings-result/AMZN-Q1-2026-Earnings-Release.pdf</td><td>2026-04-29</td><td>2026-05-10</td></tr><tr><td>primary</td><td>Meta / SEC</td><td>Meta Reports First Quarter 2026 Results</td><td>https://www.sec.gov/Archives/edgar/data/1326801/000162828026028364/meta-03312026xexhibit991.htm</td><td>2026-04-29</td><td>2026-05-10</td></tr><tr><td>primary</td><td>Samsung Newsroom</td><td>Samsung Electronics Announces First Quarter 2026 Results</td><td>https://news.samsung.com/ca/samsung-electronics-announces-first-quarter-2026-results</td><td>2026-05-06</td><td>2026-05-10</td></tr><tr><td>primary</td><td>SK hynix Newsroom</td><td>SK hynix Announces 1Q26 Financial Results</td><td>https://news.skhynix.com/q1-2026-business-results/</td><td>2026-04-23</td><td>2026-05-10</td></tr></tbody></table></div>
+</details>
+  </article>
+</main>
+
+<script>
+document.querySelectorAll("[data-copy]").forEach((button) => {
+  button.addEventListener("click", async () => {
+    const label = button.getAttribute("data-copy-label") || "text";
+    const text = button.getAttribute("data-copy") || "";
+    try {
+      await navigator.clipboard.writeText(text);
+      const original = button.textContent;
+      button.textContent = "コピー完了: " + label;
+      setTimeout(() => { button.textContent = original; }, 1200);
+    } catch (error) {
+      const fallback = document.querySelector("[data-copy-fallback]");
+      if (fallback) {
+        const textarea = fallback.querySelector("textarea");
+        fallback.open = true;
+        if (textarea) {
+          textarea.value = text;
+          textarea.focus();
+          textarea.select();
+        }
+      }
+      button.textContent = "コピー失敗";
+    }
+  });
+});
+</script>
+</body>
+</html>

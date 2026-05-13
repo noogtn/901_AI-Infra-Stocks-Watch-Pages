@@ -1,0 +1,843 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Micron集中投資 月次市況確認</title>
+<style>
+
+:root {
+  color-scheme: light;
+  --bg: #f7f8fa;
+  --panel: #ffffff;
+  --text: #1f2933;
+  --muted: #627080;
+  --line: #d9dee6;
+  --accent: #145c9e;
+  --warn: #a85400;
+  --danger: #a51d2d;
+  --ok: #1f7a4d;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  line-height: 1.65;
+  overflow-wrap: anywhere;
+}
+.skipLink {
+  position: absolute;
+  left: 12px;
+  top: -48px;
+  z-index: 10;
+  background: #fff;
+  border: 2px solid var(--accent);
+  border-radius: 8px;
+  color: var(--accent);
+  padding: 8px 10px;
+}
+.skipLink:focus { top: 12px; }
+.topbar {
+  display: flex;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 28px clamp(16px, 4vw, 48px);
+  background: #ffffff;
+  border-bottom: 1px solid var(--line);
+}
+.eyebrow, .meta { color: var(--muted); margin: 0 0 6px; }
+h1 { margin: 0; font-size: 2rem; line-height: 1.18; letter-spacing: 0; }
+main { max-width: 1180px; margin: 0 auto; padding: 24px clamp(14px, 3vw, 32px) 56px; }
+.statusStack { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; }
+.badge {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 6px 10px;
+  font-weight: 700;
+  background: #fff;
+}
+.judgement.green { color: var(--ok); border-color: #8cc7a8; }
+.judgement.light_green { color: #4d7a1f; border-color: #b6d986; }
+.judgement.yellow { color: #7c6500; border-color: #d8c65a; }
+.judgement.orange { color: var(--warn); border-color: #d79a4a; }
+.judgement.red { color: var(--danger); border-color: #d8818d; }
+.judgement.unrated { color: #475569; border-color: #94a3b8; background: #f8fafc; }
+.source.needs_review { color: var(--danger); border-color: #d8818d; }
+.source.partially_verified, .source.draft { color: var(--warn); border-color: #d79a4a; }
+.source.verified { color: var(--ok); border-color: #8cc7a8; }
+.source.unknown, .source.unrated { color: #475569; border-color: #94a3b8; background: #f8fafc; }
+.statusCards, .summaryCards {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 18px;
+}
+.statusCard, .summaryCard {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-left: 6px solid var(--accent);
+  border-radius: 8px;
+  padding: 14px;
+}
+.statusCard > span, .summaryCard > span {
+  display: block;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 700;
+  margin-bottom: 4px;
+  text-transform: uppercase;
+}
+.statusCard strong, .summaryCard strong {
+  display: block;
+  font-size: 22px;
+  line-height: 1.25;
+}
+.statusCard p, .summaryCard p {
+  color: var(--muted);
+  margin: 8px 0 0;
+}
+.statusCard.green, .summaryCard.ok { border-left-color: var(--ok); }
+.statusCard.light_green { border-left-color: #6f9b2e; }
+.statusCard.yellow { border-left-color: #b69700; }
+.statusCard.orange, .statusCard.draft, .statusCard.partially_verified, .summaryCard.warn { border-left-color: var(--warn); }
+.statusCard.red, .statusCard.needs_review, .summaryCard.danger { border-left-color: var(--danger); }
+.statusCard.warn { border-left-color: var(--warn); }
+.statusCard.unrated, .statusCard.unknown { border-left-color: #64748b; }
+.summaryCard ul {
+  margin: 10px 0 0;
+  padding-left: 20px;
+}
+.summaryCard li { margin: 4px 0; }
+.decisionGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 18px;
+}
+.decisionGrid article {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 14px;
+}
+.decisionGrid span {
+  display: block;
+  color: var(--muted);
+  font-size: 13px;
+  margin-bottom: 4px;
+}
+.decisionGrid strong { font-size: 18px; line-height: 1.35; }
+.toc, .actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  align-items: center;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 12px;
+  margin-bottom: 16px;
+}
+.toc a { color: var(--accent); text-decoration: none; }
+button {
+  border: 1px solid #b9c2cf;
+  border-radius: 8px;
+  background: #fff;
+  color: var(--text);
+  padding: 8px 10px;
+  font: inherit;
+  cursor: pointer;
+  min-height: 44px;
+  touch-action: manipulation;
+}
+button:hover { border-color: var(--accent); color: var(--accent); }
+button:focus-visible,
+a:focus-visible,
+summary:focus-visible {
+  outline: 3px solid #5a8db8;
+  outline-offset: 3px;
+}
+.copyFallback {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  margin: 0 0 18px;
+  padding: 12px;
+}
+.copyFallback summary {
+  cursor: pointer;
+  font-weight: 700;
+}
+.copyFallback p {
+  color: var(--muted);
+  margin: 4px 0 8px;
+}
+.copyFallback textarea {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  font: 13px/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  min-height: 160px;
+  padding: 10px;
+  resize: vertical;
+  width: 100%;
+}
+.report {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 4px 18px 18px;
+}
+.report h1 { font-size: 28px; margin: 18px 0 10px; }
+.report h2 { font-size: 21px; margin: 24px 0 10px; padding-top: 8px; border-top: 1px solid var(--line); }
+.report h3 { font-size: 17px; margin: 18px 0 8px; }
+.report table { border-collapse: collapse; width: 100%; overflow-x: auto; display: block; }
+.report th, .report td { border: 1px solid var(--line); padding: 8px; text-align: left; vertical-align: top; }
+.report code { background: #eef1f5; padding: 2px 4px; border-radius: 4px; }
+.report pre { background: #111827; color: #f7f8fa; padding: 12px; border-radius: 8px; overflow-x: auto; }
+.sectionDetails {
+  border-top: 1px solid var(--line);
+  padding: 6px 0;
+}
+.sectionDetails > summary {
+  cursor: pointer;
+  font-size: 21px;
+  font-weight: 700;
+  padding: 10px 0;
+}
+.sectionDetails.sectionMarket {
+  border: 1px solid var(--line);
+  border-left: 6px solid var(--accent);
+  border-radius: 8px;
+  padding: 8px 12px 12px;
+  background: #fbfdff;
+}
+.sectionDetails.sectionMarket > summary {
+  margin: 0 0 4px;
+}
+.dir {
+  display: inline-block;
+  padding: 1px 6px;
+  border-radius: 999px;
+  font-size: 1em;
+  border: 1px solid transparent;
+}
+.dir.up {
+  color: var(--ok);
+  border-color: #8cc7a8;
+  background: #f0fbf5;
+}
+.dir.down {
+  color: var(--danger);
+  border-color: #d8818d;
+  background: #fff5f6;
+}
+.dir.flat {
+  color: #475569;
+  border-color: #94a3b8;
+  background: #f8fafc;
+}
+.dir.unknown {
+  color: var(--warn);
+  border-color: #d79a4a;
+  background: #fff9f1;
+  font-weight: 600;
+}
+.firstView {
+  display: grid;
+  gap: 14px;
+  margin-bottom: 18px;
+}
+.statusCards {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+.statusCard,
+.summaryCard,
+.decisionGrid article,
+.toc,
+.actions,
+.report,
+.sourceDrawer,
+.riskHighlight,
+.scoreboard {
+  box-shadow: 0 1px 2px rgba(31, 41, 51, 0.04);
+}
+.statusCard strong,
+.decisionGrid strong,
+.summaryCard strong {
+  overflow-wrap: anywhere;
+}
+.statusCard .miniList,
+.sourceDrawer .miniList {
+  margin: 10px 0 0;
+  padding-left: 18px;
+  color: var(--muted);
+  font-size: 14px;
+}
+.forcedCard.ok { border-left-color: var(--ok); }
+.forcedCard.warn { border-left-color: var(--warn); }
+.forcedCard.danger { border-left-color: var(--danger); }
+.sourceMetrics {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+}
+.metricPill {
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: #f8fafc;
+  color: #334155;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 2px 8px;
+}
+.riskHighlight {
+  background: #fffdf8;
+  border: 1px solid #e6d7b4;
+  border-left: 6px solid var(--warn);
+  border-radius: 8px;
+  padding: 14px;
+}
+.riskHighlight > span,
+.scoreboard > span,
+.sourceDrawer > summary span {
+  color: var(--muted);
+  display: block;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+.riskHighlight h2,
+.scoreboard h2 {
+  font-size: 18px;
+  line-height: 1.3;
+  margin: 2px 0 8px;
+}
+.riskHighlight ul {
+  display: grid;
+  gap: 6px;
+  margin: 10px 0 0;
+  padding-left: 20px;
+}
+.riskHighlight li::marker {
+  content: "Risk ";
+  color: var(--warn);
+  font-weight: 800;
+}
+.scoreboard {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 14px;
+}
+.scoreGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 12px;
+}
+.scoreItem {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fbfcfd;
+  min-width: 0;
+  padding: 12px;
+}
+.scoreItem header {
+  align-items: flex-start;
+  display: flex;
+  gap: 8px;
+  justify-content: space-between;
+}
+.scoreItem h3 {
+  font-size: 15px;
+  line-height: 1.35;
+  margin: 0;
+}
+.scoreValue {
+  border: 1px solid #c8d1dc;
+  border-radius: 999px;
+  color: #1f2933;
+  flex: 0 0 auto;
+  font-variant-numeric: tabular-nums;
+  font-weight: 800;
+  padding: 1px 8px;
+}
+.scoreItem p {
+  color: var(--muted);
+  font-size: 14px;
+  margin: 8px 0 0;
+}
+.scoreItem .scoreMeta {
+  color: var(--muted);
+  font-size: 12px;
+  margin-top: 8px;
+}
+.scoreItem.unrated .scoreValue,
+.scoreItem.unknown .scoreValue {
+  background: #fff9f1;
+  border-color: #d79a4a;
+  color: var(--warn);
+}
+.sourceDrawer {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  margin-bottom: 16px;
+  padding: 0;
+}
+.sourceDrawer > summary {
+  cursor: pointer;
+  font-weight: 800;
+  list-style-position: inside;
+  padding: 12px 14px;
+}
+.sourceDrawerBody {
+  border-top: 1px solid var(--line);
+  padding: 12px 14px 14px;
+}
+.sourceList {
+  display: grid;
+  gap: 8px;
+  margin-top: 12px;
+}
+.sourceItem {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 10px;
+}
+.sourceItem.primary {
+  border-left: 5px solid var(--ok);
+}
+.sourceItem.market_data {
+  border-left: 5px solid var(--accent);
+}
+.sourceType {
+  color: var(--muted);
+  display: block;
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+.sourceTitle {
+  display: block;
+  font-weight: 800;
+  line-height: 1.35;
+  margin-top: 2px;
+}
+.sourceMeta {
+  color: var(--muted);
+  font-size: 13px;
+  margin: 4px 0 0;
+}
+.sourceItem a {
+  color: var(--accent);
+}
+.report a {
+  color: var(--accent);
+  overflow-wrap: anywhere;
+}
+.tableScroll {
+  max-width: 100%;
+  overflow-x: auto;
+  overscroll-behavior-inline: contain;
+}
+.tableScroll table {
+  display: table;
+  min-width: 680px;
+  width: 100%;
+}
+@media (max-width: 720px) {
+  .topbar { flex-direction: column; }
+  .statusStack { align-items: flex-start; flex-direction: row; flex-wrap: wrap; }
+  .statusCards, .summaryCards { grid-template-columns: 1fr; }
+  .decisionGrid { grid-template-columns: 1fr; }
+  .scoreGrid { grid-template-columns: 1fr; }
+  .report { padding: 2px 12px 14px; }
+}
+@media (max-width: 420px) {
+  h1 { font-size: 1.45rem; }
+  main { padding-left: 10px; padding-right: 10px; }
+  .topbar { padding: 18px 12px; }
+  .badge,
+  button {
+    width: 100%;
+    justify-content: center;
+  }
+  .actions { align-items: stretch; flex-direction: column; }
+  .decisionGrid strong { font-size: 16px; }
+}
+@media print {
+  @page { margin: 14mm; }
+  body {
+    background: #fff;
+    color: #111;
+    font-size: 11pt;
+  }
+  main {
+    max-width: none;
+    padding: 0;
+  }
+  .topbar {
+    padding: 0 0 12px;
+    border-bottom-color: #999;
+  }
+  .toc, .report, .decisionGrid article, .statusCard, .summaryCard {
+    border-color: #999;
+    box-shadow: none;
+  }
+  .report table {
+    display: table;
+    table-layout: auto;
+    width: 100%;
+    font-size: 9pt;
+  }
+  .report thead {
+    display: table-header-group;
+  }
+  .report tr {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+  .report th, .report td {
+    overflow-wrap: anywhere;
+    word-break: break-word;
+    white-space: normal;
+  }
+  .toc, .statusCards, .summaryCards, .decisionGrid {
+    break-inside: avoid-page;
+  }
+  .report, .sectionDetails {
+    break-inside: auto;
+  }
+  a {
+    color: #111;
+    text-decoration: underline;
+  }
+}
+
+</style>
+
+<style>
+.pagesPublicNotice {
+  margin: 0;
+  padding: 10px 14px;
+  border-bottom: 1px solid #d7dee8;
+  background: #f6f8fb;
+  color: #243040;
+  font: 13px/1.55 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+.pagesPublicNotice strong {
+  display: inline-block;
+  margin-right: 8px;
+}
+.pagesPublicNotice small {
+  display: block;
+  margin-top: 2px;
+  color: #5b677a;
+  overflow-wrap: anywhere;
+}
+@media (max-width: 480px) {
+  .pagesPublicNotice {
+    padding: 9px 10px;
+  }
+  .pagesPublicNotice strong {
+    display: block;
+    margin: 0 0 2px;
+  }
+}
+</style>
+</head>
+<body>
+<aside class="pagesPublicNotice" role="note">
+  <strong>GitHub Pages public view</strong>
+  <span>このHTMLはGitHub Pagesでpublic配信される前提の閲覧用生成物です。個人情報・非公開メモ・認証情報を含めないでください。</span>
+  <small>source: targets/MU/views/2026-05_monthly.html / staged: 2026-05-13T22:05:31.239Z</small>
+</aside>
+
+<a class="skipLink" href="#main">本文へ移動</a>
+<header class="topbar">
+  <div>
+    <p class="eyebrow">MU Micron Technology</p>
+    <h1>Micron集中投資 月次市況確認</h1>
+    <p class="meta">view: monthly / date: 2026-05-10 / period: 2026-05</p>
+  </div>
+  <div class="statusStack">
+    <span class="badge judgement unrated" aria-label="判定 UNRATED">UNRATED</span>
+    <span class="badge source partially_verified" aria-label="出典確認状況 partially_verified">partially_verified</span>
+  </div>
+</header>
+
+<main id="main">
+  <section class="firstView" aria-label="判断用ダッシュボード">
+  <section class="statusCards" aria-label="判定、出典品質、強制警戒条件">
+    <article class="statusCard judgementCard unrated">
+      <span>Judgement</span>
+      <strong>UNRATED</strong>
+      <p>現在の観測判定。色だけでなくラベルと本文で確認します。</p>
+    </article>
+    <article class="statusCard sourceCard partially_verified">
+      <span>Source status</span>
+      <strong>partially_verified</strong>
+      <p>一部は検証済み、未確認項目があります。 出典6件、一次情報4件。</p>
+      <div class="sourceMetrics" aria-label="出典内訳">
+        <span class="metricPill">primary 4</span>
+        <span class="metricPill">other 2</span>
+        <span class="metricPill">unknown 0</span>
+      </div>
+      <ul class="miniList"><li>Omdia、IDC、DRAMeXchangeの詳細価格表は未確認。</li><li>HBM価格とHBM4/HBM4Eの顧客別配分は未確認。</li><li>LPDDRの5月時点の個別価格表は未確認。</li></ul>
+    </article>
+    <article class="statusCard forcedCard ok">
+      <span>Forced alert</span>
+      <strong>該当なし / 監視継続</strong>
+      <p>本文中の撤退条件・強制警戒条件コメントから抽出しました。</p>
+      <ul><li>強制警戒条件に触れる兆候を確認したか：はい。現時点でDRAM/HBM価格下落、CSP CapEx下方修正、供給過剰コメントの同時発生は確認していない。</li></ul>
+    </article>
+    <article class="statusCard previousChangeCard _">
+      <span>Previous change</span>
+      <strong>本文を確認</strong>
+      <p>前回レポートからの判定変化と主要な差分です。</p>
+      <ul class="miniList"><li>最も重要な変化: TrendForceが2Q26のconventional DRAM contract priceを前四半期比58-63%上昇、NAND Flash contract priceを70-75%上昇と予想し、CSPが長期契約で供給確保を進めていると説明した。</li><li>previous_report: ../weekly/2026-05-10_weekly.md</li></ul>
+    </article>
+    <article class="statusCard unconfirmedCard warn">
+      <span>Unconfirmed</span>
+      <strong>5項目を確認</strong>
+      <p>強気材料として扱わず、次回確認へ回す項目です。</p>
+      <ul class="miniList"><li>Omdia、IDC、DRAMeXchangeの詳細価格表は未確認。</li><li>HBM価格とHBM4/HBM4Eの顧客別配分は未確認。</li><li>LPDDRの5月時点の個別価格表は未確認。</li></ul>
+    </article>
+  </section>
+
+  <section class="decisionGrid">
+    <article>
+      <span>Score</span>
+      <strong>N/A / 27</strong>
+    </article>
+    <article>
+      <span>Conclusion</span>
+      <strong>市況の方向：DRAM、RDIMM、NAND、enterprise SSDはいずれも上昇または逼迫方向。HBMは価格データ未確認だが、会社コメントと能力配分から需給は引き締まっている。</strong>
+    </article>
+    <article>
+      <span>Action</span>
+      <strong>市況は強いが、月次ではスコアを付けない。次回四半期判定では、Micronの粗利率・在庫・CapEx・ASPと、この市況の持続性を同時に確認する。</strong>
+    </article>
+  </section>
+
+<section class="riskHighlight" aria-label="弱気材料ファースト">
+    <span>Risk first</span>
+    <h2>弱気材料を先に確認</h2>
+    <p>弱気材料2：enterprise SSDは2026年に明確な不足が見込まれ、有意な能力増強は2027年後半または2028年まで難しいとされる。これは短期には強いが、各社のCapExと顧客長期契約の質を見誤ると、将来の供給過剰を遅れて検知するリスクがある。</p>
+    <ul><li>弱気材料1：TrendForceは、PC DRAMのsystem demandが下方修正されていること、スマートフォン各社がメモリコスト上昇で生産計画を調整し得ることを示した。価格上昇はMicronに追い風だが、最終需要の弾性を壊す可能性がある。</li><li>弱気材料2：enterprise SSDは2026年に明確な不足が見込まれ、有意な能力増強は2027年後半または2028年まで難しいとされる。これは短期には強いが、各社のCapExと顧客長期契約の質を見誤ると、将来の供給過剰を遅れて検知するリスクがある。</li><li>弱気材料3：SamsungはNVIDIA Vera Rubin platform向けにHBM4/SOCAMM2のmass product salesを開始したと説明した。SK hynixもHBM、高容量server DRAM、eSSD、SOCAMM2で強い。Micronの相対的な採用・歩留まり・供給力はまだ継続確認が必要。</li><li>弱気材料4：SanDiskはFY2026 Q3でdatacenter revenueが前四半期比233%増、gross margin 78.4%を出した。NAND/SSD純粋株の勢いが強く、Micron集中の相対魅力を比較し続ける必要がある。</li><li>供給過剰リスク：短期は供給不足。中期は、HBM/DRAM/NAND向けCapEx、顧客長期契約、CSP CapEx、在庫、ASPが同時に悪化し始める局面が最大リスク。</li></ul>
+  </section>
+
+  </section>
+
+  <nav class="toc" aria-label="目次">
+    <strong>目次</strong>
+    <a href="#sec-今月の結論">1. 今月の結論</a><a href="#sec-弱気材料を先に確認">2. 弱気材料を先に確認</a><a href="#sec-強気材料">3. 強気材料</a><a href="#sec-市況確認">4. 市況確認</a><a href="#sec-需要側確認">5. 需要側確認</a><a href="#sec-供給側確認">6. 供給側確認</a><a href="#sec-shared-data更新候補">7. shared/data更新候補</a><a href="#sec-state更新候補">8. state更新候補</a><a href="#sec-品質ゲート">9. 品質ゲート</a><a href="#sec-未確認事項">10. 未確認事項</a><a href="#sec-次回確認すること">11. 次回確認すること</a><a href="#sec-出典">12. 出典</a>
+  </nav>
+
+  <section class="actions" aria-label="コピー操作">
+    <button type="button" aria-label="Copy next prompt" data-copy-label="next prompt" data-copy="# 次回確認プロンプト: Micron集中投資 月次市況確認&#10;&#10;- target: MU&#10;- judgement: UNRATED&#10;- score: N/A / 27&#10;- source_status: partially_verified&#10;&#10;次回レポートでは、以下を優先して一次情報または信頼できる出典で確認してください。&#10;&#10;## 未検証・不明点&#10;- Omdia、IDC、DRAMeXchangeの詳細価格表は未確認。&#10;- HBM価格とHBM4/HBM4Eの顧客別配分は未確認。&#10;- LPDDRの5月時点の個別価格表は未確認。&#10;- CXMT/YMTCの最新供給計画と、汎用品価格への下押し影響は未確認。&#10;- SanDiskの一次IR URLでQ3 FY2026発表を直接安定取得できるかは次回確認。&#10;&#10;## 次回監視イベント&#10;- TrendForce以外の市況ソースでDRAM/NAND/HBM/RDIMM/LPDDR/enterprise SSD価格方向を確認する。&#10;- Micron FY2026 Q3決算で、粗利率約81%ガイダンスの達成、inventory、ASP、FCF、CapExを確認する。&#10;- Samsung/SK hynix/SanDiskの次回決算で、HBM4/HBM4E、SOCAMM2、PCIe Gen6 eSSD、enterprise SSDの供給計画を比較する。&#10;- CSP CapExが上方修正継続か、部材価格上昇を理由に投資効率悪化へ転じるかを確認する。&#10;- 2027-2028年の能力増強が供給過剰に変わる兆候を、在庫・ASP・長期契約コメントで確認する。&#10;&#10;## Open questions&#10;- TrendForce以外のOmdia/IDC/DRAMeXchange有料データで、2Q26 DRAM/NAND/HBM/enterprise SSD価格方向を確認する。&#10;- HBMの具体的な価格方向、Micron/Samsung/SK hynixの顧客別配分、HBM4/HBM4E採用状況を確認する。&#10;- LPDDRの5月時点の個別価格方向を確認する。&#10;- CXMT/YMTCの供給増が汎用品価格へ下押ししていないか確認する。&#10;- SanDiskのdatacenter SSD成長が、Micron集中の相対魅力をどの程度下げるか確認する。">Copy next prompt</button>
+    <button type="button" aria-label="Copy full report Markdown" data-copy-label="report Markdown" data-copy="---&#10;view: monthly&#10;target: MU&#10;target_id: MU&#10;report_type: monthly_market&#10;title: Micron集中投資 月次市況確認&#10;date: 2026-05-10&#10;period: 2026-05&#10;company: Micron Technology&#10;ticker: MU&#10;judgement: UNRATED&#10;score:&#10;score_max: 27&#10;source_status: partially_verified&#10;previous_report: ../weekly/2026-05-10_weekly.md&#10;generated_html: ../../views/2026-05_monthly.html&#10;---&#10;&#10;# Micron集中投資 月次市況確認&#10;&#10;対象：Micron Technology（MU）&#10;日付：2026-05-10&#10;対象期間：2026-05&#10;市況判定：強い。ただし価格急騰とCapEx増加の反動リスクを監視。&#10;スコア：月次では未付与 / 27&#10;&#10;注記：これは投資助言ではなく、次回の四半期判定へ渡すための月次観測メモである。&#10;&#10;## 1. 今月の結論&#10;&#10;- 市況の方向：DRAM、RDIMM、NAND、enterprise SSDはいずれも上昇または逼迫方向。HBMは価格データ未確認だが、会社コメントと能力配分から需給は引き締まっている。&#10;- 最も重要な変化：TrendForceが2Q26のconventional DRAM contract priceを前四半期比58-63%上昇、NAND Flash contract priceを70-75%上昇と予想し、CSPが長期契約で供給確保を進めていると説明した。&#10;- 投資仮説への影響：AI常駐社会でメモリ階層全体が制約になるという仮説は、DRAM/HBM/RDIMM/NAND/eSSDの複数領域で補強された。一方、価格急騰はCSP・PC・スマートフォン側の需要抑制や、2027-2028年以降の供給過剰リスクを大きくする。&#10;- 今月の扱い：市況は強いが、月次ではスコアを付けない。次回四半期判定では、Micronの粗利率・在庫・CapEx・ASPと、この市況の持続性を同時に確認する。&#10;&#10;## 2. 弱気材料を先に確認&#10;&#10;- 弱気材料1：TrendForceは、PC DRAMのsystem demandが下方修正されていること、スマートフォン各社がメモリコスト上昇で生産計画を調整し得ることを示した。価格上昇はMicronに追い風だが、最終需要の弾性を壊す可能性がある。&#10;- 弱気材料2：enterprise SSDは2026年に明確な不足が見込まれ、有意な能力増強は2027年後半または2028年まで難しいとされる。これは短期には強いが、各社のCapExと顧客長期契約の質を見誤ると、将来の供給過剰を遅れて検知するリスクがある。&#10;- 弱気材料3：SamsungはNVIDIA Vera Rubin platform向けにHBM4/SOCAMM2のmass product salesを開始したと説明した。SK hynixもHBM、高容量server DRAM、eSSD、SOCAMM2で強い。Micronの相対的な採用・歩留まり・供給力はまだ継続確認が必要。&#10;- 弱気材料4：SanDiskはFY2026 Q3でdatacenter revenueが前四半期比233%増、gross margin 78.4%を出した。NAND/SSD純粋株の勢いが強く、Micron集中の相対魅力を比較し続ける必要がある。&#10;- 供給過剰リスク：短期は供給不足。中期は、HBM/DRAM/NAND向けCapEx、顧客長期契約、CSP CapEx、在庫、ASPが同時に悪化し始める局面が最大リスク。&#10;&#10;## 3. 強気材料&#10;&#10;- 強気材料1：DRAMは、HBM/server向けへの能力再配分とCSPの長期契約により、2Q26も価格上昇が続く見通し。&#10;- 強気材料2：NANDは、AI/data center需要とenterprise SSD能力配分により、価格上昇が製品ポートフォリオ全体へ広がっている。&#10;- 強気材料3：RDIMMは、北米CSPのAI inference deploymentと一般サーバー増設により、高容量品が主要調達対象になっている。&#10;- 強気材料4：SK hynixとSamsungの会社コメントはいずれも、agentic AI、LLM、AI infrastructureがDRAM/NAND/eSSD需要を押し上げるという方向で一致している。&#10;- 強気材料5：TrendForceは2026年の上位9社CSP CapExを約8,300億ドル、前年比79%増とし、AIインフラが長期戦略になっていることを示す材料になった。&#10;&#10;## 4. 市況確認&#10;&#10;| 項目 | 価格方向 | 需給 | 供給過剰リスク | 確認状況 |&#10;|---|---|---|---|---|&#10;| DRAM | 上昇。2Q26 conventional DRAM contract price +58-63% QoQ見通し | HBM/server向け再配分で逼迫 | 短期は低い。2027以降の能力増強と需要鈍化が同時に出ると上昇 | TrendForceで確認 |&#10;| HBM | 不明。価格データ未確認 | 会社コメント上は逼迫方向 | HBM需要鈍化時に通常DRAMへ能力が戻るリスクは継続 | 会社コメント中心、価格は未確認 |&#10;| RDIMM | 上昇方向。高容量RDIMMがCSP主要調達対象 | 北米CSPのAI inference/general server需要で逼迫 | 短期は低いが、一般サーバー需要の持続性を確認 | TrendForceで確認 |&#10;| LPDDR | 上昇方向。ただし5月時点の個別価格表は未確認 | スマートフォン側はコスト圧力が強い | 最終製品の生産調整で需要鈍化の可能性 | TrendForceの1Q/2Qコメントで部分確認 |&#10;| NAND | 上昇。2Q26 NAND Flash contract price +70-75% QoQ見通し | AI/data center需要で逼迫 | 短期は低い。2027-2028年以降の能力増強に注意 | TrendForceで確認 |&#10;| enterprise SSD | 上昇方向。需要は強く、注文鈍化なし | 2026年に明確な不足、有意な増強は2027年後半または2028年以降 | 短期は低い。長期契約の質とSanDisk/SK hynix/Micronの供給計画を確認 | TrendForce、SK hynix、SanDiskで確認 |&#10;&#10;- その他対象銘柄に重要な市況：MicronのデータセンターSSD、SOCAMM2、PCIe Gen6 SSDは、HBMだけでなくストレージ・CPU側メモリを含む投資仮説の確認対象にする。&#10;- 価格方向：総合では上昇。DRAM/NANDはTrendForce数値で上昇、RDIMM/eSSDは需給コメントから上昇方向、LPDDR/HBMは詳細価格不明。&#10;- 供給過剰リスク：短期は低いが、価格急騰、CapEx急増、在庫増加、ASP下落、CSP CapEx下方修正が同時に出るかを毎月確認する。&#10;&#10;## 5. 需要側確認&#10;&#10;- CSP CapEx：TrendForceは、上位9社CSPの2026年CapExを約8,300億ドル、前年比79%増へ上方修正した。Microsoft、Google、Meta、AWSはいずれも高水準または上方修正方向。&#10;- AIサーバー需要：AI inference deploymentと高性能GPU cluster、社内ASIC、次世代データセンターが投資対象として確認された。&#10;- 推論需要：TrendForceは北米CSPがAI inference deploymentを加速し、一般サーバー増設まで広がっていると説明した。&#10;- エージェントAI需要：SK hynixは、AIが大規模モデル学習からagentic AI段階へ移ることで、リアルタイム推論が広がりDRAM/NAND需要基盤が拡大すると説明した。Samsungもagentic AIが需要成長を加速すると説明した。&#10;- ストレージ需要：TrendForce、SK hynix、SanDiskの情報はいずれも、enterprise SSDとAI data center storage需要の強さを示している。&#10;- その他需要：PC・スマートフォンは価格上昇による仕様縮小・生産調整の可能性があり、強気材料として扱わない。&#10;&#10;## 6. 供給側確認&#10;&#10;- 対象企業：MicronはFY2026 CapExが250億ドル超、FY2027もHBM/DRAM投資でmeaningful step-up見込み。市況が強い間は合理的だが、長期契約と顧客需要の裏付けを確認する必要がある。&#10;- 主要競合：SamsungはHBM4/SOCAMM2、PCIe Gen6 eSSDでVera Rubin/KV cache需要を取りに行く姿勢。SK hynixはHBM、server DRAM、SOCAMM2、eSSDで強い。&#10;- 競合コメント：Samsungはagentic AIとLLM adoptionがserver memory demandを支えるとし、SK hynixはagentic AIがDRAM/NAND両方の需要基盤を広げると説明した。SanDiskはdatacenter revenue急伸でNAND/SSD純粋株としての勢いを示した。&#10;- 新規供給者：中国勢のCXMT/YMTCによる汎用品DRAM/NAND供給圧力は今回未確認。次回以降の必須確認項目。&#10;- 供給規律：短期は各社がAI/server/eSSDへ能力を優先配分しており、供給不足側。ただしMicron、SK hynix、Samsung、SanDiskの投資増加が重なるため、2027-2028年の供給規律が本質的な監視対象。&#10;&#10;## 7. shared/data更新候補&#10;&#10;- `shared/data/memory_market.csv`：TrendForce 2Q26行は既に存在するため、SK hynix、Samsung、SanDiskの会社コメント由来の補助行を追加。&#10;- `shared/data/csp_capex.csv`：今回の月次では更新しない。TrendForceの約8,300億ドル見通しは、会社別定義差を整理してから次回反映する。&#10;- `shared/data/events.json`：今回の月次では更新しない。次回automation登録時にイベントソースを整理する。&#10;&#10;## 8. state更新候補&#10;&#10;- `targets/MU/sources/source_log.md`：2026-05月次市況確認として、TrendForce、Micron、Samsung、SK hynix、SanDiskの出典ログを追記済み。&#10;- `targets/MU/state/last_report.md`：最新月次レポートとして本レポートを追記済み。&#10;&#10;### open_questions&#10;&#10;- TrendForce以外のOmdia/IDC/DRAMeXchange有料データで、2Q26 DRAM/NAND/HBM/enterprise SSD価格方向を確認する。&#10;- HBMの具体的な価格方向、Micron/Samsung/SK hynixの顧客別配分、HBM4/HBM4E採用状況を確認する。&#10;- LPDDRの5月時点の個別価格方向を確認する。&#10;- CXMT/YMTCの供給増が汎用品価格へ下押ししていないか確認する。&#10;- SanDiskのdatacenter SSD成長が、Micron集中の相対魅力をどの程度下げるか確認する。&#10;&#10;### alerts&#10;&#10;- 価格急騰は短期追い風だが、PC・スマートフォン側の需要抑制とCSP投資効率悪化を招く可能性がある。&#10;- Samsung/SK hynix/SanDiskがそれぞれHBM/SOCAMM2/eSSD/NANDで強い。市場全体の伸びだけでMicronの相対優位を判断しない。&#10;- 2027-2028年に能力増強が効き始めるタイミングで、在庫増加・ASP下落・CapEx継続が同時に出ないか監視する。&#10;&#10;### next_events&#10;&#10;- 次回月次でTrendForce以外の市況ソースを追加確認する。&#10;- 次回四半期判定でMicronのDRAM/NAND ASP、inventory days、CapEx、FCFを市況と照合する。&#10;- Samsung/SK hynix/SanDiskの次回決算でAI memory/eSSDの供給計画と顧客長期契約を確認する。&#10;&#10;## 9. 品質ゲート&#10;&#10;- 弱気材料を先に確認したか：はい。&#10;- 価格方向を明記したか：はい。DRAM/NAND/RDIMM/enterprise SSDは上昇または逼迫、HBM/LPDDRは一部不明と明記。&#10;- 供給過剰リスクを評価したか：はい。短期は低いが、中期はCapExと在庫・ASPの同時悪化を監視。&#10;- 強制警戒条件に触れる兆候を確認したか：はい。現時点でDRAM/HBM価格下落、CSP CapEx下方修正、供給過剰コメントの同時発生は確認していない。&#10;- 出典URL、発表日、確認日があるか：はい。&#10;- prompt injection対策として共通security-gateを通したか：はい。結果は`targets/MU/runs/2026-05_monthly_run.md`に記録。&#10;&#10;## 10. 未確認事項&#10;&#10;- Omdia、IDC、DRAMeXchangeの詳細価格表は未確認。&#10;- HBM価格とHBM4/HBM4Eの顧客別配分は未確認。&#10;- LPDDRの5月時点の個別価格表は未確認。&#10;- CXMT/YMTCの最新供給計画と、汎用品価格への下押し影響は未確認。&#10;- SanDiskの一次IR URLでQ3 FY2026発表を直接安定取得できるかは次回確認。&#10;&#10;## 11. 次回確認すること&#10;&#10;- TrendForce以外の市況ソースでDRAM/NAND/HBM/RDIMM/LPDDR/enterprise SSD価格方向を確認する。&#10;- Micron FY2026 Q3決算で、粗利率約81%ガイダンスの達成、inventory、ASP、FCF、CapExを確認する。&#10;- Samsung/SK hynix/SanDiskの次回決算で、HBM4/HBM4E、SOCAMM2、PCIe Gen6 eSSD、enterprise SSDの供給計画を比較する。&#10;- CSP CapExが上方修正継続か、部材価格上昇を理由に投資効率悪化へ転じるかを確認する。&#10;- 2027-2028年の能力増強が供給過剰に変わる兆候を、在庫・ASP・長期契約コメントで確認する。&#10;&#10;## 12. 出典&#10;&#10;| 種別 | 発行元 | タイトル | URL | 発表日 | 確認日 |&#10;|---|---|---|---|---|---|&#10;| market_data | TrendForce | AI Server Demand to Drive Memory Contract Price Increases in 2Q26 as CSPs Secure Supply via Long-Term Agreements | https://www.trendforce.com/presscenter/news/20260331-12995.html | 2026-03-31 | 2026-05-10 |&#10;| market_data | TrendForce | North American AI Data Center Expansion Drives 2026 CapEx of Top Nine CSPs to US$830 Billion, Says TrendForce | https://www.trendforce.com/presscenter/news/20260506-13033.html | 2026-05-06 | 2026-05-10 |&#10;| primary | Micron IR | Micron Technology, Inc. Reports Results for the Second Quarter of Fiscal 2026 | https://investors.micron.com/news-releases/news-release-details/micron-technology-inc-reports-results-second-quarter-fiscal-2026 | 2026-03-18 | 2026-05-10 |&#10;| primary | Samsung Semiconductor Newsroom | Samsung Electronics Announces First Quarter 2026 Results | https://news.samsungsemiconductor.com/global/samsung-electronics-announces-first-quarter-2026-results/ | 2026-04-30 | 2026-05-10 |&#10;| primary | SK hynix / PR Newswire | SK hynix Announces 1Q26 Financial Results | https://www.prnewswire.com/news-releases/sk-hynix-announces-1q26-financial-results-302750959.html | 2026-04-22 | 2026-05-10 |&#10;| primary | SanDisk / Nasdaq | Sandisk Reports Fiscal Third Quarter 2026 Financial Results | https://www.nasdaq.com/press-release/sandisk-reports-fiscal-third-quarter-2026-financial-results-2026-04-30 | 2026-04-30 | 2026-05-10 |&#10;">Copy report Markdown</button>
+    <button type="button" aria-label="Copy action summary" data-copy-label="action summary" data-copy="# Micron集中投資 月次市況確認 action summary&#10;&#10;- judgement: UNRATED&#10;- score: N/A / 27&#10;- source_status: partially_verified&#10;&#10;## 今月の結論&#10;- 市況の方向：DRAM、RDIMM、NAND、enterprise SSDはいずれも上昇または逼迫方向。HBMは価格データ未確認だが、会社コメントと能力配分から需給は引き締まっている。&#10;- 最も重要な変化：TrendForceが2Q26のconventional DRAM contract priceを前四半期比58-63%上昇、NAND Flash contract priceを70-75%上昇と予想し、CSPが長期契約で供給確保を進めていると説明した。&#10;- 投資仮説への影響：AI常駐社会でメモリ階層全体が制約になるという仮説は、DRAM/HBM/RDIMM/NAND/eSSDの複数領域で補強された。一方、価格急騰はCSP・PC・スマートフォン側の需要抑制や、2027-2028年以降の供給過剰リスクを大きくする。&#10;- 今月の扱い：市況は強いが、月次ではスコアを付けない。次回四半期判定では、Micronの粗利率・在庫・CapEx・ASPと、この市況の持続性を同時に確認する。&#10;&#10;## 次回確認すること&#10;- TrendForce以外の市況ソースでDRAM/NAND/HBM/RDIMM/LPDDR/enterprise SSD価格方向を確認する。&#10;- Micron FY2026 Q3決算で、粗利率約81%ガイダンスの達成、inventory、ASP、FCF、CapExを確認する。&#10;- Samsung/SK hynix/SanDiskの次回決算で、HBM4/HBM4E、SOCAMM2、PCIe Gen6 eSSD、enterprise SSDの供給計画を比較する。&#10;- CSP CapExが上方修正継続か、部材価格上昇を理由に投資効率悪化へ転じるかを確認する。&#10;- 2027-2028年の能力増強が供給過剰に変わる兆候を、在庫・ASP・長期契約コメントで確認する。&#10;&#10;## 未確認事項&#10;- Omdia、IDC、DRAMeXchangeの詳細価格表は未確認。&#10;- HBM価格とHBM4/HBM4Eの顧客別配分は未確認。&#10;- LPDDRの5月時点の個別価格表は未確認。&#10;- CXMT/YMTCの最新供給計画と、汎用品価格への下押し影響は未確認。&#10;- SanDiskの一次IR URLでQ3 FY2026発表を直接安定取得できるかは次回確認。">Copy action summary</button>
+    <button type="button" aria-label="Copy source checklist" data-copy-label="source checklist" data-copy="# Micron集中投資 月次市況確認 source checklist&#10;&#10;- source_status: partially_verified&#10;&#10;- [ ] market_data / TrendForce / AI Server Demand to Drive Memory Contract Price Increases in 2Q26 as CSPs Secure Supply via Long-Term Agreements / 確認済み&#10;- [ ] market_data / TrendForce / North American AI Data Center Expansion Drives 2026 CapEx of Top Nine CSPs to US$830 Billion, Says TrendForce / 確認済み&#10;- [ ] primary / Micron IR / Micron Technology, Inc. Reports Results for the Second Quarter of Fiscal 2026 / 確認済み&#10;- [ ] primary / Samsung Semiconductor Newsroom / Samsung Electronics Announces First Quarter 2026 Results / 確認済み&#10;- [ ] primary / SK hynix / PR Newswire / SK hynix Announces 1Q26 Financial Results / 確認済み&#10;- [ ] primary / SanDisk / Nasdaq / Sandisk Reports Fiscal Third Quarter 2026 Financial Results / 確認済み">Copy source checklist</button>
+  </section>
+  <details class="copyFallback" data-copy-fallback>
+    <summary>Copy fallback</summary>
+    <p>クリップボードAPIが使えない場合は、下のMarkdownを選択して使用します。</p>
+    <textarea readonly aria-label="コピー対象Markdown"></textarea>
+  </details>
+
+<details class="sourceDrawer">
+    <summary><span>Source drawer</span>出典一覧 (6件、primary 4件)</summary>
+    <div class="sourceDrawerBody">
+      <p>一次情報を先頭に並べています。URL、発表日、確認日の欠落は次回確認対象です。</p>
+      <div class="sourceList"><article class="sourceItem primary">
+    <span class="sourceType">primary / Micron IR</span>
+    <strong class="sourceTitle"><a href="https://investors.micron.com/news-releases/news-release-details/micron-technology-inc-reports-results-second-quarter-fiscal-2026">Micron Technology, Inc. Reports Results for the Second Quarter of Fiscal 2026</a></strong>
+    <p class="sourceMeta"><a href="https://investors.micron.com/news-releases/news-release-details/micron-technology-inc-reports-results-second-quarter-fiscal-2026">URL</a> / 発表日: 2026-03-18 / 確認日: 2026-05-10</p>
+  </article><article class="sourceItem primary">
+    <span class="sourceType">primary / Samsung Semiconductor Newsroom</span>
+    <strong class="sourceTitle"><a href="https://news.samsungsemiconductor.com/global/samsung-electronics-announces-first-quarter-2026-results/">Samsung Electronics Announces First Quarter 2026 Results</a></strong>
+    <p class="sourceMeta"><a href="https://news.samsungsemiconductor.com/global/samsung-electronics-announces-first-quarter-2026-results/">URL</a> / 発表日: 2026-04-30 / 確認日: 2026-05-10</p>
+  </article><article class="sourceItem primary">
+    <span class="sourceType">primary / SK hynix / PR Newswire</span>
+    <strong class="sourceTitle"><a href="https://www.prnewswire.com/news-releases/sk-hynix-announces-1q26-financial-results-302750959.html">SK hynix Announces 1Q26 Financial Results</a></strong>
+    <p class="sourceMeta"><a href="https://www.prnewswire.com/news-releases/sk-hynix-announces-1q26-financial-results-302750959.html">URL</a> / 発表日: 2026-04-22 / 確認日: 2026-05-10</p>
+  </article><article class="sourceItem primary">
+    <span class="sourceType">primary / SanDisk / Nasdaq</span>
+    <strong class="sourceTitle"><a href="https://www.nasdaq.com/press-release/sandisk-reports-fiscal-third-quarter-2026-financial-results-2026-04-30">Sandisk Reports Fiscal Third Quarter 2026 Financial Results</a></strong>
+    <p class="sourceMeta"><a href="https://www.nasdaq.com/press-release/sandisk-reports-fiscal-third-quarter-2026-financial-results-2026-04-30">URL</a> / 発表日: 2026-04-30 / 確認日: 2026-05-10</p>
+  </article><article class="sourceItem market_data">
+    <span class="sourceType">market_data / TrendForce</span>
+    <strong class="sourceTitle"><a href="https://www.trendforce.com/presscenter/news/20260331-12995.html">AI Server Demand to Drive Memory Contract Price Increases in 2Q26 as CSPs Secure Supply via Long-Term Agreements</a></strong>
+    <p class="sourceMeta"><a href="https://www.trendforce.com/presscenter/news/20260331-12995.html">URL</a> / 発表日: 2026-03-31 / 確認日: 2026-05-10</p>
+  </article><article class="sourceItem market_data">
+    <span class="sourceType">market_data / TrendForce</span>
+    <strong class="sourceTitle"><a href="https://www.trendforce.com/presscenter/news/20260506-13033.html">North American AI Data Center Expansion Drives 2026 CapEx of Top Nine CSPs to US$830 Billion, Says TrendForce</a></strong>
+    <p class="sourceMeta"><a href="https://www.trendforce.com/presscenter/news/20260506-13033.html">URL</a> / 発表日: 2026-05-06 / 確認日: 2026-05-10</p>
+  </article></div>
+    </div>
+  </details>
+
+  <article class="report" data-report-path="targets/MU/reports/monthly/2026-05_monthly.md">
+<h1 id="sec-micron集中投資-月次市況確認">Micron集中投資 月次市況確認</h1>
+<p>対象：Micron Technology（MU）</p>
+<p>日付：2026-05-10</p>
+<p>対象期間：2026-05</p>
+<p>市況判定：強い。ただし価格急騰とCapEx<span class="dir up">増加</span>の反動リスクを監視。</p>
+<p>スコア：月次では<span class="dir unknown">未付与</span> / 27</p>
+<p>注記：これは投資助言ではなく、次回の四半期判定へ渡すための月次観測メモである。</p>
+<details class="sectionDetails" id="sec-今月の結論" open><summary>1. 今月の結論</summary>
+<ul>
+<li>市況の方向：DRAM、RDIMM、NAND、enterprise SSDはいずれも<span class="dir up">上昇</span>または逼迫方向。HBMは価格データ<span class="dir unknown">未確認</span>だが、会社コメントと能力配分から需給は引き締まっている。</li>
+<li>最も重要な変化：TrendForceが2Q26のconventional DRAM contract priceを前四半期比58-63%<span class="dir up">上昇</span>、NAND Flash contract priceを70-75%<span class="dir up">上昇</span>と予想し、CSPが長期契約で供給確保を進めていると説明した。</li>
+<li>投資仮説への影響：AI常駐社会でメモリ階層全体が制約になるという仮説は、DRAM/HBM/RDIMM/NAND/eSSDの複数領域で補強された。一方、価格急騰はCSP・PC・スマートフォン側の需要抑制や、2027-2028年以降の供給過剰リスクを大きくする。</li>
+<li>今月の扱い：市況は強いが、月次ではスコアを付けない。次回四半期判定では、Micronの粗利率・在庫・CapEx・ASPと、この市況の持続性を同時に確認する。</li>
+</ul>
+</details>
+<details class="sectionDetails" id="sec-弱気材料を先に確認" open><summary>2. 弱気材料を先に確認</summary>
+<ul>
+<li>弱気材料1：TrendForceは、PC DRAMのsystem demandが<span class="dir down">下方修正</span>されていること、スマートフォン各社がメモリコスト<span class="dir up">上昇</span>で生産計画を調整し得ることを示した。価格<span class="dir up">上昇</span>はMicronに追い風だが、最終需要の弾性を壊す可能性がある。</li>
+<li>弱気材料2：enterprise SSDは2026年に明確な不足が見込まれ、有意な能力増強は2027年後半または2028年まで難しいとされる。これは短期には強いが、各社のCapExと顧客長期契約の質を見誤ると、将来の供給過剰を遅れて検知するリスクがある。</li>
+<li>弱気材料3：SamsungはNVIDIA Vera Rubin platform向けにHBM4/SOCAMM2のmass product salesを開始したと説明した。SK hynixもHBM、高容量server DRAM、eSSD、SOCAMM2で強い。Micronの相対的な採用・歩留まり・供給力はまだ継続確認が必要。</li>
+<li>弱気材料4：SanDiskはFY2026 Q3でdatacenter revenueが前四半期比233%増、gross margin 78.4%を出した。NAND/SSD純粋株の勢いが強く、Micron集中の相対魅力を比較し続ける必要がある。</li>
+<li>供給過剰リスク：短期は供給不足。中期は、HBM/DRAM/NAND向けCapEx、顧客長期契約、CSP CapEx、在庫、ASPが同時に<span class="dir down">悪化</span>し始める局面が最大リスク。</li>
+</ul>
+</details>
+<details class="sectionDetails" id="sec-強気材料" open><summary>3. 強気材料</summary>
+<ul>
+<li>強気材料1：DRAMは、HBM/server向けへの能力再配分とCSPの長期契約により、2Q26も価格<span class="dir up">上昇</span>が続く見通し。</li>
+<li>強気材料2：NANDは、AI/data center需要とenterprise SSD能力配分により、価格<span class="dir up">上昇</span>が製品ポートフォリオ全体へ広がっている。</li>
+<li>強気材料3：RDIMMは、北米CSPのAI inference deploymentと一般サーバー増設により、高容量品が主要調達対象になっている。</li>
+<li>強気材料4：SK hynixとSamsungの会社コメントはいずれも、agentic AI、LLM、AI infrastructureがDRAM/NAND/eSSD需要を押し上げるという方向で一致している。</li>
+<li>強気材料5：TrendForceは2026年の上位9社CSP CapExを約8,300億ドル、前年比79%増とし、AIインフラが長期戦略になっていることを示す材料になった。</li>
+</ul>
+</details>
+<details class="sectionDetails sectionMarket" id="sec-市況確認" open><summary>4. 市況確認</summary>
+<div class="tableScroll"><table><thead><tr><th>項目</th><th>価格方向</th><th>需給</th><th>供給過剰リスク</th><th>確認状況</th></tr></thead><tbody><tr><td>DRAM</td><td><span class="dir up">上昇</span>。2Q26 conventional DRAM contract price +58-63% QoQ見通し</td><td>HBM/server向け再配分で逼迫</td><td>短期は低い。2027以降の能力増強と需要鈍化が同時に出ると<span class="dir up">上昇</span></td><td>TrendForceで確認</td></tr><tr><td>HBM</td><td><span class="dir unknown">不明</span>。価格データ<span class="dir unknown">未確認</span></td><td>会社コメント上は逼迫方向</td><td>HBM需要鈍化時に通常DRAMへ能力が戻るリスクは継続</td><td>会社コメント中心、価格は<span class="dir unknown">未確認</span></td></tr><tr><td>RDIMM</td><td><span class="dir up">上昇</span>方向。高容量RDIMMがCSP主要調達対象</td><td>北米CSPのAI inference/general server需要で逼迫</td><td>短期は低いが、一般サーバー需要の持続性を確認</td><td>TrendForceで確認</td></tr><tr><td>LPDDR</td><td><span class="dir up">上昇</span>方向。ただし5月時点の個別価格表は<span class="dir unknown">未確認</span></td><td>スマートフォン側はコスト圧力が強い</td><td>最終製品の生産調整で需要鈍化の可能性</td><td>TrendForceの1Q/2Qコメントで部分確認</td></tr><tr><td>NAND</td><td><span class="dir up">上昇</span>。2Q26 NAND Flash contract price +70-75% QoQ見通し</td><td>AI/data center需要で逼迫</td><td>短期は低い。2027-2028年以降の能力増強に注意</td><td>TrendForceで確認</td></tr><tr><td>enterprise SSD</td><td><span class="dir up">上昇</span>方向。需要は強く、注文鈍化なし</td><td>2026年に明確な不足、有意な増強は2027年後半または2028年以降</td><td>短期は低い。長期契約の質とSanDisk/SK hynix/Micronの供給計画を確認</td><td>TrendForce、SK hynix、SanDiskで確認</td></tr></tbody></table></div>
+<ul>
+<li>その他対象銘柄に重要な市況：MicronのデータセンターSSD、SOCAMM2、PCIe Gen6 SSDは、HBMだけでなくストレージ・CPU側メモリを含む投資仮説の確認対象にする。</li>
+<li>価格方向：総合では<span class="dir up">上昇</span>。DRAM/NANDはTrendForce数値で<span class="dir up">上昇</span>、RDIMM/eSSDは需給コメントから<span class="dir up">上昇</span>方向、LPDDR/HBMは詳細価格<span class="dir unknown">不明</span>。</li>
+<li>供給過剰リスク：短期は低いが、価格急騰、CapEx急増、在庫<span class="dir up">増加</span>、ASP<span class="dir down">下落</span>、CSP CapEx<span class="dir down">下方修正</span>が同時に出るかを毎月確認する。</li>
+</ul>
+</details>
+<details class="sectionDetails" id="sec-需要側確認" open><summary>5. 需要側確認</summary>
+<ul>
+<li>CSP CapEx：TrendForceは、上位9社CSPの2026年CapExを約8,300億ドル、前年比79%増へ<span class="dir up">上方修正</span>した。Microsoft、Google、Meta、AWSはいずれも高水準または<span class="dir up">上方修正</span>方向。</li>
+<li>AIサーバー需要：AI inference deploymentと高性能GPU cluster、社内ASIC、次世代データセンターが投資対象として確認された。</li>
+<li>推論需要：TrendForceは北米CSPがAI inference deploymentを加速し、一般サーバー増設まで広がっていると説明した。</li>
+<li>エージェントAI需要：SK hynixは、AIが大規模モデル学習からagentic AI段階へ移ることで、リアルタイム推論が広がりDRAM/NAND需要基盤が拡大すると説明した。Samsungもagentic AIが需要成長を加速すると説明した。</li>
+<li>ストレージ需要：TrendForce、SK hynix、SanDiskの情報はいずれも、enterprise SSDとAI data center storage需要の強さを示している。</li>
+<li>その他需要：PC・スマートフォンは価格<span class="dir up">上昇</span>による仕様縮小・生産調整の可能性があり、強気材料として扱わない。</li>
+</ul>
+</details>
+<details class="sectionDetails" id="sec-供給側確認" open><summary>6. 供給側確認</summary>
+<ul>
+<li>対象企業：MicronはFY2026 CapExが250億ドル超、FY2027もHBM/DRAM投資でmeaningful step-up見込み。市況が強い間は合理的だが、長期契約と顧客需要の裏付けを確認する必要がある。</li>
+<li>主要競合：SamsungはHBM4/SOCAMM2、PCIe Gen6 eSSDでVera Rubin/KV cache需要を取りに行く姿勢。SK hynixはHBM、server DRAM、SOCAMM2、eSSDで強い。</li>
+<li>競合コメント：Samsungはagentic AIとLLM adoptionがserver memory demandを支えるとし、SK hynixはagentic AIがDRAM/NAND両方の需要基盤を広げると説明した。SanDiskはdatacenter revenue急伸でNAND/SSD純粋株としての勢いを示した。</li>
+<li>新規供給者：中国勢のCXMT/YMTCによる汎用品DRAM/NAND供給圧力は今回<span class="dir unknown">未確認</span>。次回以降の必須確認項目。</li>
+<li>供給規律：短期は各社がAI/server/eSSDへ能力を優先配分しており、供給不足側。ただしMicron、SK hynix、Samsung、SanDiskの投資<span class="dir up">増加</span>が重なるため、2027-2028年の供給規律が本質的な監視対象。</li>
+</ul>
+</details>
+<details class="sectionDetails" id="sec-shared-data更新候補" open><summary>7. shared/data更新候補</summary>
+<ul>
+<li><code>shared/data/memory_market.csv</code>：TrendForce 2Q26行は既に存在するため、SK hynix、Samsung、SanDiskの会社コメント由来の補助行を追加。</li>
+<li><code>shared/data/csp_capex.csv</code>：今回の月次では更新しない。TrendForceの約8,300億ドル見通しは、会社別定義差を整理してから次回反映する。</li>
+<li><code>shared/data/events.json</code>：今回の月次では更新しない。次回automation登録時にイベントソースを整理する。</li>
+</ul>
+</details>
+<details class="sectionDetails" id="sec-state更新候補" open><summary>8. state更新候補</summary>
+<ul>
+<li><code>targets/MU/sources/source_log.md</code>：2026-05月次市況確認として、TrendForce、Micron、Samsung、SK hynix、SanDiskの出典ログを追記済み。</li>
+<li><code>targets/MU/state/last_report.md</code>：最新月次レポートとして本レポートを追記済み。</li>
+</ul>
+<h3 id="sec-open-questions">open_questions</h3>
+<ul>
+<li>TrendForce以外のOmdia/IDC/DRAMeXchange有料データで、2Q26 DRAM/NAND/HBM/enterprise SSD価格方向を確認する。</li>
+<li>HBMの具体的な価格方向、Micron/Samsung/SK hynixの顧客別配分、HBM4/HBM4E採用状況を確認する。</li>
+<li>LPDDRの5月時点の個別価格方向を確認する。</li>
+<li>CXMT/YMTCの供給増が汎用品価格へ下押ししていないか確認する。</li>
+<li>SanDiskのdatacenter SSD成長が、Micron集中の相対魅力をどの程度下げるか確認する。</li>
+</ul>
+<h3 id="sec-alerts">alerts</h3>
+<ul>
+<li>価格急騰は短期追い風だが、PC・スマートフォン側の需要抑制とCSP投資効率<span class="dir down">悪化</span>を招く可能性がある。</li>
+<li>Samsung/SK hynix/SanDiskがそれぞれHBM/SOCAMM2/eSSD/NANDで強い。市場全体の伸びだけでMicronの相対優位を判断しない。</li>
+<li>2027-2028年に能力増強が効き始めるタイミングで、在庫<span class="dir up">増加</span>・ASP<span class="dir down">下落</span>・CapEx継続が同時に出ないか監視する。</li>
+</ul>
+<h3 id="sec-next-events">next_events</h3>
+<ul>
+<li>次回月次でTrendForce以外の市況ソースを追加確認する。</li>
+<li>次回四半期判定でMicronのDRAM/NAND ASP、inventory days、CapEx、FCFを市況と照合する。</li>
+<li>Samsung/SK hynix/SanDiskの次回決算でAI memory/eSSDの供給計画と顧客長期契約を確認する。</li>
+</ul>
+</details>
+<details class="sectionDetails" id="sec-品質ゲート" open><summary>9. 品質ゲート</summary>
+<ul>
+<li>弱気材料を先に確認したか：はい。</li>
+<li>価格方向を明記したか：はい。DRAM/NAND/RDIMM/enterprise SSDは<span class="dir up">上昇</span>または逼迫、HBM/LPDDRは一部<span class="dir unknown">不明</span>と明記。</li>
+<li>供給過剰リスクを評価したか：はい。短期は低いが、中期はCapExと在庫・ASPの同時<span class="dir down">悪化</span>を監視。</li>
+<li>強制警戒条件に触れる兆候を確認したか：はい。現時点でDRAM/HBM価格<span class="dir down">下落</span>、CSP CapEx<span class="dir down">下方修正</span>、供給過剰コメントの同時発生は確認していない。</li>
+<li>出典URL、発表日、確認日があるか：はい。</li>
+<li>prompt injection対策として共通security-gateを通したか：はい。結果は<code>targets/MU/runs/2026-05_monthly_run.md</code>に記録。</li>
+</ul>
+</details>
+<details class="sectionDetails" id="sec-未確認事項" open><summary>10. <span class="dir unknown">未確認</span>事項</summary>
+<ul>
+<li>Omdia、IDC、DRAMeXchangeの詳細価格表は<span class="dir unknown">未確認</span>。</li>
+<li>HBM価格とHBM4/HBM4Eの顧客別配分は<span class="dir unknown">未確認</span>。</li>
+<li>LPDDRの5月時点の個別価格表は<span class="dir unknown">未確認</span>。</li>
+<li>CXMT/YMTCの最新供給計画と、汎用品価格への下押し影響は<span class="dir unknown">未確認</span>。</li>
+<li>SanDiskの一次IR URLでQ3 FY2026発表を直接安定取得できるかは次回確認。</li>
+</ul>
+</details>
+<details class="sectionDetails" id="sec-次回確認すること" open><summary>11. 次回確認すること</summary>
+<ul>
+<li>TrendForce以外の市況ソースでDRAM/NAND/HBM/RDIMM/LPDDR/enterprise SSD価格方向を確認する。</li>
+<li>Micron FY2026 Q3決算で、粗利率約81%ガイダンスの達成、inventory、ASP、FCF、CapExを確認する。</li>
+<li>Samsung/SK hynix/SanDiskの次回決算で、HBM4/HBM4E、SOCAMM2、PCIe Gen6 eSSD、enterprise SSDの供給計画を比較する。</li>
+<li>CSP CapExが<span class="dir up">上方修正</span>継続か、部材価格<span class="dir up">上昇</span>を理由に投資効率<span class="dir down">悪化</span>へ転じるかを確認する。</li>
+<li>2027-2028年の能力増強が供給過剰に変わる兆候を、在庫・ASP・長期契約コメントで確認する。</li>
+</ul>
+</details>
+<details class="sectionDetails" id="sec-出典"><summary>12. 出典</summary>
+<div class="tableScroll"><table><thead><tr><th>種別</th><th>発行元</th><th>タイトル</th><th>URL</th><th>発表日</th><th>確認日</th></tr></thead><tbody><tr><td>market_data</td><td>TrendForce</td><td>AI Server Demand to Drive Memory Contract Price Increases in 2Q26 as CSPs Secure Supply via Long-Term Agreements</td><td>https://www.trendforce.com/presscenter/news/20260331-12995.html</td><td>2026-03-31</td><td>2026-05-10</td></tr><tr><td>market_data</td><td>TrendForce</td><td>North American AI Data Center Expansion Drives 2026 CapEx of Top Nine CSPs to US$830 Billion, Says TrendForce</td><td>https://www.trendforce.com/presscenter/news/20260506-13033.html</td><td>2026-05-06</td><td>2026-05-10</td></tr><tr><td>primary</td><td>Micron IR</td><td>Micron Technology, Inc. Reports Results for the Second Quarter of Fiscal 2026</td><td>https://investors.micron.com/news-releases/news-release-details/micron-technology-inc-reports-results-second-quarter-fiscal-2026</td><td>2026-03-18</td><td>2026-05-10</td></tr><tr><td>primary</td><td>Samsung Semiconductor Newsroom</td><td>Samsung Electronics Announces First Quarter 2026 Results</td><td>https://news.samsungsemiconductor.com/global/samsung-electronics-announces-first-quarter-2026-results/</td><td>2026-04-30</td><td>2026-05-10</td></tr><tr><td>primary</td><td>SK hynix / PR Newswire</td><td>SK hynix Announces 1Q26 Financial Results</td><td>https://www.prnewswire.com/news-releases/sk-hynix-announces-1q26-financial-results-302750959.html</td><td>2026-04-22</td><td>2026-05-10</td></tr><tr><td>primary</td><td>SanDisk / Nasdaq</td><td>Sandisk Reports Fiscal Third Quarter 2026 Financial Results</td><td>https://www.nasdaq.com/press-release/sandisk-reports-fiscal-third-quarter-2026-financial-results-2026-04-30</td><td>2026-04-30</td><td>2026-05-10</td></tr></tbody></table></div>
+</details>
+  </article>
+</main>
+
+<script>
+document.querySelectorAll("[data-copy]").forEach((button) => {
+  button.addEventListener("click", async () => {
+    const label = button.getAttribute("data-copy-label") || "text";
+    const text = button.getAttribute("data-copy") || "";
+    try {
+      await navigator.clipboard.writeText(text);
+      const original = button.textContent;
+      button.textContent = "コピー完了: " + label;
+      setTimeout(() => { button.textContent = original; }, 1200);
+    } catch (error) {
+      const fallback = document.querySelector("[data-copy-fallback]");
+      if (fallback) {
+        const textarea = fallback.querySelector("textarea");
+        fallback.open = true;
+        if (textarea) {
+          textarea.value = text;
+          textarea.focus();
+          textarea.select();
+        }
+      }
+      button.textContent = "コピー失敗";
+    }
+  });
+});
+</script>
+</body>
+</html>
