@@ -1,0 +1,862 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Micron集中投資 週次ニュース監視</title>
+<style>
+
+:root {
+  color-scheme: light;
+  --bg: #f7f8fa;
+  --panel: #ffffff;
+  --text: #1f2933;
+  --muted: #627080;
+  --line: #d9dee6;
+  --accent: #145c9e;
+  --warn: #a85400;
+  --danger: #a51d2d;
+  --ok: #1f7a4d;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  line-height: 1.65;
+  overflow-wrap: anywhere;
+}
+.skipLink {
+  position: absolute;
+  left: 12px;
+  top: -48px;
+  z-index: 10;
+  background: #fff;
+  border: 2px solid var(--accent);
+  border-radius: 8px;
+  color: var(--accent);
+  padding: 8px 10px;
+}
+.skipLink:focus { top: 12px; }
+.topbar {
+  display: flex;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 28px clamp(16px, 4vw, 48px);
+  background: #ffffff;
+  border-bottom: 1px solid var(--line);
+}
+.eyebrow, .meta { color: var(--muted); margin: 0 0 6px; }
+h1 { margin: 0; font-size: 2rem; line-height: 1.18; letter-spacing: 0; }
+main { max-width: 1180px; margin: 0 auto; padding: 24px clamp(14px, 3vw, 32px) 56px; }
+.statusStack { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; }
+.badge {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 6px 10px;
+  font-weight: 700;
+  background: #fff;
+}
+.judgement.green { color: var(--ok); border-color: #8cc7a8; }
+.judgement.light_green { color: #4d7a1f; border-color: #b6d986; }
+.judgement.yellow { color: #7c6500; border-color: #d8c65a; }
+.judgement.orange { color: var(--warn); border-color: #d79a4a; }
+.judgement.red { color: var(--danger); border-color: #d8818d; }
+.judgement.unrated { color: #475569; border-color: #94a3b8; background: #f8fafc; }
+.source.needs_review { color: var(--danger); border-color: #d8818d; }
+.source.partially_verified, .source.draft { color: var(--warn); border-color: #d79a4a; }
+.source.verified { color: var(--ok); border-color: #8cc7a8; }
+.source.unknown, .source.unrated { color: #475569; border-color: #94a3b8; background: #f8fafc; }
+.statusCards, .summaryCards {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 18px;
+}
+.statusCard, .summaryCard {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-left: 6px solid var(--accent);
+  border-radius: 8px;
+  padding: 14px;
+}
+.statusCard > span, .summaryCard > span {
+  display: block;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 700;
+  margin-bottom: 4px;
+  text-transform: uppercase;
+}
+.statusCard strong, .summaryCard strong {
+  display: block;
+  font-size: 22px;
+  line-height: 1.25;
+}
+.statusCard p, .summaryCard p {
+  color: var(--muted);
+  margin: 8px 0 0;
+}
+.statusCard.green, .summaryCard.ok { border-left-color: var(--ok); }
+.statusCard.light_green { border-left-color: #6f9b2e; }
+.statusCard.yellow { border-left-color: #b69700; }
+.statusCard.orange, .statusCard.draft, .statusCard.partially_verified, .summaryCard.warn { border-left-color: var(--warn); }
+.statusCard.red, .statusCard.needs_review, .summaryCard.danger { border-left-color: var(--danger); }
+.statusCard.warn { border-left-color: var(--warn); }
+.statusCard.unrated, .statusCard.unknown { border-left-color: #64748b; }
+.summaryCard ul {
+  margin: 10px 0 0;
+  padding-left: 20px;
+}
+.summaryCard li { margin: 4px 0; }
+.decisionGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 18px;
+}
+.decisionGrid article {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 14px;
+}
+.decisionGrid span {
+  display: block;
+  color: var(--muted);
+  font-size: 13px;
+  margin-bottom: 4px;
+}
+.decisionGrid strong { font-size: 18px; line-height: 1.35; }
+.toc, .actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  align-items: center;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 12px;
+  margin-bottom: 16px;
+}
+.toc a { color: var(--accent); text-decoration: none; }
+button {
+  border: 1px solid #b9c2cf;
+  border-radius: 8px;
+  background: #fff;
+  color: var(--text);
+  padding: 8px 10px;
+  font: inherit;
+  cursor: pointer;
+  min-height: 44px;
+  touch-action: manipulation;
+}
+button:hover { border-color: var(--accent); color: var(--accent); }
+button:focus-visible,
+a:focus-visible,
+summary:focus-visible {
+  outline: 3px solid #5a8db8;
+  outline-offset: 3px;
+}
+.copyFallback {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  margin: 0 0 18px;
+  padding: 12px;
+}
+.copyFallback summary {
+  cursor: pointer;
+  font-weight: 700;
+}
+.copyFallback p {
+  color: var(--muted);
+  margin: 4px 0 8px;
+}
+.copyFallback textarea {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  font: 13px/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  min-height: 160px;
+  padding: 10px;
+  resize: vertical;
+  width: 100%;
+}
+.report {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 4px 18px 18px;
+}
+.report h1 { font-size: 28px; margin: 18px 0 10px; }
+.report h2 { font-size: 21px; margin: 24px 0 10px; padding-top: 8px; border-top: 1px solid var(--line); }
+.report h3 { font-size: 17px; margin: 18px 0 8px; }
+.report table { border-collapse: collapse; width: 100%; overflow-x: auto; display: block; }
+.report th, .report td { border: 1px solid var(--line); padding: 8px; text-align: left; vertical-align: top; }
+.report code { background: #eef1f5; padding: 2px 4px; border-radius: 4px; }
+.report pre { background: #111827; color: #f7f8fa; padding: 12px; border-radius: 8px; overflow-x: auto; }
+.sectionDetails {
+  border-top: 1px solid var(--line);
+  padding: 6px 0;
+}
+.sectionDetails > summary {
+  cursor: pointer;
+  font-size: 21px;
+  font-weight: 700;
+  padding: 10px 0;
+}
+.sectionDetails.sectionMarket {
+  border: 1px solid var(--line);
+  border-left: 6px solid var(--accent);
+  border-radius: 8px;
+  padding: 8px 12px 12px;
+  background: #fbfdff;
+}
+.sectionDetails.sectionMarket > summary {
+  margin: 0 0 4px;
+}
+.dir {
+  display: inline-block;
+  padding: 1px 6px;
+  border-radius: 999px;
+  font-size: 1em;
+  border: 1px solid transparent;
+}
+.dir.up {
+  color: var(--ok);
+  border-color: #8cc7a8;
+  background: #f0fbf5;
+}
+.dir.down {
+  color: var(--danger);
+  border-color: #d8818d;
+  background: #fff5f6;
+}
+.dir.flat {
+  color: #475569;
+  border-color: #94a3b8;
+  background: #f8fafc;
+}
+.dir.unknown {
+  color: var(--warn);
+  border-color: #d79a4a;
+  background: #fff9f1;
+  font-weight: 600;
+}
+.firstView {
+  display: grid;
+  gap: 14px;
+  margin-bottom: 18px;
+}
+.statusCards {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+.statusCard,
+.summaryCard,
+.decisionGrid article,
+.toc,
+.actions,
+.report,
+.sourceDrawer,
+.riskHighlight,
+.scoreboard {
+  box-shadow: 0 1px 2px rgba(31, 41, 51, 0.04);
+}
+.statusCard strong,
+.decisionGrid strong,
+.summaryCard strong {
+  overflow-wrap: anywhere;
+}
+.statusCard .miniList,
+.sourceDrawer .miniList {
+  margin: 10px 0 0;
+  padding-left: 18px;
+  color: var(--muted);
+  font-size: 14px;
+}
+.forcedCard.ok { border-left-color: var(--ok); }
+.forcedCard.warn { border-left-color: var(--warn); }
+.forcedCard.danger { border-left-color: var(--danger); }
+.sourceMetrics {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+}
+.metricPill {
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: #f8fafc;
+  color: #334155;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 2px 8px;
+}
+.riskHighlight {
+  background: #fffdf8;
+  border: 1px solid #e6d7b4;
+  border-left: 6px solid var(--warn);
+  border-radius: 8px;
+  padding: 14px;
+}
+.riskHighlight > span,
+.scoreboard > span,
+.sourceDrawer > summary span {
+  color: var(--muted);
+  display: block;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+.riskHighlight h2,
+.scoreboard h2 {
+  font-size: 18px;
+  line-height: 1.3;
+  margin: 2px 0 8px;
+}
+.riskHighlight ul {
+  display: grid;
+  gap: 6px;
+  margin: 10px 0 0;
+  padding-left: 20px;
+}
+.riskHighlight li::marker {
+  content: "Risk ";
+  color: var(--warn);
+  font-weight: 800;
+}
+.scoreboard {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 14px;
+}
+.scoreGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 12px;
+}
+.scoreItem {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fbfcfd;
+  min-width: 0;
+  padding: 12px;
+}
+.scoreItem header {
+  align-items: flex-start;
+  display: flex;
+  gap: 8px;
+  justify-content: space-between;
+}
+.scoreItem h3 {
+  font-size: 15px;
+  line-height: 1.35;
+  margin: 0;
+}
+.scoreValue {
+  border: 1px solid #c8d1dc;
+  border-radius: 999px;
+  color: #1f2933;
+  flex: 0 0 auto;
+  font-variant-numeric: tabular-nums;
+  font-weight: 800;
+  padding: 1px 8px;
+}
+.scoreItem p {
+  color: var(--muted);
+  font-size: 14px;
+  margin: 8px 0 0;
+}
+.scoreItem .scoreMeta {
+  color: var(--muted);
+  font-size: 12px;
+  margin-top: 8px;
+}
+.scoreItem.unrated .scoreValue,
+.scoreItem.unknown .scoreValue {
+  background: #fff9f1;
+  border-color: #d79a4a;
+  color: var(--warn);
+}
+.sourceDrawer {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  margin-bottom: 16px;
+  padding: 0;
+}
+.sourceDrawer > summary {
+  cursor: pointer;
+  font-weight: 800;
+  list-style-position: inside;
+  padding: 12px 14px;
+}
+.sourceDrawerBody {
+  border-top: 1px solid var(--line);
+  padding: 12px 14px 14px;
+}
+.sourceList {
+  display: grid;
+  gap: 8px;
+  margin-top: 12px;
+}
+.sourceItem {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 10px;
+}
+.sourceItem.primary {
+  border-left: 5px solid var(--ok);
+}
+.sourceItem.market_data {
+  border-left: 5px solid var(--accent);
+}
+.sourceType {
+  color: var(--muted);
+  display: block;
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+.sourceTitle {
+  display: block;
+  font-weight: 800;
+  line-height: 1.35;
+  margin-top: 2px;
+}
+.sourceMeta {
+  color: var(--muted);
+  font-size: 13px;
+  margin: 4px 0 0;
+}
+.sourceItem a {
+  color: var(--accent);
+}
+.report a {
+  color: var(--accent);
+  overflow-wrap: anywhere;
+}
+.tableScroll {
+  max-width: 100%;
+  overflow-x: auto;
+  overscroll-behavior-inline: contain;
+}
+.tableScroll table {
+  display: table;
+  min-width: 680px;
+  width: 100%;
+}
+@media (max-width: 720px) {
+  .topbar { flex-direction: column; }
+  .statusStack { align-items: flex-start; flex-direction: row; flex-wrap: wrap; }
+  .statusCards, .summaryCards { grid-template-columns: 1fr; }
+  .decisionGrid { grid-template-columns: 1fr; }
+  .scoreGrid { grid-template-columns: 1fr; }
+  .report { padding: 2px 12px 14px; }
+}
+@media (max-width: 420px) {
+  h1 { font-size: 1.45rem; }
+  main { padding-left: 10px; padding-right: 10px; }
+  .topbar { padding: 18px 12px; }
+  .badge,
+  button {
+    width: 100%;
+    justify-content: center;
+  }
+  .actions { align-items: stretch; flex-direction: column; }
+  .decisionGrid strong { font-size: 16px; }
+}
+@media print {
+  @page { margin: 14mm; }
+  body {
+    background: #fff;
+    color: #111;
+    font-size: 11pt;
+  }
+  main {
+    max-width: none;
+    padding: 0;
+  }
+  .topbar {
+    padding: 0 0 12px;
+    border-bottom-color: #999;
+  }
+  .toc, .report, .decisionGrid article, .statusCard, .summaryCard {
+    border-color: #999;
+    box-shadow: none;
+  }
+  .report table {
+    display: table;
+    table-layout: auto;
+    width: 100%;
+    font-size: 9pt;
+  }
+  .report thead {
+    display: table-header-group;
+  }
+  .report tr {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+  .report th, .report td {
+    overflow-wrap: anywhere;
+    word-break: break-word;
+    white-space: normal;
+  }
+  .toc, .statusCards, .summaryCards, .decisionGrid {
+    break-inside: avoid-page;
+  }
+  .report, .sectionDetails {
+    break-inside: auto;
+  }
+  a {
+    color: #111;
+    text-decoration: underline;
+  }
+}
+
+</style>
+
+<style>
+.pagesPublicNotice {
+  margin: 0;
+  padding: 10px 14px;
+  border-bottom: 1px solid #d7dee8;
+  background: #f6f8fb;
+  color: #243040;
+  font: 13px/1.55 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+.pagesPublicNotice strong {
+  display: inline-block;
+  margin-right: 8px;
+}
+.pagesPublicNotice small {
+  display: block;
+  margin-top: 2px;
+  color: #5b677a;
+  overflow-wrap: anywhere;
+}
+@media (max-width: 480px) {
+  .pagesPublicNotice {
+    padding: 9px 10px;
+  }
+  .pagesPublicNotice strong {
+    display: block;
+    margin: 0 0 2px;
+  }
+}
+</style>
+</head>
+<body>
+<aside class="pagesPublicNotice" role="note">
+  <strong>GitHub Pages public view</strong>
+  <span>このHTMLはGitHub Pagesでpublic配信される前提の閲覧用生成物です。個人情報・非公開メモ・認証情報を含めないでください。</span>
+  <small>source: targets/MU/views/2026-05-18_weekly.html / staged: 2026-05-17T22:17:59.037Z</small>
+</aside>
+
+<a class="skipLink" href="#main">本文へ移動</a>
+<header class="topbar">
+  <div>
+    <p class="eyebrow">MU Micron Technology</p>
+    <h1>Micron集中投資 週次ニュース監視</h1>
+    <p class="meta">view: weekly / date: 2026-05-18 / period: 2026-05-11_to_2026-05-18</p>
+  </div>
+  <div class="statusStack">
+    <span class="badge judgement unrated" aria-label="判定 UNRATED">UNRATED</span>
+    <span class="badge source needs_review" aria-label="出典確認状況 needs_review">needs_review</span>
+  </div>
+</header>
+
+<main id="main">
+  <section class="firstView" aria-label="判断用ダッシュボード">
+  <section class="statusCards" aria-label="判定、出典品質、強制警戒条件">
+    <article class="statusCard judgementCard unrated">
+      <span>Judgement</span>
+      <strong>UNRATED</strong>
+      <p>現在の観測判定。色だけでなくラベルと本文で確認します。</p>
+    </article>
+    <article class="statusCard sourceCard needs_review">
+      <span>Source status</span>
+      <strong>needs_review</strong>
+      <p>人間レビューが必要です。 出典5件、一次情報3件。</p>
+      <div class="sourceMetrics" aria-label="出典内訳">
+        <span class="metricPill">primary 3</span>
+        <span class="metricPill">other 2</span>
+        <span class="metricPill">unknown 0</span>
+      </div>
+      <ul class="miniList"><li>256GB DDR5 RDIMMの量産時期、顧客名、売上寄与、対応プラットフォームがいつ開示されるか。</li><li>モバイルDRAM高騰によるスマートフォン減産が、Micronの汎用DRAM/NAND需給やbit shipmentへどこまで波及するか。</li><li>2026-05-20のMicronイベントで、HBM4、SOCAMM2、6600 ION、FY2027 CapExの顧客裏付けが増えるか。</li></ul>
+    </article>
+    <article class="statusCard forcedCard ok">
+      <span>Forced alert</span>
+      <strong>該当なし / 監視継続</strong>
+      <p>本文中の撤退条件・強制警戒条件コメントから抽出しました。</p>
+      <ul><li>強制警戒条件に触れる兆候を確認したか：はい。明確なCapEx下方修正やDRAM/HBM価格下落は確認していないが、顧客裏付け不足と価格高騰による需要圧迫を警戒として残した。</li></ul>
+    </article>
+    <article class="statusCard previousChangeCard _">
+      <span>Previous change</span>
+      <strong>本文を確認</strong>
+      <p>前回レポートからの判定変化と主要な差分です。</p>
+      <ul class="miniList"><li>最も重要な変化: Micronは2026-05-12に256GB DDR5 RDIMMのサンプル出荷を発表した。AIサーバー向けの容量・帯域・電力効率の強化材料だが、開示は「key server ecosystem enablers」へのサンプル段階にとどまり、量産時期や顧客名はまだ出ていない。URL: https://investors.micron.com/news-releases/news-release-details/micron-redefines-ai-performance-sampling-256gb-ddr5-server 発表日: 2026-05-12 確認日: 2026-05-18</li><li>previous_report: ../weekly/2026-05-11_weekly.md</li></ul>
+    </article>
+    <article class="statusCard unconfirmedCard warn">
+      <span>Unconfirmed</span>
+      <strong>3項目を確認</strong>
+      <p>強気材料として扱わず、次回確認へ回す項目です。</p>
+      <ul class="miniList"><li>256GB DDR5 RDIMMの量産時期、顧客名、売上寄与、対応プラットフォームがいつ開示されるか。</li><li>モバイルDRAM高騰によるスマートフォン減産が、Micronの汎用DRAM/NAND需給やbit shipmentへどこまで波及するか。</li><li>2026-05-20のMicronイベントで、HBM4、SOCAMM2、6600 ION、FY2027 CapExの顧客裏付けが増えるか。</li></ul>
+    </article>
+  </section>
+
+  <section class="decisionGrid">
+    <article>
+      <span>Score</span>
+      <strong>N/A / 27</strong>
+    </article>
+    <article>
+      <span>Conclusion</span>
+      <strong>最も重要な変化：Micronは2026-05-12に256GB DDR5 RDIMMのサンプル出荷を発表した。AIサーバー向けの容量・帯域・電力効率の強化材料だが、開示は「key server ecosystem enablers」へのサンプル段階にとどまり、量産時期や顧客名はまだ出ていない。URL: https://investors.micron.com/news-releases/news-release-details/micron-redefines-ai-performance-sampling-256gb-ddr5-server 発表日: 2026-05-12 確認日: 2026-05-18</strong>
+    </article>
+    <article>
+      <span>Action</span>
+      <strong>Micron 2026-05-20イベントでHBM4、SOCAMM2、256GB DDR5 RDIMM、6600 ION、FY2027 CapExの顧客裏付けが増えるか。</strong>
+    </article>
+  </section>
+
+<section class="riskHighlight" aria-label="弱気材料ファースト">
+    <span>Risk first</span>
+    <h2>弱気材料を先に確認</h2>
+    <p>撤退条件との関係：dram_contract_down_two_quarters や two_csp_capex_down は確認していない。一方で、capex_without_customer_backing と hbm4_excluded を強く否定する新規一次情報もまだ不足している。</p>
+    <ul><li>弱気材料1：TrendForceは2026-05-14に、2Q26のLPDDR4X ASPが前四半期比70-75%、LPDDR5X ASPが78-83%上昇し、スマートフォンブランドが2026年の総生産台数を減らす可能性や、昨年末に結んだ調達合意のbit volumeを満たせない可能性まで示した。メモリ価格上昇はMicronの短期ASPには追い風だが、高価格が最終需要を傷める兆候として無視できない。URL: https://www.trendforce.com/presscenter/news/20260514-13044.html 発表日: 2026-05-14 確認日: 2026-05-18</li><li>弱気材料2：Micronの2026-05-12発表は256GB DDR5 RDIMMのsample段階で、量産出荷ではなく、顧客名や売上寄与も未開示だった。AIインフラ向けの新製品が増えても、売上化や採用深度の確認はまだ先である。URL: https://investors.micron.com/news-releases/news-release-details/micron-redefines-ai-performance-sampling-256gb-ddr5-server 発表日: 2026-05-12 確認日: 2026-05-18</li><li>弱気材料3：Micronの次の公式投資家イベントは2026-05-20で、2026-05-18時点ではHBM4売上、HBM4顧客配分、256GB DDR5 RDIMMの量産時期、6600 IONの顧客採用を補強する新しい一次説明はまだ出ていない。今週は技術進展の確認はあったが、顧客裏付けの不足は解消していない。URL: https://investors.micron.com/news-releases/news-release-details/micron-announces-participation-investor-event-3 発表日: 2026-04-29 確認日: 2026-05-18</li><li>撤退条件との関係：dram_contract_down_two_quarters や two_csp_capex_down は確認していない。一方で、capex_without_customer_backing と hbm4_excluded を強く否定する新規一次情報もまだ不足している。</li></ul>
+  </section>
+
+  </section>
+
+  <nav class="toc" aria-label="目次">
+    <strong>目次</strong>
+    <a href="#sec-今週の結論">1. 今週の結論</a><a href="#sec-弱気材料を先に確認">2. 弱気材料を先に確認</a><a href="#sec-強気材料">3. 強気材料</a><a href="#sec-監視対象別メモ">4. 監視対象別メモ</a><a href="#sec-state更新候補">5. state更新候補</a><a href="#sec-source-log更新内容">6. source_log更新内容</a><a href="#sec-品質ゲート">7. 品質ゲート</a><a href="#sec-実行ログ要約-runs転記用">8. 実行ログ要約（runs転記用）</a><a href="#sec-次回確認すること">9. 次回確認すること</a><a href="#sec-出典">10. 出典</a>
+  </nav>
+
+  <section class="actions" aria-label="コピー操作">
+    <button type="button" aria-label="Copy next prompt" data-copy-label="next prompt" data-copy="# 次回確認プロンプト: Micron集中投資 週次ニュース監視&#10;&#10;- target: MU&#10;- judgement: UNRATED&#10;- score: N/A / 27&#10;- source_status: needs_review&#10;&#10;次回レポートでは、以下を優先して一次情報または信頼できる出典で確認してください。&#10;&#10;## 未検証・不明点&#10;- 未記入&#10;&#10;## 次回監視イベント&#10;- Micron 2026-05-20イベントでHBM4、SOCAMM2、256GB DDR5 RDIMM、6600 ION、FY2027 CapExの顧客裏付けが増えるか。&#10;- 256GB DDR5 RDIMMの量産時期、顧客名、売上寄与が追加開示されるか。&#10;- モバイルDRAM価格高騰による需要破壊が、汎用DRAM/NAND需要へ波及しないか。&#10;- Dell Tech World期間中に、6600 IONの顧客反応や設計採用数の示唆が出るか。&#10;&#10;## Open questions&#10;- 256GB DDR5 RDIMMの量産時期、顧客名、売上寄与、対応プラットフォームがいつ開示されるか。&#10;- モバイルDRAM高騰によるスマートフォン減産が、Micronの汎用DRAM/NAND需給やbit shipmentへどこまで波及するか。&#10;- 2026-05-20のMicronイベントで、HBM4、SOCAMM2、6600 ION、FY2027 CapExの顧客裏付けが増えるか。">Copy next prompt</button>
+    <button type="button" aria-label="Copy full report Markdown" data-copy-label="report Markdown" data-copy="---&#10;view: weekly&#10;target: MU&#10;target_id: MU&#10;report_type: weekly_watch&#10;title: Micron集中投資 週次ニュース監視&#10;date: 2026-05-18&#10;period: 2026-05-11_to_2026-05-18&#10;company: Micron Technology&#10;ticker: MU&#10;judgement: UNRATED&#10;score:&#10;score_max: 27&#10;source_status: needs_review&#10;previous_report: ../weekly/2026-05-11_weekly.md&#10;generated_html: ../../views/2026-05-18_weekly.html&#10;---&#10;&#10;# Micron集中投資 週次ニュース監視&#10;&#10;対象：Micron Technology（MU）&#10;日付：2026-05-18&#10;対象期間：2026-05-11 から 2026-05-18&#10;警戒度：注意&#10;スコア：週次では未付与 / 27&#10;source_status：needs_review&#10;&#10;注記：これは投資助言ではなく、次回の月次・四半期判定へ渡すための週次観測メモである。&#10;&#10;## 1. 今週の結論&#10;&#10;- 最も重要な変化：Micronは2026-05-12に256GB DDR5 RDIMMのサンプル出荷を発表した。AIサーバー向けの容量・帯域・電力効率の強化材料だが、開示は「key server ecosystem enablers」へのサンプル段階にとどまり、量産時期や顧客名はまだ出ていない。URL: https://investors.micron.com/news-releases/news-release-details/micron-redefines-ai-performance-sampling-256gb-ddr5-server 発表日: 2026-05-12 確認日: 2026-05-18&#10;- 投資仮説への影響：AIデータセンター向けDRAM需要の強さは維持されている一方、TrendForceは2026-05-14にモバイルDRAM価格急騰でスマートフォン生産圧力が強まると述べた。高価格が需要破壊を生む兆候が周辺市場から出始めており、Micronの汎用DRAM/NAND需要へ波及しないか監視が必要である。URL: https://www.trendforce.com/presscenter/news/20260514-13044.html 発表日: 2026-05-14 確認日: 2026-05-18&#10;- 四半期判定に持ち越す論点：2026-05-20のMicron J.P. Morganイベントで、HBM4、SOCAMM2、256GB DDR5 RDIMM、6600 ION、FY2027 CapExの顧客裏付けが増えるかを確認する。URL: https://investors.micron.com/news-releases/news-release-details/micron-announces-participation-investor-event-3 発表日: 2026-04-29 確認日: 2026-05-18&#10;&#10;## 2. 弱気材料を先に確認&#10;&#10;- 弱気材料1：TrendForceは2026-05-14に、2Q26のLPDDR4X ASPが前四半期比70-75%、LPDDR5X ASPが78-83%上昇し、スマートフォンブランドが2026年の総生産台数を減らす可能性や、昨年末に結んだ調達合意のbit volumeを満たせない可能性まで示した。メモリ価格上昇はMicronの短期ASPには追い風だが、高価格が最終需要を傷める兆候として無視できない。URL: https://www.trendforce.com/presscenter/news/20260514-13044.html 発表日: 2026-05-14 確認日: 2026-05-18&#10;- 弱気材料2：Micronの2026-05-12発表は256GB DDR5 RDIMMのsample段階で、量産出荷ではなく、顧客名や売上寄与も未開示だった。AIインフラ向けの新製品が増えても、売上化や採用深度の確認はまだ先である。URL: https://investors.micron.com/news-releases/news-release-details/micron-redefines-ai-performance-sampling-256gb-ddr5-server 発表日: 2026-05-12 確認日: 2026-05-18&#10;- 弱気材料3：Micronの次の公式投資家イベントは2026-05-20で、2026-05-18時点ではHBM4売上、HBM4顧客配分、256GB DDR5 RDIMMの量産時期、6600 IONの顧客採用を補強する新しい一次説明はまだ出ていない。今週は技術進展の確認はあったが、顧客裏付けの不足は解消していない。URL: https://investors.micron.com/news-releases/news-release-details/micron-announces-participation-investor-event-3 発表日: 2026-04-29 確認日: 2026-05-18&#10;- 撤退条件との関係：`dram_contract_down_two_quarters` や `two_csp_capex_down` は確認していない。一方で、`capex_without_customer_backing` と `hbm4_excluded` を強く否定する新規一次情報もまだ不足している。&#10;&#10;## 3. 強気材料&#10;&#10;- 強気材料1：Micronは2026-05-12に、1-gamma DRAMと3DS/TSVを使った256GB DDR5 RDIMMを発表し、最大9,200 MT/s、現在量産中製品比で40%以上高速、128GBモジュール2枚対比で40%以上低い動作電力を訴求した。AIサーバーのメモリ容量と効率を引き上げる方向性は明確である。URL: https://investors.micron.com/news-releases/news-release-details/micron-redefines-ai-performance-sampling-256gb-ddr5-server 発表日: 2026-05-12 確認日: 2026-05-18&#10;- 強気材料2：Micronは同発表で、key server ecosystem enablersと共同検証を進めていると説明した。採用確定ではないが、単なる研究段階ではなくプラットフォーム検証フェーズには進んでいる。URL: https://investors.micron.com/news-releases/news-release-details/micron-redefines-ai-performance-sampling-256gb-ddr5-server 発表日: 2026-05-12 確認日: 2026-05-18&#10;- 強気材料3：TrendForceは2026-05-06に、上位9社CSPの2026年CapEx見通しを約8,300億ドルへ引き上げた。AIデータセンターの総需要環境は引き続き強く、MicronのデータセンターDRAM・HBM・SSDの需要土台は崩れていない。URL: https://www.trendforce.com/presscenter/news/20260506-13033.html 発表日: 2026-05-06 確認日: 2026-05-18&#10;&#10;## 4. 監視対象別メモ&#10;&#10;### 対象企業&#10;&#10;- Micronの今週の新規一次情報は256GB DDR5 RDIMMサンプル発表だった。HBM4やSOCAMM2の新しい顧客名開示ではなく、server DRAMの容量・帯域強化の進展として読むのが妥当である。&#10;- 2026-05-20のJ.P. Morganイベントが直近の次イベントであり、HBM4売上、顧客配分、FY2027 CapEx裏付けを確認する次の公式機会になる。&#10;&#10;### 主要製品・技術テーマ&#10;&#10;- 256GB DDR5 RDIMMは、1-gamma DRAM、3DS、TSVを組み合わせてAIサーバーの高容量化を狙う。HBMではないが、AIインフラのメモリ階層全体を押さえるという投資仮説には整合する。&#10;- ただし今週のMicron一次情報だけでは、HBM4、SOCAMM2、9650 Gen6 SSD、6600 IONのどれが先に大きく売上寄与するかはまだ不明である。&#10;&#10;### 需要側&#10;&#10;- TrendForceの2026-05-06更新ではCSP CapExの上方修正が続いており、AIデータセンター需要の総量は依然強い。&#10;- 一方で2026-05-14更新ではモバイルDRAM高騰がスマートフォン生産圧力を強めるとされ、メモリ価格高騰の副作用がエンド需要側に出始めている。&#10;&#10;### 市況&#10;&#10;- 今週確認した新しい市況変化は、モバイルDRAM価格高騰によるスマートフォン需要圧迫である。データセンター向け需給とは市場が異なるが、メモリ価格の高止まりが最終需要を削る典型例として警戒する。&#10;- HBM/サーバーDRAM/eSSDの需給逼迫シナリオ自体はまだ崩れていないが、価格高騰が広いデバイス市場へ与えるダメージは次回月次で補強確認が必要である。&#10;&#10;### 競合&#10;&#10;- 2026-05-18時点のSamsung Semiconductor Global Newsroomのlatest pageでは、メモリ関連の直近主要更新は2026-04-30のQ1結果開示までで、今週新しいHBM/SOCAMM2材料は確認できていない。これは同latest pageからの推論である。URL: https://news.samsungsemiconductor.com/global/latest/ 確認日: 2026-05-18&#10;- したがって今週は競合悪化よりも、Micron自身が新製品サンプル発表を顧客採用まで伸ばせるかが主論点である。&#10;&#10;### 地政学・規制&#10;&#10;- 今週確認した範囲では、Micronに直接関わる新規の対中規制、補助金変更、ファブ遅延の一次情報は確認できていない。&#10;- ただしモバイルDRAM価格の急騰は、供給制約と価格決定力が強い局面が長引いていることを示しており、将来の需要反動を伴う可能性がある。&#10;&#10;## 5. state更新候補&#10;&#10;### last_report&#10;&#10;- 最新週次を`targets/MU/reports/weekly/2026-05-18_weekly.md`へ更新する。&#10;- 判定は`UNRATED`を維持し、`source_status`はsecurity-gate未解決のため`needs_review`にする。&#10;- 重要変化として、256GB DDR5 RDIMM sample開始と、モバイルDRAM高騰による需要圧迫懸念を反映する。&#10;&#10;### open_questions&#10;&#10;- 256GB DDR5 RDIMMの量産時期、顧客名、売上寄与、対応プラットフォームがいつ開示されるか。&#10;- モバイルDRAM高騰によるスマートフォン減産が、Micronの汎用DRAM/NAND需給やbit shipmentへどこまで波及するか。&#10;- 2026-05-20のMicronイベントで、HBM4、SOCAMM2、6600 ION、FY2027 CapExの顧客裏付けが増えるか。&#10;&#10;### alerts&#10;&#10;- モバイルDRAM価格高騰がスマートフォン生産台数と調達bit volumeを圧迫する可能性が出てきた。メモリ価格上昇は追い風でも、需要破壊の兆候として警戒する。&#10;- 256GB DDR5 RDIMMは有望だが、sample段階で顧客名未開示のため、顧客裏付け不足の警戒をまだ解けない。&#10;&#10;### next_events&#10;&#10;- 2026-05-20のMicron J.P. Morganカンファレンスで、HBM4、SOCAMM2、256GB DDR5 RDIMM、6600 ION、FY2027 CapExの追加コメントを確認する。&#10;- Dell Tech World 2026の会期中に、6600 IONの展示や顧客反応に追加材料が出るか確認する。&#10;- 256GB DDR5 RDIMMの量産時期と顧客検証進捗を追跡する。&#10;&#10;## 6. source_log更新内容&#10;&#10;- `targets/MU/sources/source_log.md`に追記した出典：&#10;  - Micron 256GB DDR5 RDIMMサンプル発表&#10;  - TrendForce 2026-05-14 mobile DRAM価格上昇&#10;  - TrendForce 2026-05-06 CSP CapEx更新&#10;  - Micron 2026-05-20 investor event告知&#10;- 追記理由（重要主張との対応）：&#10;  - 新製品進展、価格高騰の副作用、需要環境、次回イベントを本文の主要主張と対応付けるため。&#10;&#10;## 7. 品質ゲート&#10;&#10;- 弱気材料を先に確認したか：はい。&#10;- 強制警戒条件に触れる兆候を確認したか：はい。明確なCapEx下方修正やDRAM/HBM価格下落は確認していないが、顧客裏付け不足と価格高騰による需要圧迫を警戒として残した。&#10;- 出典URL、発表日、確認日があるか：はい。Samsung latest page由来の「今週追加材料なし」は推論であり、その旨を本文に明記した。&#10;- 外部取得データを保存しない場合でも、出典URL、発表日、確認日を本文とsource_logに残したか：はい。&#10;- 未確認項目をopen_questionsへ回したか：はい。&#10;- 週次ではスコア未付与にしたか：はい。&#10;- `source_status: draft`のまま確定していないか：はい。`needs_review`で確定する。&#10;- 投資助言ではなく観測レポートとして書いたか：はい。&#10;&#10;## 8. 実行ログ要約（runs転記用）&#10;&#10;- 対象レポート:&#10;  - ファイル名: `2026-05-18_weekly.md`&#10;  - パス: `targets/MU/reports/weekly/2026-05-18_weekly.md`&#10;- source_status最終値（`draft`不可）:&#10;  - 値: `needs_review`&#10;  - 判定根拠: 本文の主要主張には出典を付けたが、security-gate install-checkがsandbox制約で完了せず未解決のため。&#10;- security-gate install-check:&#10;  - 対象: `scripts/automation_readiness.mjs`、`scripts/automation_lock.mjs`、`shared/viewer/render.mjs`、`scripts/report_verify.mjs`、`scripts/viewer_verify.mjs`&#10;  - 実行結果: sandbox制約により`EPERM`で失敗。runログへ記録し、コミット不可にする。&#10;- security-gate scan（外部取得データを保存した場合のみ）:&#10;  - 対象: なし&#10;  - 実行結果: 未実施&#10;- security-gate scan未実施時メモ（保存データなしの場合）:&#10;  - 理由: 外部取得データをローカル保存せず、URL・発表日・確認日を本文と`targets/MU/sources/source_log.md`へ残したため。&#10;  - 出典管理（本文/`source_log`）: 実施済み&#10;- HTML生成:&#10;  - コマンド: `node shared/viewer/render.mjs --target targets/MU --report targets/MU/reports/weekly/2026-05-18_weekly.md --out targets/MU/views/2026-05-18_weekly.html`&#10;  - 結果: 成功（`targets/MU/views/2026-05-18_weekly.html`を生成。HTMLは`.gitignore`管理）&#10;- report_verify:&#10;  - コマンド: `node scripts/report_verify.mjs --target targets/MU --report targets/MU/reports/weekly/2026-05-18_weekly.md`&#10;  - 結果（failures / warnings）: `failures=0, warnings=0`&#10;  - failures&gt;0時の修正内容: なし&#10;&#10;## 9. 次回確認すること&#10;&#10;- Micron 2026-05-20イベントでHBM4、SOCAMM2、256GB DDR5 RDIMM、6600 ION、FY2027 CapExの顧客裏付けが増えるか。&#10;- 256GB DDR5 RDIMMの量産時期、顧客名、売上寄与が追加開示されるか。&#10;- モバイルDRAM価格高騰による需要破壊が、汎用DRAM/NAND需要へ波及しないか。&#10;- Dell Tech World期間中に、6600 IONの顧客反応や設計採用数の示唆が出るか。&#10;&#10;## 10. 出典&#10;&#10;| 種別 | 発行元 | タイトル | URL | 発表日 | 確認日 |&#10;|---|---|---|---|---|---|&#10;| primary | Micron IR | Micron Redefines AI Performance With Sampling of 256GB DDR5 Server Module | https://investors.micron.com/news-releases/news-release-details/micron-redefines-ai-performance-sampling-256gb-ddr5-server | 2026-05-12 | 2026-05-18 |&#10;| primary | Micron IR | Micron Announces Participation in Investor Event | https://investors.micron.com/news-releases/news-release-details/micron-announces-participation-investor-event-3 | 2026-04-29 | 2026-05-18 |&#10;| market_data | TrendForce | Mobile DRAM Contract Prices Continue Rising in 2Q26, Pressuring Smartphone Production, Says TrendForce | https://www.trendforce.com/presscenter/news/20260514-13044.html | 2026-05-14 | 2026-05-18 |&#10;| market_data | TrendForce | North American AI Data Center Expansion Drives 2026 CapEx of Top Nine CSPs to US$830 Billion, Says TrendForce | https://www.trendforce.com/presscenter/news/20260506-13033.html | 2026-05-06 | 2026-05-18 |&#10;| primary | Samsung Semiconductor Global Newsroom | Latest | https://news.samsungsemiconductor.com/global/latest/ | undated | 2026-05-18 |&#10;">Copy report Markdown</button>
+    <button type="button" aria-label="Copy action summary" data-copy-label="action summary" data-copy="# Micron集中投資 週次ニュース監視 action summary&#10;&#10;- judgement: UNRATED&#10;- score: N/A / 27&#10;- source_status: needs_review&#10;&#10;## 今週の結論&#10;- 最も重要な変化：Micronは2026-05-12に256GB DDR5 RDIMMのサンプル出荷を発表した。AIサーバー向けの容量・帯域・電力効率の強化材料だが、開示は「key server ecosystem enablers」へのサンプル段階にとどまり、量産時期や顧客名はまだ出ていない。URL: https://investors.micron.com/news-releases/news-release-details/micron-redefines-ai-performance-sampling-256gb-ddr5-server 発表日: 2026-05-12 確認日: 2026-05-18&#10;- 投資仮説への影響：AIデータセンター向けDRAM需要の強さは維持されている一方、TrendForceは2026-05-14にモバイルDRAM価格急騰でスマートフォン生産圧力が強まると述べた。高価格が需要破壊を生む兆候が周辺市場から出始めており、Micronの汎用DRAM/NAND需要へ波及しないか監視が必要である。URL: https://www.trendforce.com/presscenter/news/20260514-13044.html 発表日: 2026-05-14 確認日: 2026-05-18&#10;- 四半期判定に持ち越す論点：2026-05-20のMicron J.P. Morganイベントで、HBM4、SOCAMM2、256GB DDR5 RDIMM、6600 ION、FY2027 CapExの顧客裏付けが増えるかを確認する。URL: https://investors.micron.com/news-releases/news-release-details/micron-announces-participation-investor-event-3 発表日: 2026-04-29 確認日: 2026-05-18&#10;&#10;## 次回確認すること&#10;- Micron 2026-05-20イベントでHBM4、SOCAMM2、256GB DDR5 RDIMM、6600 ION、FY2027 CapExの顧客裏付けが増えるか。&#10;- 256GB DDR5 RDIMMの量産時期、顧客名、売上寄与が追加開示されるか。&#10;- モバイルDRAM価格高騰による需要破壊が、汎用DRAM/NAND需要へ波及しないか。&#10;- Dell Tech World期間中に、6600 IONの顧客反応や設計採用数の示唆が出るか。">Copy action summary</button>
+    <button type="button" aria-label="Copy source checklist" data-copy-label="source checklist" data-copy="# Micron集中投資 週次ニュース監視 source checklist&#10;&#10;- source_status: needs_review&#10;&#10;- [ ] primary / Micron IR / Micron Redefines AI Performance With Sampling of 256GB DDR5 Server Module / 確認済み&#10;- [ ] primary / Micron IR / Micron Announces Participation in Investor Event / 確認済み&#10;- [ ] market_data / TrendForce / Mobile DRAM Contract Prices Continue Rising in 2Q26, Pressuring Smartphone Production, Says TrendForce / 確認済み&#10;- [ ] market_data / TrendForce / North American AI Data Center Expansion Drives 2026 CapEx of Top Nine CSPs to US$830 Billion, Says TrendForce / 確認済み&#10;- [ ] primary / Samsung Semiconductor Global Newsroom / Latest / 確認済み">Copy source checklist</button>
+  </section>
+  <details class="copyFallback" data-copy-fallback>
+    <summary>Copy fallback</summary>
+    <p>クリップボードAPIが使えない場合は、下のMarkdownを選択して使用します。</p>
+    <textarea readonly aria-label="コピー対象Markdown"></textarea>
+  </details>
+
+<details class="sourceDrawer">
+    <summary><span>Source drawer</span>出典一覧 (5件、primary 3件)</summary>
+    <div class="sourceDrawerBody">
+      <p>一次情報を先頭に並べています。URL、発表日、確認日の欠落は次回確認対象です。</p>
+      <div class="sourceList"><article class="sourceItem primary">
+    <span class="sourceType">primary / Micron IR</span>
+    <strong class="sourceTitle"><a href="https://investors.micron.com/news-releases/news-release-details/micron-redefines-ai-performance-sampling-256gb-ddr5-server">Micron Redefines AI Performance With Sampling of 256GB DDR5 Server Module</a></strong>
+    <p class="sourceMeta"><a href="https://investors.micron.com/news-releases/news-release-details/micron-redefines-ai-performance-sampling-256gb-ddr5-server">URL</a> / 発表日: 2026-05-12 / 確認日: 2026-05-18</p>
+  </article><article class="sourceItem primary">
+    <span class="sourceType">primary / Micron IR</span>
+    <strong class="sourceTitle"><a href="https://investors.micron.com/news-releases/news-release-details/micron-announces-participation-investor-event-3">Micron Announces Participation in Investor Event</a></strong>
+    <p class="sourceMeta"><a href="https://investors.micron.com/news-releases/news-release-details/micron-announces-participation-investor-event-3">URL</a> / 発表日: 2026-04-29 / 確認日: 2026-05-18</p>
+  </article><article class="sourceItem primary">
+    <span class="sourceType">primary / Samsung Semiconductor Global Newsroom</span>
+    <strong class="sourceTitle"><a href="https://news.samsungsemiconductor.com/global/latest/">Latest</a></strong>
+    <p class="sourceMeta"><a href="https://news.samsungsemiconductor.com/global/latest/">URL</a> / 発表日: undated / 確認日: 2026-05-18</p>
+  </article><article class="sourceItem market_data">
+    <span class="sourceType">market_data / TrendForce</span>
+    <strong class="sourceTitle"><a href="https://www.trendforce.com/presscenter/news/20260514-13044.html">Mobile DRAM Contract Prices Continue Rising in 2Q26, Pressuring Smartphone Production, Says TrendForce</a></strong>
+    <p class="sourceMeta"><a href="https://www.trendforce.com/presscenter/news/20260514-13044.html">URL</a> / 発表日: 2026-05-14 / 確認日: 2026-05-18</p>
+  </article><article class="sourceItem market_data">
+    <span class="sourceType">market_data / TrendForce</span>
+    <strong class="sourceTitle"><a href="https://www.trendforce.com/presscenter/news/20260506-13033.html">North American AI Data Center Expansion Drives 2026 CapEx of Top Nine CSPs to US$830 Billion, Says TrendForce</a></strong>
+    <p class="sourceMeta"><a href="https://www.trendforce.com/presscenter/news/20260506-13033.html">URL</a> / 発表日: 2026-05-06 / 確認日: 2026-05-18</p>
+  </article></div>
+    </div>
+  </details>
+
+  <article class="report" data-report-path="targets/MU/reports/weekly/2026-05-18_weekly.md">
+<h1 id="sec-micron集中投資-週次ニュース監視">Micron集中投資 週次ニュース監視</h1>
+<p>対象：Micron Technology（MU）</p>
+<p>日付：2026-05-18</p>
+<p>対象期間：2026-05-11 から 2026-05-18</p>
+<p>警戒度：注意</p>
+<p>スコア：週次では<span class="dir unknown">未付与</span> / 27</p>
+<p>source_status：needs_review</p>
+<p>注記：これは投資助言ではなく、次回の月次・四半期判定へ渡すための週次観測メモである。</p>
+<details class="sectionDetails" id="sec-今週の結論" open><summary>1. 今週の結論</summary>
+<ul>
+<li>最も重要な変化：Micronは2026-05-12に256GB DDR5 RDIMMのサンプル出荷を発表した。AIサーバー向けの容量・帯域・電力効率の強化材料だが、開示は「key server ecosystem enablers」へのサンプル段階にとどまり、量産時期や顧客名はまだ出ていない。URL: https://investors.micron.com/news-releases/news-release-details/micron-redefines-ai-performance-sampling-256gb-ddr5-server 発表日: 2026-05-12 確認日: 2026-05-18</li>
+<li>投資仮説への影響：AIデータセンター向けDRAM需要の強さは維持されている一方、TrendForceは2026-05-14にモバイルDRAM価格急騰でスマートフォン生産圧力が強まると述べた。高価格が需要破壊を生む兆候が周辺市場から出始めており、Micronの汎用DRAM/NAND需要へ波及しないか監視が必要である。URL: https://www.trendforce.com/presscenter/news/20260514-13044.html 発表日: 2026-05-14 確認日: 2026-05-18</li>
+<li>四半期判定に持ち越す論点：2026-05-20のMicron J.P. Morganイベントで、HBM4、SOCAMM2、256GB DDR5 RDIMM、6600 ION、FY2027 CapExの顧客裏付けが増えるかを確認する。URL: https://investors.micron.com/news-releases/news-release-details/micron-announces-participation-investor-event-3 発表日: 2026-04-29 確認日: 2026-05-18</li>
+</ul>
+</details>
+<details class="sectionDetails" id="sec-弱気材料を先に確認" open><summary>2. 弱気材料を先に確認</summary>
+<ul>
+<li>弱気材料1：TrendForceは2026-05-14に、2Q26のLPDDR4X ASPが前四半期比70-75%、LPDDR5X ASPが78-83%<span class="dir up">上昇</span>し、スマートフォンブランドが2026年の総生産台数を減らす可能性や、昨年末に結んだ調達合意のbit volumeを満たせない可能性まで示した。メモリ価格<span class="dir up">上昇</span>はMicronの短期ASPには追い風だが、高価格が最終需要を傷める兆候として無視できない。URL: https://www.trendforce.com/presscenter/news/20260514-13044.html 発表日: 2026-05-14 確認日: 2026-05-18</li>
+<li>弱気材料2：Micronの2026-05-12発表は256GB DDR5 RDIMMのsample段階で、量産出荷ではなく、顧客名や売上寄与も未開示だった。AIインフラ向けの新製品が増えても、売上化や採用深度の確認はまだ先である。URL: https://investors.micron.com/news-releases/news-release-details/micron-redefines-ai-performance-sampling-256gb-ddr5-server 発表日: 2026-05-12 確認日: 2026-05-18</li>
+<li>弱気材料3：Micronの次の公式投資家イベントは2026-05-20で、2026-05-18時点ではHBM4売上、HBM4顧客配分、256GB DDR5 RDIMMの量産時期、6600 IONの顧客採用を補強する新しい一次説明はまだ出ていない。今週は技術進展の確認はあったが、顧客裏付けの不足は解消していない。URL: https://investors.micron.com/news-releases/news-release-details/micron-announces-participation-investor-event-3 発表日: 2026-04-29 確認日: 2026-05-18</li>
+<li>撤退条件との関係：<code>dram_contract_down_two_quarters</code> や <code>two_csp_capex_down</code> は確認していない。一方で、<code>capex_without_customer_backing</code> と <code>hbm4_excluded</code> を強く否定する新規一次情報もまだ不足している。</li>
+</ul>
+</details>
+<details class="sectionDetails" id="sec-強気材料" open><summary>3. 強気材料</summary>
+<ul>
+<li>強気材料1：Micronは2026-05-12に、1-gamma DRAMと3DS/TSVを使った256GB DDR5 RDIMMを発表し、最大9,200 MT/s、現在量産中製品比で40%以上高速、128GBモジュール2枚対比で40%以上低い動作電力を訴求した。AIサーバーのメモリ容量と効率を引き上げる方向性は明確である。URL: https://investors.micron.com/news-releases/news-release-details/micron-redefines-ai-performance-sampling-256gb-ddr5-server 発表日: 2026-05-12 確認日: 2026-05-18</li>
+<li>強気材料2：Micronは同発表で、key server ecosystem enablersと共同検証を進めていると説明した。採用確定ではないが、単なる研究段階ではなくプラットフォーム検証フェーズには進んでいる。URL: https://investors.micron.com/news-releases/news-release-details/micron-redefines-ai-performance-sampling-256gb-ddr5-server 発表日: 2026-05-12 確認日: 2026-05-18</li>
+<li>強気材料3：TrendForceは2026-05-06に、上位9社CSPの2026年CapEx見通しを約8,300億ドルへ引き上げた。AIデータセンターの総需要環境は引き続き強く、MicronのデータセンターDRAM・HBM・SSDの需要土台は崩れていない。URL: https://www.trendforce.com/presscenter/news/20260506-13033.html 発表日: 2026-05-06 確認日: 2026-05-18</li>
+</ul>
+</details>
+<details class="sectionDetails" id="sec-監視対象別メモ" open><summary>4. 監視対象別メモ</summary>
+<h3 id="sec-対象企業">対象企業</h3>
+<ul>
+<li>Micronの今週の新規一次情報は256GB DDR5 RDIMMサンプル発表だった。HBM4やSOCAMM2の新しい顧客名開示ではなく、server DRAMの容量・帯域強化の進展として読むのが妥当である。</li>
+<li>2026-05-20のJ.P. Morganイベントが直近の次イベントであり、HBM4売上、顧客配分、FY2027 CapEx裏付けを確認する次の公式機会になる。</li>
+</ul>
+<h3 id="sec-主要製品・技術テーマ">主要製品・技術テーマ</h3>
+<ul>
+<li>256GB DDR5 RDIMMは、1-gamma DRAM、3DS、TSVを組み合わせてAIサーバーの高容量化を狙う。HBMではないが、AIインフラのメモリ階層全体を押さえるという投資仮説には整合する。</li>
+<li>ただし今週のMicron一次情報だけでは、HBM4、SOCAMM2、9650 Gen6 SSD、6600 IONのどれが先に大きく売上寄与するかはまだ<span class="dir unknown">不明</span>である。</li>
+</ul>
+<h3 id="sec-需要側">需要側</h3>
+<ul>
+<li>TrendForceの2026-05-06更新ではCSP CapExの<span class="dir up">上方修正</span>が続いており、AIデータセンター需要の総量は依然強い。</li>
+<li>一方で2026-05-14更新ではモバイルDRAM高騰がスマートフォン生産圧力を強めるとされ、メモリ価格高騰の副作用がエンド需要側に出始めている。</li>
+</ul>
+<h3 id="sec-市況">市況</h3>
+<ul>
+<li>今週確認した新しい市況変化は、モバイルDRAM価格高騰によるスマートフォン需要圧迫である。データセンター向け需給とは市場が異なるが、メモリ価格の高止まりが最終需要を削る典型例として警戒する。</li>
+<li>HBM/サーバーDRAM/eSSDの需給逼迫シナリオ自体はまだ崩れていないが、価格高騰が広いデバイス市場へ与えるダメージは次回月次で補強確認が必要である。</li>
+</ul>
+<h3 id="sec-競合">競合</h3>
+<ul>
+<li>2026-05-18時点のSamsung Semiconductor Global Newsroomのlatest pageでは、メモリ関連の直近主要更新は2026-04-30のQ1結果開示までで、今週新しいHBM/SOCAMM2材料は確認できていない。これは同latest pageからの推論である。URL: https://news.samsungsemiconductor.com/global/latest/ 確認日: 2026-05-18</li>
+<li>したがって今週は競合<span class="dir down">悪化</span>よりも、Micron自身が新製品サンプル発表を顧客採用まで伸ばせるかが主論点である。</li>
+</ul>
+<h3 id="sec-地政学・規制">地政学・規制</h3>
+<ul>
+<li>今週確認した範囲では、Micronに直接関わる新規の対中規制、補助金変更、ファブ遅延の一次情報は確認できていない。</li>
+<li>ただしモバイルDRAM価格の急騰は、供給制約と価格決定力が強い局面が長引いていることを示しており、将来の需要反動を伴う可能性がある。</li>
+</ul>
+</details>
+<details class="sectionDetails" id="sec-state更新候補" open><summary>5. state更新候補</summary>
+<h3 id="sec-last-report">last_report</h3>
+<ul>
+<li>最新週次を<code>targets/MU/reports/weekly/2026-05-18_weekly.md</code>へ更新する。</li>
+<li>判定は<code><span class="dir unknown">UNRATED</span></code>を維持し、<code>source_status</code>はsecurity-gate未解決のため<code>needs_review</code>にする。</li>
+<li>重要変化として、256GB DDR5 RDIMM sample開始と、モバイルDRAM高騰による需要圧迫懸念を反映する。</li>
+</ul>
+<h3 id="sec-open-questions">open_questions</h3>
+<ul>
+<li>256GB DDR5 RDIMMの量産時期、顧客名、売上寄与、対応プラットフォームがいつ開示されるか。</li>
+<li>モバイルDRAM高騰によるスマートフォン減産が、Micronの汎用DRAM/NAND需給やbit shipmentへどこまで波及するか。</li>
+<li>2026-05-20のMicronイベントで、HBM4、SOCAMM2、6600 ION、FY2027 CapExの顧客裏付けが増えるか。</li>
+</ul>
+<h3 id="sec-alerts">alerts</h3>
+<ul>
+<li>モバイルDRAM価格高騰がスマートフォン生産台数と調達bit volumeを圧迫する可能性が出てきた。メモリ価格<span class="dir up">上昇</span>は追い風でも、需要破壊の兆候として警戒する。</li>
+<li>256GB DDR5 RDIMMは有望だが、sample段階で顧客名未開示のため、顧客裏付け不足の警戒をまだ解けない。</li>
+</ul>
+<h3 id="sec-next-events">next_events</h3>
+<ul>
+<li>2026-05-20のMicron J.P. Morganカンファレンスで、HBM4、SOCAMM2、256GB DDR5 RDIMM、6600 ION、FY2027 CapExの追加コメントを確認する。</li>
+<li>Dell Tech World 2026の会期中に、6600 IONの展示や顧客反応に追加材料が出るか確認する。</li>
+<li>256GB DDR5 RDIMMの量産時期と顧客検証進捗を追跡する。</li>
+</ul>
+</details>
+<details class="sectionDetails" id="sec-source-log更新内容"><summary>6. source_log更新内容</summary>
+<ul>
+<li><code>targets/MU/sources/source_log.md</code>に追記した出典：</li>
+<li>Micron 256GB DDR5 RDIMMサンプル発表</li>
+<li>TrendForce 2026-05-14 mobile DRAM価格<span class="dir up">上昇</span></li>
+<li>TrendForce 2026-05-06 CSP CapEx更新</li>
+<li>Micron 2026-05-20 investor event告知</li>
+<li>追記理由（重要主張との対応）：</li>
+<li>新製品進展、価格高騰の副作用、需要環境、次回イベントを本文の主要主張と対応付けるため。</li>
+</ul>
+</details>
+<details class="sectionDetails" id="sec-品質ゲート" open><summary>7. 品質ゲート</summary>
+<ul>
+<li>弱気材料を先に確認したか：はい。</li>
+<li>強制警戒条件に触れる兆候を確認したか：はい。明確なCapEx<span class="dir down">下方修正</span>やDRAM/HBM価格<span class="dir down">下落</span>は確認していないが、顧客裏付け不足と価格高騰による需要圧迫を警戒として残した。</li>
+<li>出典URL、発表日、確認日があるか：はい。Samsung latest page由来の「今週追加材料なし」は推論であり、その旨を本文に明記した。</li>
+<li>外部取得データを保存しない場合でも、出典URL、発表日、確認日を本文とsource_logに残したか：はい。</li>
+<li><span class="dir unknown">未確認</span>項目をopen_questionsへ回したか：はい。</li>
+<li>週次ではスコア<span class="dir unknown">未付与</span>にしたか：はい。</li>
+<li><code>source_status: draft</code>のまま確定していないか：はい。<code>needs_review</code>で確定する。</li>
+<li>投資助言ではなく観測レポートとして書いたか：はい。</li>
+</ul>
+</details>
+<details class="sectionDetails" id="sec-実行ログ要約-runs転記用" open><summary>8. 実行ログ要約（runs転記用）</summary>
+<ul>
+<li>対象レポート:</li>
+<li>ファイル名: <code>2026-05-18_weekly.md</code></li>
+<li>パス: <code>targets/MU/reports/weekly/2026-05-18_weekly.md</code></li>
+<li>source_status最終値（<code>draft</code>不可）:</li>
+<li>値: <code>needs_review</code></li>
+<li>判定根拠: 本文の主要主張には出典を付けたが、security-gate install-checkがsandbox制約で完了せず未解決のため。</li>
+<li>security-gate install-check:</li>
+<li>対象: <code>scripts/automation_readiness.mjs</code>、<code>scripts/automation_lock.mjs</code>、<code>shared/viewer/render.mjs</code>、<code>scripts/report_verify.mjs</code>、<code>scripts/viewer_verify.mjs</code></li>
+<li>実行結果: sandbox制約により<code>EPERM</code>で失敗。runログへ記録し、コミット不可にする。</li>
+<li>security-gate scan（外部取得データを保存した場合のみ）:</li>
+<li>対象: なし</li>
+<li>実行結果: 未実施</li>
+<li>security-gate scan未実施時メモ（保存データなしの場合）:</li>
+<li>理由: 外部取得データをローカル保存せず、URL・発表日・確認日を本文と<code>targets/MU/sources/source_log.md</code>へ残したため。</li>
+<li>出典管理（本文/<code>source_log</code>）: 実施済み</li>
+<li>HTML生成:</li>
+<li>コマンド: <code>node shared/viewer/render.mjs --target targets/MU --report targets/MU/reports/weekly/2026-05-18_weekly.md --out targets/MU/views/2026-05-18_weekly.html</code></li>
+<li>結果: 成功（<code>targets/MU/views/2026-05-18_weekly.html</code>を生成。HTMLは<code>.gitignore</code>管理）</li>
+<li>report_verify:</li>
+<li>コマンド: <code>node scripts/report_verify.mjs --target targets/MU --report targets/MU/reports/weekly/2026-05-18_weekly.md</code></li>
+<li>結果（failures / warnings）: <code>failures=0, warnings=0</code></li>
+<li>failures&gt;0時の修正内容: なし</li>
+</ul>
+</details>
+<details class="sectionDetails" id="sec-次回確認すること" open><summary>9. 次回確認すること</summary>
+<ul>
+<li>Micron 2026-05-20イベントでHBM4、SOCAMM2、256GB DDR5 RDIMM、6600 ION、FY2027 CapExの顧客裏付けが増えるか。</li>
+<li>256GB DDR5 RDIMMの量産時期、顧客名、売上寄与が追加開示されるか。</li>
+<li>モバイルDRAM価格高騰による需要破壊が、汎用DRAM/NAND需要へ波及しないか。</li>
+<li>Dell Tech World期間中に、6600 IONの顧客反応や設計採用数の示唆が出るか。</li>
+</ul>
+</details>
+<details class="sectionDetails" id="sec-出典"><summary>10. 出典</summary>
+<div class="tableScroll"><table><thead><tr><th>種別</th><th>発行元</th><th>タイトル</th><th>URL</th><th>発表日</th><th>確認日</th></tr></thead><tbody><tr><td>primary</td><td>Micron IR</td><td>Micron Redefines AI Performance With Sampling of 256GB DDR5 Server Module</td><td>https://investors.micron.com/news-releases/news-release-details/micron-redefines-ai-performance-sampling-256gb-ddr5-server</td><td>2026-05-12</td><td>2026-05-18</td></tr><tr><td>primary</td><td>Micron IR</td><td>Micron Announces Participation in Investor Event</td><td>https://investors.micron.com/news-releases/news-release-details/micron-announces-participation-investor-event-3</td><td>2026-04-29</td><td>2026-05-18</td></tr><tr><td>market_data</td><td>TrendForce</td><td>Mobile DRAM Contract Prices Continue Rising in 2Q26, Pressuring Smartphone Production, Says TrendForce</td><td>https://www.trendforce.com/presscenter/news/20260514-13044.html</td><td>2026-05-14</td><td>2026-05-18</td></tr><tr><td>market_data</td><td>TrendForce</td><td>North American AI Data Center Expansion Drives 2026 CapEx of Top Nine CSPs to US$830 Billion, Says TrendForce</td><td>https://www.trendforce.com/presscenter/news/20260506-13033.html</td><td>2026-05-06</td><td>2026-05-18</td></tr><tr><td>primary</td><td>Samsung Semiconductor Global Newsroom</td><td>Latest</td><td>https://news.samsungsemiconductor.com/global/latest/</td><td>undated</td><td>2026-05-18</td></tr></tbody></table></div>
+</details>
+  </article>
+</main>
+
+<script>
+document.querySelectorAll("[data-copy]").forEach((button) => {
+  button.addEventListener("click", async () => {
+    const label = button.getAttribute("data-copy-label") || "text";
+    const text = button.getAttribute("data-copy") || "";
+    try {
+      await navigator.clipboard.writeText(text);
+      const original = button.textContent;
+      button.textContent = "コピー完了: " + label;
+      setTimeout(() => { button.textContent = original; }, 1200);
+    } catch (error) {
+      const fallback = document.querySelector("[data-copy-fallback]");
+      if (fallback) {
+        const textarea = fallback.querySelector("textarea");
+        fallback.open = true;
+        if (textarea) {
+          textarea.value = text;
+          textarea.focus();
+          textarea.select();
+        }
+      }
+      button.textContent = "コピー失敗";
+    }
+  });
+});
+</script>
+</body>
+</html>
